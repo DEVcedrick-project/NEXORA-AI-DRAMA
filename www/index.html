@@ -4561,44 +4561,10 @@
       const item = runtime.activeCheckout;
       if (!item) return;
 
-      if (item.sku === 'starter') {
-        state.starterPackClaimed = true;
-      }
-
-      if (item.vipDays > 0) {
-        const addMs = item.vipDays * 24 * 60 * 60 * 1000;
-        const base = state.isVip && state.vipExpiresAt > Date.now() ? state.vipExpiresAt : Date.now();
-        state.isVip = true;
-        state.vipExpiresAt = base + addMs;
-        state.vipPlanLabel = item.vipDays >= 30 ? '30-Day VIP Pass' : '7-Day Binge Pass';
-        state.walletHistory.unshift({
-          title: `${item.title} (${runtime.checkoutMethod})`,
-          amount: `₱${item.phpAmount} • VIP Active`,
-          type: 'credit',
-          time: 'Just now'
-        });
-      }
-
-      if (item.coinsGranted > 0) {
-        creditCoins(item.coinsGranted, item.vipDays > 0 ? 'bonus' : 'purchased', `${item.title} (${runtime.checkoutMethod})`);
-      } else {
-        saveAppState();
-        syncWalletUI();
-        syncStateToSupabaseNow(false);
-      }
-
-      if (state.firebase.connected && runtime.fbDb && state.firebase.authUid && item.vipDays > 0) {
-        update(ref(runtime.fbDb, `users/${state.firebase.authUid}/vipStatus`), {
-          isVip: true,
-          vipExpiresAt: state.vipExpiresAt,
-          planLabel: state.vipPlanLabel
-        }).catch(() => {});
-      }
-
-      closeAllSheets();
-      renderVerticalFeed();
-      if (state.activeMainTab === 'profile') renderProfileView();
-      showToast(`✅ Payment confirmed via ${runtime.checkoutMethod}!`);
+      // SECURITY: Never grant paid coins, VIP, or starter-pack entitlements
+      // from a client-side button click. Only a verified server-side payment
+      // webhook may fulfill a purchase.
+      showToast('Secure payment checkout is not connected yet. No payment was taken and no items were activated.');
     }
 
     // =========================================================================
