@@ -53,7 +53,7 @@ jobs:
           text = manifest.read_text()
           if "com.google.android.gms.ads.APPLICATION_ID" not in text:
               app_id = os.environ.get("ADMOB_APP_ID") or "ca-app-pub-3940256099942544~3347511713"
-              metadata = f'    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="{app_id}"/>\\n'
+              metadata = f'    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="{app_id}"/>\n'
               text = text.replace("</application>", metadata + "    </application>", 1)
               manifest.write_text(text)
           PY
