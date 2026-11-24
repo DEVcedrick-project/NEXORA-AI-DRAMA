@@ -2,6 +2,15 @@ name: Build NEXORA AI DRAMA APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'www/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'supabase/**'
+      - '.github/workflows/android-apk.yml'
   push:
     branches: [main]
     paths:
