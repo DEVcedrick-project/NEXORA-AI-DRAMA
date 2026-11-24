@@ -591,7 +591,7 @@
                 <p class="text-xs font-bold text-white">Watch Rewarded Video Ad</p>
                 <span id="admob-mode-pill" class="px-1.5 py-0.5 rounded bg-zinc-800 text-[9px] font-mono text-zinc-300">Web Preview</span>
               </div>
-              <p class="text-[10px] text-zinc-400">Earn <span class="text-amber-300 font-bold">+20 Bonus Coins</span> • <span id="ads-remaining-label">5/5</span> left today</p>
+              <p class="text-[10px] text-zinc-400">Earn <span class="text-amber-300 font-bold">+5 Bonus Coins</span> • <span id="ads-remaining-label">5/5</span> left today</p>
             </div>
             <button onclick="triggerRewardedAd(null)" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-extrabold text-[11px] shrink-0 transition">
               ▶ Watch
@@ -783,7 +783,7 @@
         </div>
         <h3 class="text-lg font-black text-white">NEXORA AI Studio Pro</h3>
         <p class="text-xs text-zinc-400 leading-relaxed">
-          Create cinematic 9:16 vertical micro-dramas in minutes. Stay until the timer finishes to earn <strong class="text-amber-300">+20 Bonus Coins</strong>!
+          Create cinematic 9:16 vertical micro-dramas in minutes. Stay until the timer finishes to earn <strong class="text-amber-300">+5 Bonus Coins</strong>!
         </p>
         <div class="w-full h-2 rounded-full bg-zinc-800 overflow-hidden max-w-xs mx-auto">
           <div id="ad-progress-bar" class="h-full bg-amber-400 transition-all duration-200" style="width: 0%"></div>
@@ -4593,7 +4593,7 @@
           if (countText) countText.textContent = 'DONE';
           if (claimBtn) {
             claimBtn.disabled = false;
-            claimBtn.textContent = 'Claim +20 Bonus Coins Now!';
+            claimBtn.textContent = 'Claim +5 Bonus Coins Now!';
             claimBtn.className = 'w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black text-xs shadow-lg transition';
           }
         }
@@ -4726,9 +4726,9 @@
         // An episode-unlock ad grants the episode directly; it must not charge coins.
         unlockEpisodeWithRewardedAd(target.seriesId, target.epNum);
       } else {
-        creditCoins(20, 'bonus', 'Rewarded Video Ad (+20 Coins)');
+        creditCoins(5, 'bonus', 'Rewarded Video Ad (+5 Coins)');
         if (state.activeMainTab === 'profile') renderProfileView();
-        showToast('🎉 +20 Bonus Coins added to your wallet!');
+        showToast('🎉 +5 Bonus Coins added to your wallet!');
       }
     }
 
