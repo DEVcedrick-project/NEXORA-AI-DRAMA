@@ -12,8 +12,6 @@ on:
       - 'supabase/**'
       - 'resources/**'
       - 'scripts/**'
-      - 'resources/**'
-      - 'scripts/**'
       - '.github/workflows/android-apk.yml'
   push:
     branches: [main]
