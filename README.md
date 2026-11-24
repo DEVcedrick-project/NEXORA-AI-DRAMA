@@ -39,7 +39,25 @@ A GitHub Actions workflow builds a debug APK on pushes to `main` and on manual r
 3. Choose **Run workflow** if you want to start a build manually.
 4. Open the completed run and download the `NEXORA-AI-DRAMA-debug-APK` artifact.
 
-The debug APK is for testing and direct installation. A Play Store release still needs a protected Android signing key, a signed release build, store listing assets, and Play Console review. Do not publish the debug APK as a Play Store release.
+The debug APK is for testing and direct installation. It is signed with GitHub's temporary debug key and is not suitable for reliable in-place updates. For updates that install over the previous release without uninstalling or losing app data, configure one permanent Android signing key and keep it unchanged. The workflow then builds a signed release APK and increments the version code on every run. A Play Store release also needs store listing assets and Play Console review.
+
+## Stable signing for in-place updates and Play Store
+
+Generate a permanent upload key once on a trusted computer and keep a secure backup. Never commit the keystore to this public repository:
+
+```bash
+keytool -genkeypair -v -keystore nexora-upload-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias nexora-ai-drama
+base64 < nexora-upload-key.jks | tr -d '\\n'
+```
+
+Add the base64 output and the key details under **GitHub → Settings → Secrets and variables → Actions** using these exact secret names:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+After these secrets are configured, GitHub Actions creates both the debug test APK and a signed release APK. The same application ID (`com.devcedrick.nexoraaidrama`) and the same signing key must be kept for every release; the workflow automatically increases `versionCode` on each run. Losing or changing the signing key prevents Android from installing an update over the existing signed app.
 
 ## Android configuration
 
