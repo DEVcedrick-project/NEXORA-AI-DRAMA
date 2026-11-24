@@ -406,17 +406,17 @@ private fun EpisodeRow(episode: DramaEpisode, onClick: () -> Unit) {
 @Composable
 private fun PlayerScreen(episode: DramaEpisode) {
     val context = LocalContext.current
-    val player = remember(episode.id) {
+    val exoPlayer = remember(episode.id) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(episode.videoUrl))
             prepare()
             playWhenReady = true
         }
     }
-    DisposableEffect(player) { onDispose { player.release() } }
+    DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
     Column(Modifier.fillMaxSize()) {
         AndroidView(
-            factory = { PlayerView(it).apply { player = player; useController = true } },
+            factory = { PlayerView(it).apply { this.player = exoPlayer; useController = true } },
             modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)
         )
         Column(Modifier.padding(20.dp)) {
