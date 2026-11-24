@@ -4318,8 +4318,12 @@
         return;
       }
 
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        setAuthFeedback('Enter a valid email address.', 'error');
+      // Keep client validation deliberately permissive: Firebase Auth performs
+      // authoritative email validation. Requiring a dotted domain here can reject
+      // addresses Firebase accepts and prevent the request from reaching Firebase.
+      const emailParts = email.split('@');
+      if (!email || emailParts.length !== 2 || !emailParts[0] || !emailParts[1] || /\s/.test(email)) {
+        setAuthFeedback('Enter your email address in the format name@example.com.', 'error');
         return;
       }
 
