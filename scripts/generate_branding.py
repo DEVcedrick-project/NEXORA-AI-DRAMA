@@ -29,16 +29,16 @@ anydpi = ANDROID_RES / "mipmap-anydpi-v26"
 anydpi.mkdir(parents=True, exist_ok=True)
 for name in ("ic_launcher", "ic_launcher_round"):
     (anydpi / f"{name}.xml").write_text(
-        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\\n'
-        '  <background android:drawable="@color/nexora_icon_background" />\\n'
-        '  <foreground android:drawable="@drawable/ic_launcher_foreground" />\\n'
-        '</adaptive-icon>\\n', encoding="utf-8")
+        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+        '  <background android:drawable="@color/nexora_icon_background" />\n'
+        '  <foreground android:drawable="@drawable/ic_launcher_foreground" />\n'
+        '</adaptive-icon>\n', encoding="utf-8")
 
 values = ANDROID_RES / "values"
 values.mkdir(parents=True, exist_ok=True)
 (values / "nexora_brand_colors.xml").write_text(
-    '<resources>\\n  <color name="nexora_icon_background">#090512</color>\\n'
-    '  <color name="nexora_splash_background">#090512</color>\\n</resources>\\n', encoding="utf-8")
+    '<resources>\n  <color name="nexora_icon_background">#090512</color>\n'
+    '  <color name="nexora_splash_background">#090512</color>\n</resources>\n', encoding="utf-8")
 
 # Native splash contains only the emblem and the NEXORA AI DRAMA name.
 drawable = ANDROID_RES / "drawable"
@@ -71,6 +71,6 @@ if strings.exists():
     app_name.text = "NEXORA AI DRAMA"
     tree.write(strings, encoding="utf-8", xml_declaration=True)
 else:
-    strings.write_text('<resources>\\n  <string name="app_name">NEXORA AI DRAMA</string>\\n</resources>\\n', encoding="utf-8")
+    strings.write_text('<resources>\n  <string name="app_name">NEXORA AI DRAMA</string>\n</resources>\n', encoding="utf-8")
 
 print("Generated NEXORA launcher icons, adaptive icons, and native splash assets.")
