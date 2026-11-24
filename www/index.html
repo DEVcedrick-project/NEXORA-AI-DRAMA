@@ -4175,7 +4175,7 @@
       const unlockedContainer = document.getElementById('mylist-unlocked-container');
       if (unlockedContainer) {
         if (!unlockedKeys.length) {
-          unlockedContainer.innerHTML = `<p class="text-xs text-zinc-500 p-4 rounded-2xl bg-[#13131c] border border-zinc-800 text-center">Episodes 4–12 unlocked with Coins or Ads will appear here.</p>`;
+          unlockedContainer.innerHTML = `<p class="text-xs text-zinc-500 p-4 rounded-2xl bg-[#13131c] border border-zinc-800 text-center">Episodes unlocked with Coins or Ads will appear here.</p>`;
         } else {
           unlockedContainer.innerHTML = unlockedKeys.map(key => {
             const parts = key.split('_ep');
