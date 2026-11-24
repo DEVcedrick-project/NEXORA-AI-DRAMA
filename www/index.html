@@ -706,7 +706,7 @@
         <div class="flex items-center justify-between pt-1">
           <span class="text-[11px] text-zinc-400">Earned today: <strong id="wte-sheet-earned" class="text-emerald-400 font-mono">0 Coins</strong></span>
           <button id="wte-sheet-claim-btn" onclick="claimWteReward()" class="hidden px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black text-xs animate-pulse">
-            Claim +10 Coins!
+            Claim +5 Coins!
           </button>
         </div>
       </div>
@@ -3034,7 +3034,7 @@
 
       const completedCycle = state.wte.cycle;
       const chestBonus = (completedCycle === 3 || completedCycle === 6) ? 15 : (completedCycle === 10 ? 30 : 0);
-      const reward = 10 + chestBonus;
+      const reward = 5 + chestBonus;
 
       creditCoins(reward, 'bonus', `Watch-to-Earn Cycle ${completedCycle}${chestBonus ? ' + Chest' : ''}`);
       state.wte.earnedToday = (state.wte.earnedToday || 0) + reward;
