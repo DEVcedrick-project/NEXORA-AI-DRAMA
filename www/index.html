@@ -1829,7 +1829,7 @@
       if (state.pendingOtaUpdate) {
         openOtaUpdateModal(state.pendingOtaUpdate.version, state.pendingOtaUpdate.title, state.pendingOtaUpdate.notes);
       } else {
-        simulateAdminSystemOtaUpdate();
+        showToast('No system update is currently available.');
       }
     }
 
