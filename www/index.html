@@ -839,14 +839,6 @@
           </div>
         </div>
 
-        <label class="flex items-start gap-2.5 p-3 rounded-2xl bg-emerald-950/25 border border-emerald-500/30 cursor-pointer">
-          <input id="signup-link-guest-checkbox" type="checkbox" checked class="mt-0.5 accent-emerald-400 w-4 h-4 rounded shrink-0" />
-          <span class="text-[11px] text-zinc-200 leading-snug">
-            <strong class="text-emerald-300">Keep my current guest coins, VIP &amp; unlocked episodes</strong>
-            <span class="block text-[10px] text-zinc-400 mt-0.5">Links your current wallet balance directly to this email account.</span>
-          </span>
-        </label>
-
         <button type="submit" id="btn-submit-signup" class="w-full py-3 rounded-2xl bg-gradient-to-r from-[#ff2e63] to-violet-600 text-white font-black text-xs shadow-lg shadow-[#ff2e63]/25 active:scale-[0.99] transition">
           Create Account &amp; Sync Wallet
         </button>
@@ -4281,8 +4273,6 @@
       const email = document.getElementById('signup-email-input').value.trim().toLowerCase();
       const password = document.getElementById('signup-password-input').value;
       const confirmPw = document.getElementById('signup-confirm-input').value;
-      const keepGuestProgress = document.getElementById('signup-link-guest-checkbox').checked;
-
       // Never store account passwords in localStorage. Require a configured Firebase Auth backend.
       if (!state.firebase.connected || !runtime.fbAuth) {
         // Clear credentials immediately; never persist them when Firebase Auth is unavailable.
@@ -4306,15 +4296,9 @@
         return;
       }
 
-      if (!keepGuestProgress) {
-        state.purchasedCoins = 0;
-        state.bonusCoins = 60;
-        state.isVip = false;
-        state.vipExpiresAt = 0;
-        state.vipPlanLabel = '';
-        state.unlockedEpisodes = {};
-      }
-
+      // Never reset a user's wallet, VIP status, or episode unlocks during registration.
+      // The current anonymous Firebase user is linked to the new email credential so its
+      // UID and existing cloud data remain the same.
       state.user.name = name || 'NEXORA Member';
       state.user.email = email;
       state.user.isGuest = false;
@@ -4322,7 +4306,7 @@
       if (state.firebase.connected && runtime.fbAuth) {
         try {
           let credUser = null;
-          if (runtime.fbAuth.currentUser && runtime.fbAuth.currentUser.isAnonymous && keepGuestProgress) {
+          if (runtime.fbAuth.currentUser && runtime.fbAuth.currentUser.isAnonymous) {
             const credential = EmailAuthProvider.credential(email, password);
             const linked = await linkWithCredential(runtime.fbAuth.currentUser, credential);
             credUser = linked.user;
@@ -4370,6 +4354,24 @@
           state.user.email = u.email || email;
           state.user.name = u.displayName || '';
           state.user.isGuest = false;
+
+          // Restore the signed-in account's cloud wallet and unlocks before saving
+          // local state, so guest data cannot overwrite an existing account.
+          const accountSnap = await get(ref(runtime.fbDb, `users/${u.uid}`));
+          const accountData = accountSnap.val() || {};
+          if (accountData.wallet && typeof accountData.wallet === 'object') {
+            state.purchasedCoins = Math.max(0, Math.floor(Number(accountData.wallet.purchasedCoins) || 0));
+            state.bonusCoins = Math.max(0, Math.floor(Number(accountData.wallet.bonusCoins) || 0));
+          }
+          if (accountData.vipStatus && typeof accountData.vipStatus === 'object') {
+            const vip = accountData.vipStatus;
+            state.vipExpiresAt = Number(vip.vipExpiresAt) || 0;
+            state.isVip = Boolean(vip.isVip) && (!state.vipExpiresAt || state.vipExpiresAt > Date.now());
+            state.vipPlanLabel = state.isVip ? String(vip.planLabel || 'VIP Pass') : '';
+          }
+          if (accountData.unlockedEpisodes && typeof accountData.unlockedEpisodes === 'object') {
+            state.unlockedEpisodes = { ...accountData.unlockedEpisodes };
+          }
           attachRealtimeListeners(runtime.fbDb, u.uid);
         } catch (err) {
           setAuthFeedback(err?.message || 'Invalid email or password.', 'error');
@@ -4377,10 +4379,11 @@
         }
       }
 
+      await pullWalletAndUnlocksFromSupabase();
+      await pushLocalStateToFirebaseNow();
       saveAppState();
       syncWalletUI();
       updateAuthStatusUI();
-      await pullWalletAndUnlocksFromSupabase();
       closeAllSheets();
       showToast(`👋 Welcome back${state.user.name ? `, ${state.user.name}` : ''}!`);
     }
