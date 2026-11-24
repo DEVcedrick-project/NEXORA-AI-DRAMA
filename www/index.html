@@ -2800,6 +2800,29 @@
       syncStateToSupabaseNow(false);
     }
 
+    function unlockEpisodeWithRewardedAd(seriesId, epNum) {
+      const series = getSeriesById(seriesId);
+      if (!series) return;
+      const ep = series.episodes.find(e => e.num === epNum);
+      if (!ep || isEpisodeUnlocked(series, ep)) return;
+
+      const key = `${seriesId}_ep${epNum}`;
+      state.unlockedEpisodes[key] = true;
+      state.activeEpisodeBySeries[seriesId] = epNum;
+      recordContinueWatchingProgress(seriesId, epNum, 10);
+      saveAppState();
+      renderVerticalFeed();
+      closeAllSheets();
+
+      if (state.firebase.connected && runtime.fbDb && state.firebase.authUid) {
+        update(ref(runtime.fbDb, `users/${state.firebase.authUid}/unlockedEpisodes`), {
+          [key]: true
+        }).catch(() => {});
+      }
+      syncStateToSupabaseNow(false);
+      showToast(`🎬 Ad completed — Episode ${epNum} unlocked!`);
+    }
+
     function unlockEpisodeWithCoins(seriesId, epNum) {
       const series = getSeriesById(seriesId);
       const ep = series.episodes.find(e => e.num === epNum);
@@ -3505,7 +3528,7 @@
                     🪙 Unlock with ${ep.coinCost} Coins (Bal: ${getTotalCoins()})
                   </button>
                   <button onclick="triggerRewardedAd({ seriesId: '${series.id}', epNum: ${ep.num} })" class="w-full py-2.5 px-4 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-amber-500/40 text-amber-300 font-extrabold text-xs">
-                    ▶ Watch Short Ad (+20 Coins &amp; Unlock)
+                    ▶ Watch Ad to Unlock This Episode
                   </button>
                   <button onclick="jumpToStoreSection('vip')" class="w-full py-2 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black text-xs">
                     👑 Get VIP Pass (Unlock All Episodes)
@@ -4650,13 +4673,14 @@
       runtime.isSheetOpen = false;
 
       state.adsWatchedToday = Math.min(state.maxAdsPerDay, state.adsWatchedToday + 1);
-      creditCoins(20, 'bonus', 'Rewarded Video Ad (+20 Coins)');
 
       const target = runtime.pendingAdTarget;
       runtime.pendingAdTarget = null;
       if (target && target.seriesId && target.epNum) {
-        unlockEpisodeWithCoins(target.seriesId, target.epNum);
+        // An episode-unlock ad grants the episode directly; it must not charge coins.
+        unlockEpisodeWithRewardedAd(target.seriesId, target.epNum);
       } else {
+        creditCoins(20, 'bonus', 'Rewarded Video Ad (+20 Coins)');
         if (state.activeMainTab === 'profile') renderProfileView();
         showToast('🎉 +20 Bonus Coins added to your wallet!');
       }
