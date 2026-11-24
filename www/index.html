@@ -2000,8 +2000,8 @@
     // 4. FIREBASE RTDB, SUPABASE & CAPACITOR ADMOB BRIDGE
     // =========================================================================
     async function initFirebaseRealtimeSync(customCfg = null) {
+      let cfg = customCfg;
       try {
-        let cfg = customCfg;
         if (!cfg) {
           if (typeof window.__firebase_config !== 'undefined' && window.__firebase_config) {
             cfg = typeof window.__firebase_config === 'string'
@@ -2009,62 +2009,54 @@
               : window.__firebase_config;
           } else {
             const saved = window.localStorage.getItem(FB_CONFIG_STORAGE_KEY);
-            if (saved) {
-              cfg = JSON.parse(saved);
-            } else if (NEXORA_DEFAULT_CONFIG.firebase.apiKey) {
-              cfg = { ...NEXORA_DEFAULT_CONFIG.firebase };
-            }
+            if (saved) cfg = JSON.parse(saved);
+            else if (NEXORA_DEFAULT_CONFIG.firebase.apiKey) cfg = { ...NEXORA_DEFAULT_CONFIG.firebase };
           }
         }
 
-        // Migrate installations that still have the retired Firebase project saved locally.
         if (cfg && cfg.databaseURL === "https://nexora-admin-6313f-default-rtdb.firebaseio.com") {
           cfg = { ...NEXORA_DEFAULT_CONFIG.firebase };
-          try {
-            window.localStorage.setItem(FB_CONFIG_STORAGE_KEY, JSON.stringify(cfg));
-          } catch (_e) {}
+          try { window.localStorage.setItem(FB_CONFIG_STORAGE_KEY, JSON.stringify(cfg)); } catch (_e) {}
         }
 
-        if (!cfg || !cfg.apiKey || !cfg.databaseURL) {
+        if (!cfg || !cfg.apiKey) {
           state.firebase.connected = false;
+          state.firebase.lastError = 'Firebase Web API key is missing.';
           updateFirebaseSyncBadges();
           updateAuthStatusUI();
           return false;
         }
 
         state.firebase.apiKey = cfg.apiKey;
-        state.firebase.dbUrl = cfg.databaseURL;
-
-        for (const existing of getApps()) {
-          await deleteApp(existing);
-        }
-
-        const app = initializeApp(cfg);
+        state.firebase.dbUrl = cfg.databaseURL || '';
+        const app = getApps().find(item => item.name === '[DEFAULT]') || initializeApp(cfg);
         const auth = getAuth(app);
-        const db = getDatabase(app);
-
         runtime.fbApp = app;
         runtime.fbAuth = auth;
-        runtime.fbDb = db;
 
-        if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
-          await signInWithCustomToken(auth, window.__initial_auth_token);
-        } else if (!auth.currentUser) {
-          await signInAnonymously(auth);
+        // Email/password auth must not depend on anonymous sign-in or database rules.
+        if (!auth.currentUser) {
+          try {
+            if (window.__initial_auth_token) await signInWithCustomToken(auth, window.__initial_auth_token);
+            else await signInAnonymously(auth);
+          } catch (authBootstrapError) {
+            console.warn('[NEXORA Firebase] Guest sign-in unavailable; email/password auth remains initialized:', authBootstrapError);
+          }
         }
 
         const user = auth.currentUser;
-        if (!user) throw new Error('No Firebase auth user');
+        if (!user || !cfg.databaseURL) {
+          state.firebase.connected = false;
+          state.firebase.lastError = user
+            ? 'Firebase Authentication is ready; Realtime Database URL is missing.'
+            : 'Firebase Authentication is ready. Guest sign-in is unavailable; email/password sign-in can still be used.';
+          updateFirebaseSyncBadges();
+          updateAuthStatusUI();
+          return true;
+        }
 
-        // Verify actual Realtime Database access, not only Firebase Authentication.
-        // Read published series and write a harmless per-user health timestamp.
-        await get(ref(db, 'series'));
-        await update(ref(db, `users/${user.uid}`), {
-          connectionCheck: { lastVerifiedAt: serverTimestamp() }
-        });
-
-        state.firebase.connected = true;
-        state.firebase.lastError = '';
+        const db = getDatabase(app);
+        runtime.fbDb = db;
         state.firebase.authUid = user.uid;
         state.user.uid = user.uid;
         if (user.email) {
@@ -2073,15 +2065,28 @@
           if (user.displayName) state.user.name = user.displayName;
         }
 
+        try {
+          await get(ref(db, 'series'));
+          await update(ref(db, `users/${user.uid}`), {
+            connectionCheck: { lastVerifiedAt: serverTimestamp() }
+          });
+          state.firebase.connected = true;
+          state.firebase.lastError = '';
+          attachRealtimeListeners(db, user.uid);
+        } catch (databaseError) {
+          state.firebase.connected = false;
+          state.firebase.lastError = databaseError?.message || 'Realtime Database permission check failed';
+          console.warn('[NEXORA Firebase] Auth is ready but Realtime Database is unavailable:', databaseError);
+        }
+
         saveAppState();
         updateFirebaseSyncBadges();
         updateAuthStatusUI();
-        attachRealtimeListeners(db, user.uid);
         return true;
       } catch (err) {
         state.firebase.connected = false;
-        state.firebase.lastError = err?.message || 'Firebase connection or database permission check failed';
-        console.error('[NEXORA Firebase] Connection verification failed:', err);
+        state.firebase.lastError = err?.message || 'Firebase initialization failed';
+        console.error('[NEXORA Firebase] Initialization failed:', err);
         updateFirebaseSyncBadges();
         updateAuthStatusUI();
         return false;
@@ -4289,7 +4294,7 @@
         return;
       }
 
-      if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         setAuthFeedback('Enter a valid email address.', 'error');
         return;
       }
@@ -4362,24 +4367,34 @@
           state.user.name = u.displayName || '';
           state.user.isGuest = false;
 
-          // Restore the signed-in account's cloud wallet and unlocks before saving
-          // local state, so guest data cannot overwrite an existing account.
-          const accountSnap = await get(ref(runtime.fbDb, `users/${u.uid}`));
-          const accountData = accountSnap.val() || {};
-          if (accountData.wallet && typeof accountData.wallet === 'object') {
-            state.purchasedCoins = Math.max(0, Math.floor(Number(accountData.wallet.purchasedCoins) || 0));
-            state.bonusCoins = Math.max(0, Math.floor(Number(accountData.wallet.bonusCoins) || 0));
+          // Restore cloud data when RTDB is reachable. Database permission or network
+          // failures must not invalidate a successful Firebase Authentication login.
+          try {
+            if (runtime.fbDb) {
+              const accountSnap = await get(ref(runtime.fbDb, `users/${u.uid}`));
+              const accountData = accountSnap.val() || {};
+              if (accountData.wallet && typeof accountData.wallet === 'object') {
+                state.purchasedCoins = Math.max(0, Math.floor(Number(accountData.wallet.purchasedCoins) || 0));
+                state.bonusCoins = Math.max(0, Math.floor(Number(accountData.wallet.bonusCoins) || 0));
+              }
+              if (accountData.vipStatus && typeof accountData.vipStatus === 'object') {
+                const vip = accountData.vipStatus;
+                state.vipExpiresAt = Number(vip.vipExpiresAt) || 0;
+                state.isVip = Boolean(vip.isVip) && (!state.vipExpiresAt || state.vipExpiresAt > Date.now());
+                state.vipPlanLabel = state.isVip ? String(vip.planLabel || 'VIP Pass') : '';
+              }
+              if (accountData.unlockedEpisodes && typeof accountData.unlockedEpisodes === 'object') {
+                state.unlockedEpisodes = { ...accountData.unlockedEpisodes };
+              }
+              attachRealtimeListeners(runtime.fbDb, u.uid);
+              state.firebase.connected = true;
+              state.firebase.lastError = '';
+            }
+          } catch (databaseError) {
+            state.firebase.connected = false;
+            state.firebase.lastError = databaseError?.message || 'Could not restore cloud wallet data';
+            console.warn('[NEXORA Firebase] Login succeeded; cloud wallet restore is pending:', databaseError);
           }
-          if (accountData.vipStatus && typeof accountData.vipStatus === 'object') {
-            const vip = accountData.vipStatus;
-            state.vipExpiresAt = Number(vip.vipExpiresAt) || 0;
-            state.isVip = Boolean(vip.isVip) && (!state.vipExpiresAt || state.vipExpiresAt > Date.now());
-            state.vipPlanLabel = state.isVip ? String(vip.planLabel || 'VIP Pass') : '';
-          }
-          if (accountData.unlockedEpisodes && typeof accountData.unlockedEpisodes === 'object') {
-            state.unlockedEpisodes = { ...accountData.unlockedEpisodes };
-          }
-          attachRealtimeListeners(runtime.fbDb, u.uid);
         } catch (err) {
           setAuthFeedback(err?.message || 'Invalid email or password.', 'error');
           return;
