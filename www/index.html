@@ -1084,7 +1084,7 @@
       <div class="w-full max-w-[350px] rounded-3xl bg-[#13131d] border border-amber-400/45 p-5 shadow-2xl space-y-4">
         <div class="flex items-center justify-between">
           <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[9px] font-black uppercase tracking-wider text-emerald-300">
-            SAFE OTA PATCH • KEEP APK
+            OFFICIAL APP UPDATE
           </span>
           <span id="ota-version-badge" class="text-[10px] font-mono font-bold text-amber-300">v2.4.0 → v2.5.0</span>
         </div>
@@ -1100,7 +1100,7 @@
         <div class="p-3 rounded-2xl bg-black/60 border border-zinc-800 space-y-1.5 text-[11px]">
           <div class="flex items-center gap-2 text-emerald-300 font-bold">
             <span>✓</span>
-            <span>No APK uninstall or reinstall needed</span>
+            <span>Install over the existing app when signing matches</span>
           </div>
           <div class="flex items-center gap-2 text-emerald-300 font-bold">
             <span>✓</span>
@@ -1128,7 +1128,7 @@
             Remind Later
           </button>
           <button onclick="applySafeOtaSystemUpdate()" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black text-xs shadow-lg active:scale-95 transition">
-            Update Now (Safe)
+            Download Update
           </button>
         </div>
       </div>
@@ -1180,6 +1180,8 @@
     };
 
     const APP_CURRENT_VERSION = 'v2.5.0';
+    const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
+    const APP_UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
     const STORAGE_KEY = 'nexora_ai_drama_cloud_v6';
     const FB_CONFIG_STORAGE_KEY = 'nexora_firebase_rtdb_config_v1';
     const SB_CONFIG_STORAGE_KEY = 'nexora_supabase_config_v1';
@@ -1564,11 +1566,11 @@
       if (item.type === 'update') {
         if (iconEl) iconEl.textContent = '🛡️';
         if (tagEl) {
-          tagEl.textContent = 'SAFE OTA UPDATE • KEEP APK';
+          tagEl.textContent = 'OFFICIAL APP UPDATE';
           tagEl.className = 'px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[9px] font-black uppercase tracking-wider text-emerald-300';
         }
         if (btnEl) {
-          btnEl.textContent = 'Update Now (Safe)';
+          btnEl.textContent = 'Download Update';
           btnEl.className = 'px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black text-[11px] shadow active:scale-95 transition';
         }
       } else {
@@ -1748,53 +1750,53 @@
       document.getElementById('ota-update-modal')?.classList.add('hidden');
     }
 
-    function applySafeOtaSystemUpdate() {
-      const target = state.pendingOtaUpdate || { version: 'v2.5.0', title: 'OTA System Update' };
-      const progBox = document.getElementById('ota-progress-box');
-      const btnsBox = document.getElementById('ota-action-buttons');
-      const fillEl = document.getElementById('ota-progress-fill');
-      const pctEl = document.getElementById('ota-progress-pct');
-      const lblEl = document.getElementById('ota-progress-label');
-
-      if (btnsBox) btnsBox.classList.add('hidden');
-      if (progBox) progBox.classList.remove('hidden');
-
-      let pct = 0;
-      const steps = [
-        { p: 30, text: 'Verifying Coins, VIP & Watchlist backup...' },
-        { p: 68, text: 'Downloading incremental web bundle...' },
-        { p: 100, text: 'Patch applied! APK & user data intact.' }
-      ];
-      let stepIdx = 0;
-
-      const timer = setInterval(() => {
-        const s = steps[stepIdx];
-        pct = s.p;
-        if (fillEl) fillEl.style.width = `${pct}%`;
-        if (pctEl) pctEl.textContent = `${pct}%`;
-        if (lblEl) lblEl.textContent = s.text;
-        stepIdx += 1;
-        if (stepIdx >= steps.length) {
-          clearInterval(timer);
-          setTimeout(() => {
-            state.appVersion = target.version;
-            state.pendingOtaUpdate = null;
-            saveAppState();
-            syncNotificationBadge();
-            closeOtaUpdateModal();
-            if (state.activeMainTab === 'profile') renderProfileView();
-            showToast(`🛡️ Updated to ${state.appVersion}! All Coins, VIP & APK preserved.`);
-          }, 420);
-        }
-      }, 420);
+    function compareAppVersions(left, right) {
+      const parts = value => String(value || '').replace(/^v/i, '').split('.').map(part => Number.parseInt(part, 10) || 0);
+      const a = parts(left);
+      const b = parts(right);
+      for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+        const diff = (a[i] || 0) - (b[i] || 0);
+        if (diff !== 0) return diff;
+      }
+      return 0;
     }
 
-    function checkForSystemUpdatesNow() {
-      if (state.pendingOtaUpdate) {
+    async function checkForSystemUpdatesNow(silent = false) {
+      try {
+        const response = await fetch(APP_UPDATE_MANIFEST_URL, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Update check failed (${response.status})`);
+        const manifest = await response.json();
+        const version = String(manifest.version || '').trim();
+        const downloadUrl = String(manifest.downloadUrl || '').trim();
+        if (!version || !/^https:\/\//i.test(downloadUrl) || compareAppVersions(version, APP_CURRENT_VERSION) <= 0) {
+          state.pendingOtaUpdate = null;
+          if (!silent) showToast('NEXORA AI DRAMA is up to date.');
+          return false;
+        }
+        state.pendingOtaUpdate = {
+          version: version.startsWith('v') ? version : `v${version}`,
+          title: String(manifest.title || 'NEXORA AI DRAMA update'),
+          notes: String(manifest.notes || 'Performance improvements and new features.'),
+          downloadUrl
+        };
         openOtaUpdateModal(state.pendingOtaUpdate.version, state.pendingOtaUpdate.title, state.pendingOtaUpdate.notes);
-      } else {
-        showToast('No system update is currently available.');
+        return true;
+      } catch (error) {
+        if (!silent) showToast(error?.message || 'Could not check for updates. Try again later.');
+        return false;
       }
+    }
+
+    function applySafeOtaSystemUpdate() {
+      const target = state.pendingOtaUpdate;
+      if (!target?.downloadUrl || !/^https:\/\//i.test(target.downloadUrl)) {
+        showToast('The update package is not published yet.');
+        return;
+      }
+      // Android's package installer performs the in-place update. It will preserve app data
+      // only when the APK uses the same application ID and signing certificate.
+      window.open(target.downloadUrl, '_blank', 'noopener');
+      showToast('Opening the signed NEXORA update package. Follow the Android installer prompt.');
     }
 
     function recordContinueWatchingProgress(seriesId, epNum, progressPct) {
@@ -4725,6 +4727,10 @@
       initFirebaseRealtimeSync(null);
       initSupabaseClient(null, true);
       initPublishedDramaCatalog();
+      checkForSystemUpdatesNow(true);
+      window.setInterval(() => {
+        if (document.visibilityState === 'visible') checkForSystemUpdatesNow(true);
+      }, APP_UPDATE_CHECK_INTERVAL_MS);
     }
 
     window.addEventListener('resize', () => {
