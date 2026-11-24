@@ -4717,14 +4717,16 @@
               cleanupAdMobListeners();
               runtime.pendingAdTarget = null;
               runtime.isSheetOpen = false;
-              showToast('Rewarded interstitial could not load. Please try again later.');
+              document.getElementById('ad-player-sheet')?.classList.add('translate-y-full');
+              showToast('No ad is available right now. Please try again later.');
               console.warn('AdMob rewarded interstitial failed to load:', error);
             });
             const showFailHandle = await admob.addListener('onRewardedInterstitialAdFailedToShow', (error) => {
               cleanupAdMobListeners();
               runtime.pendingAdTarget = null;
               runtime.isSheetOpen = false;
-              showToast('Rewarded interstitial could not be shown. Please try again.');
+              document.getElementById('ad-player-sheet')?.classList.add('translate-y-full');
+              showToast('No ad is available right now. Please try again later.');
               console.warn('AdMob rewarded interstitial failed to show:', error);
             });
             runtime.admobListeners.push(rewardHandle, dismissHandle, failHandle, showFailHandle);
@@ -4745,7 +4747,8 @@
           cleanupAdMobListeners();
           runtime.pendingAdTarget = null;
           runtime.isSheetOpen = false;
-          showToast('Rewarded interstitial unavailable. No coins were added. Please try again.');
+          document.getElementById('ad-player-sheet')?.classList.add('translate-y-full');
+          showToast('No ad is available right now. No coins were added. Please try again later.');
           console.warn('AdMob rewarded interstitial flow failed:', nativeAdError);
           return;
         }
