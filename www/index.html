@@ -4274,7 +4274,7 @@
       const password = document.getElementById('signup-password-input').value;
       const confirmPw = document.getElementById('signup-confirm-input').value;
       // Never store account passwords in localStorage. Require a configured Firebase Auth backend.
-      if (!state.firebase.connected || !runtime.fbAuth) {
+      if (!runtime.fbAuth) {
         // Clear credentials immediately; never persist them when Firebase Auth is unavailable.
         document.getElementById('signup-password-input').value = '';
         document.getElementById('signup-confirm-input').value = '';
@@ -4303,7 +4303,7 @@
       state.user.email = email;
       state.user.isGuest = false;
 
-      if (state.firebase.connected && runtime.fbAuth) {
+      if (runtime.fbAuth) {
         try {
           let credUser = null;
           if (runtime.fbAuth.currentUser && runtime.fbAuth.currentUser.isAnonymous) {
@@ -4340,12 +4340,12 @@
       const email = document.getElementById('login-email-input').value.trim().toLowerCase();
       const password = document.getElementById('login-password-input').value;
 
-      if (!state.firebase.connected || !runtime.fbAuth) {
+      if (!runtime.fbAuth) {
         setAuthFeedback('Secure sign-in is unavailable until Firebase Authentication is configured by the app owner.', 'error');
         return;
       }
 
-      if (state.firebase.connected && runtime.fbAuth) {
+      if (runtime.fbAuth) {
         try {
           const res = await signInWithEmailAndPassword(runtime.fbAuth, email, password);
           const u = res.user;
@@ -4391,12 +4391,12 @@
     async function handlePasswordResetRequest(event) {
       event.preventDefault();
       const email = document.getElementById('reset-email-input').value.trim().toLowerCase();
-      if (!state.firebase.connected || !runtime.fbAuth) {
+      if (!runtime.fbAuth) {
         setAuthFeedback('Password reset is unavailable until Firebase Authentication is configured by the app owner.', 'error');
         return;
       }
 
-      if (state.firebase.connected && runtime.fbAuth) {
+      if (runtime.fbAuth) {
         try {
           await sendPasswordResetEmail(runtime.fbAuth, email);
           setAuthFeedback(`Password reset email sent to ${email}. Check your inbox.`, 'success');
@@ -4409,7 +4409,7 @@
     }
 
     async function handleSignOutAccount() {
-      if (state.firebase.connected && runtime.fbAuth) {
+      if (runtime.fbAuth) {
         try {
           await signOut(runtime.fbAuth);
           await signInAnonymously(runtime.fbAuth);
