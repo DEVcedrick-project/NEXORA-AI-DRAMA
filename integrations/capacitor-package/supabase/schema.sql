@@ -1,6 +1,7 @@
--- NEXORA AI DRAMA source schema from the supplied package.
--- SECURITY WARNING: The source policies below permit unrestricted anon/authenticated
--- access. Review and replace them with auth.uid()-scoped policies before production.
+-- ============================================================================
+-- NEXORA AI DRAMA — SUPABASE POSTGRES SCHEMA (user_wallets & unlocked_episodes)
+-- Run this SQL in your Supabase SQL Editor before connecting your app.
+-- ============================================================================
 
 create table if not exists public.user_wallets (
   user_id text primary key,
@@ -22,13 +23,23 @@ create table if not exists public.unlocked_episodes (
   primary key (user_id, episode_key)
 );
 
+-- Enable Row Level Security (RLS)
 alter table public.user_wallets enable row level security;
 alter table public.unlocked_episodes enable row level security;
 
+-- Development / Anon Client Policies (tighten for production JWT auth as needed)
 drop policy if exists "Allow anon upsert user_wallets" on public.user_wallets;
-create policy "Allow anon upsert user_wallets" on public.user_wallets
-  for all to anon, authenticated using (true) with check (true);
+create policy "Allow anon upsert user_wallets"
+  on public.user_wallets
+  for all
+  to anon, authenticated
+  using (true)
+  with check (true);
 
 drop policy if exists "Allow anon upsert unlocked_episodes" on public.unlocked_episodes;
-create policy "Allow anon upsert unlocked_episodes" on public.unlocked_episodes
-  for all to anon, authenticated using (true) with check (true);
+create policy "Allow anon upsert unlocked_episodes"
+  on public.unlocked_episodes
+  for all
+  to anon, authenticated
+  using (true)
+  with check (true);
