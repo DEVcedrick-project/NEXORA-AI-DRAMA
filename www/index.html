@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>NEXORA AI DRAMA — Vertical Micro-Drama Streaming</title>
+  <meta name="theme-color" content="#090512" />
+  <link rel="icon" type="image/svg+xml" href="/assets/nexora-mark.svg" />
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- HLS.js v1.7.4 for Adaptive .m3u8 Streaming -->
@@ -100,64 +102,26 @@
     <!-- ===================================================================== -->
     <!-- LUXURY STARTUP SPLASH SCREEN OVERLAY                                  -->
     <!-- ===================================================================== -->
-    <div id="nexora-splash-screen" onclick="dismissSplashScreen()" class="absolute inset-0 z-[90] bg-[#06060b] flex flex-col items-center justify-between p-8 select-none cursor-pointer transition-opacity duration-500">
+    <div id="nexora-splash-screen" class="absolute inset-0 z-[90] overflow-hidden bg-[#090512] flex items-center justify-center select-none transition-opacity duration-500">
       <div class="pointer-events-none absolute inset-0 overflow-hidden">
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-gradient-to-tr from-[#ff2e63]/25 via-violet-700/20 to-amber-400/20 blur-3xl"></div>
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,#050508_95%)]"></div>
-      </div>
-
-      <div class="relative z-10 w-full flex items-center justify-between pt-2">
-        <span class="px-2.5 py-0.5 rounded-full bg-white/5 border border-amber-400/30 text-[9px] font-mono font-extrabold tracking-[0.2em] text-amber-300/90 uppercase">
-          9:16 Cinema Engine
-        </span>
-        <span class="text-[10px] font-mono text-zinc-500">Tap to skip</span>
+        <div class="absolute -top-24 -left-28 w-80 h-80 rounded-full bg-violet-700/25 blur-[90px]"></div>
+        <div class="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-amber-500/10 blur-[100px]"></div>
+        <div class="absolute -top-16 -left-20 w-[125%] h-44 border-b border-violet-500/25 rounded-[50%] rotate-[-18deg]"></div>
+        <div class="absolute -bottom-20 -right-24 w-[125%] h-48 border-t border-amber-400/30 rounded-[50%] rotate-[-18deg]"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,#05030b_88%)]"></div>
       </div>
 
       <div class="relative z-10 flex flex-col items-center text-center animate-splash-logo">
-        <div class="relative w-28 h-28 rounded-[2rem] p-[2px] bg-gradient-to-br from-amber-300 via-[#ff2e63] to-violet-600 shadow-[0_14px_45px_rgba(255,46,99,0.42)] overflow-hidden">
-          <div class="w-full h-full rounded-[1.9rem] bg-[#0c0a14] flex items-center justify-center relative overflow-hidden">
-            <div class="pointer-events-none absolute inset-y-0 w-12 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-splash-sheen"></div>
-            <svg class="w-16 h-16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <defs>
-                <linearGradient id="nexoraSplashGold" x1="4" y1="3" x2="32" y2="33" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#FDE68A"/>
-                  <stop offset="48%" stop-color="#F59E0B"/>
-                  <stop offset="100%" stop-color="#FF2E63"/>
-                </linearGradient>
-                <linearGradient id="nexoraSplashPrism" x1="9" y1="8" x2="27" y2="28" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#FFFFFF"/>
-                  <stop offset="55%" stop-color="#FDE68A"/>
-                  <stop offset="100%" stop-color="#C084FC"/>
-                </linearGradient>
-              </defs>
-              <path d="M18 2.8L33.2 18L18 33.2L2.8 18L18 2.8Z" stroke="url(#nexoraSplashGold)" stroke-width="2" fill="rgba(255,255,255,0.03)"/>
-              <path d="M11.5 25V11L24.5 25V11" stroke="url(#nexoraSplashPrism)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M25.5 16.2L29.2 18L25.5 19.8V16.2Z" fill="#FDE68A"/>
-            </svg>
-          </div>
+        <div class="relative w-44 h-44 rounded-full p-[2px] bg-gradient-to-br from-amber-200 via-violet-500 to-purple-950 shadow-[0_0_70px_rgba(139,53,255,0.35)]">
+          <div class="absolute inset-0 rounded-full bg-amber-300/20 blur-2xl"></div>
+          <img src="/assets/nexora-mark.svg" alt="NEXORA logo" class="relative w-full h-full rounded-full object-contain" />
         </div>
-
-        <div class="mt-6 space-y-1.5">
-          <h1 class="text-3xl font-black tracking-[0.18em] bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent">
-            NEXORA
-          </h1>
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 via-[#ff2e63]/20 to-violet-600/20 border border-amber-400/40">
-            <span class="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse"></span>
-            <span class="text-[11px] font-black tracking-[0.26em] text-amber-300">AI DRAMA</span>
-          </div>
-          <p class="text-[11px] text-zinc-400 pt-2 max-w-[230px] leading-relaxed">
-            Ultra-Vertical AI Micro-Dramas • Instant Cliffhangers • Watch-to-Earn
-          </p>
+        <h1 class="mt-9 text-[2.65rem] font-black tracking-[0.2em] bg-gradient-to-b from-white via-violet-100 to-violet-300 bg-clip-text text-transparent drop-shadow-[0_5px_24px_rgba(139,53,255,0.3)]">NEXORA</h1>
+        <div class="mt-3 flex items-center gap-4">
+          <span class="h-px w-9 bg-gradient-to-r from-transparent to-amber-300"></span>
+          <span class="text-sm font-extrabold tracking-[0.38em] text-amber-300">AI DRAMA</span>
+          <span class="h-px w-9 bg-gradient-to-l from-transparent to-amber-300"></span>
         </div>
-      </div>
-
-      <div class="relative z-10 w-full max-w-[240px] space-y-2 pb-4 text-center">
-        <div class="w-full h-1.5 rounded-full bg-zinc-900 border border-white/10 overflow-hidden">
-          <div id="splash-progress-fill" class="h-full bg-gradient-to-r from-amber-400 via-[#ff2e63] to-violet-500 animate-splash-bar"></div>
-        </div>
-        <p id="splash-status-text" class="text-[10px] font-mono text-zinc-400 tracking-wider">
-          Initializing Cinema &amp; Cloud Sync...
-        </p>
       </div>
     </div>
 
