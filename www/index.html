@@ -3799,6 +3799,10 @@
       runtime.lastFrameTime = performance.now();
 
       function tick(now) {
+        if (document.hidden) {
+          runtime.rafId = 0;
+          return;
+        }
         try {
           const rawDt = (now - runtime.lastFrameTime) / 1000;
           runtime.lastFrameTime = now;
@@ -3843,6 +3847,11 @@
 
       runtime.rafId = requestAnimationFrame(tick);
     }
+
+    // Stop the render loop while the app is backgrounded; resume on return.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && !runtime.rafId) startMainAnimationLoop();
+    });
 
     // =========================================================================
     // 11. EPISODE SELECTOR & COMMENTS DRAWERS
