@@ -10,6 +10,8 @@ on:
       - 'package-lock.json'
       - 'capacitor.config.json'
       - 'supabase/**'
+      - 'resources/**'
+      - 'scripts/**'
       - '.github/workflows/android-apk.yml'
   push:
     branches: [main]
@@ -19,6 +21,8 @@ on:
       - 'package-lock.json'
       - 'capacitor.config.json'
       - 'supabase/**'
+      - 'resources/**'
+      - 'scripts/**'
       - '.github/workflows/android-apk.yml'
 
 permissions:
@@ -65,6 +69,11 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+
+      - name: Generate premium launcher icon and splash assets
+        run: |
+          python -m pip install --disable-pip-version-check cairosvg pillow
+          python scripts/generate_branding.py
 
       - name: Configure AdMob application ID
         env:
