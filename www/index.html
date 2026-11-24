@@ -918,11 +918,11 @@
         <p class="text-[10px] leading-relaxed text-amber-200">Enable Email/Password sign-in in Firebase Console → Authentication → Sign-in method. Use the Web API key from this same Firebase project.</p>
         <div>
           <label class="block text-[10px] font-bold text-zinc-400 mb-1">Firebase Web API Key</label>
-          <input id="fb-apikey-input" type="text" placeholder="AIzaSy..." class="w-full bg-black/70 border border-zinc-800 focus:border-violet-500 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
+          <input id="fb-apikey-input" type="text" value="AIzaSyAwjPOpcrjzeJMhSczHcTBwMmXFRRk" placeholder="AIzaSy..." class="w-full bg-black/70 border border-zinc-800 focus:border-violet-500 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
         </div>
         <div>
           <label class="block text-[10px] font-bold text-zinc-400 mb-1">Realtime Database URL</label>
-          <input id="fb-dburl-input" type="url" value="https://nexora-admin-6313f-default-rtdb.firebaseio.com" class="w-full bg-black/70 border border-zinc-800 focus:border-violet-500 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
+          <input id="fb-dburl-input" type="url" value="https://nexora-ai-drama-default-rtdb.asia-southeast1.firebasedatabase.app" class="w-full bg-black/70 border border-zinc-800 focus:border-violet-500 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
         </div>
         <div class="flex gap-2 pt-1">
           <button type="submit" class="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-xs transition">
@@ -1150,7 +1150,7 @@
       sendPasswordResetEmail,
       signOut
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getDatabase, ref, onValue, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+    import { getDatabase, ref, get, onValue, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/+esm";
 
     // =========================================================================
@@ -2068,7 +2068,15 @@
         const user = auth.currentUser;
         if (!user) throw new Error('No Firebase auth user');
 
+        // Verify actual Realtime Database access, not only Firebase Authentication.
+        // Read published series and write a harmless per-user health timestamp.
+        await get(ref(db, 'series'));
+        await update(ref(db, `users/${user.uid}`), {
+          connectionCheck: { lastVerifiedAt: serverTimestamp() }
+        });
+
         state.firebase.connected = true;
+        state.firebase.lastError = '';
         state.firebase.authUid = user.uid;
         state.user.uid = user.uid;
         if (user.email) {
@@ -2082,8 +2090,10 @@
         updateAuthStatusUI();
         attachRealtimeListeners(db, user.uid);
         return true;
-      } catch (_err) {
+      } catch (err) {
         state.firebase.connected = false;
+        state.firebase.lastError = err?.message || 'Firebase connection or database permission check failed';
+        console.error('[NEXORA Firebase] Connection verification failed:', err);
         updateFirebaseSyncBadges();
         updateAuthStatusUI();
         return false;
@@ -2668,7 +2678,7 @@
     function openFirebaseConfigModal() {
       closeAllSheets();
       document.getElementById('fb-apikey-input').value = state.firebase.apiKey || '';
-      document.getElementById('fb-dburl-input').value = state.firebase.dbUrl || 'https://nexora-admin-6313f-default-rtdb.firebaseio.com';
+      document.getElementById('fb-dburl-input').value = state.firebase.dbUrl || NEXORA_DEFAULT_CONFIG.firebase.databaseURL;
       document.getElementById('sb-url-input').value = state.supabase.url || '';
       document.getElementById('sb-key-input').value = state.supabase.anonKey || '';
       document.getElementById('admob-android-input').value = state.admob.androidRewardedId || '';
@@ -2695,7 +2705,11 @@
         showToast('Enter both Firebase API Key and Realtime Database URL.');
         return;
       }
-      const cfg = { apiKey, databaseURL };
+      const cfg = {
+        ...NEXORA_DEFAULT_CONFIG.firebase,
+        apiKey,
+        databaseURL
+      };
       try {
         window.localStorage.setItem(FB_CONFIG_STORAGE_KEY, JSON.stringify(cfg));
       } catch (_e) {}
