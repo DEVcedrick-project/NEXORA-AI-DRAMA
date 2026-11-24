@@ -102,13 +102,17 @@ private object DramaApi {
         return buildList {
             for (i in 0 until rows.length()) {
                 val row = rows.getJSONObject(i)
+                val videoUrl = row.value("video_url").trim()
+                // The Android app disables cleartext traffic; reject non-HTTPS media
+                // here so an incorrectly configured Studio episode cannot break playback.
+                if (!videoUrl.startsWith("https://", ignoreCase = true)) continue
                 add(
                     DramaEpisode(
                         id = row.getString("id"),
                         number = row.optInt("episode_number"),
                         title = row.value("title"),
                         synopsis = row.value("synopsis"),
-                        videoUrl = row.value("video_url"),
+                        videoUrl = videoUrl,
                         thumbnailUrl = row.optional("thumbnail_url"),
                         videoOwner = row.optional("video_owner")
                     )
