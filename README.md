@@ -28,6 +28,13 @@ The workflow currently creates a debug APK. A debug APK is for testing and direc
 - Web app directory: `www`
 - Android packaging: Capacitor 8
 
+## User registration and sign-in status
+
+- The app includes Create Account, Sign In and password-reset screens using Firebase Authentication.
+- The repository does not contain a Firebase Web API key or Android Firebase configuration, so real account registration is not ready until the owner supplies the Firebase project configuration and enables Email/Password sign-in.
+- When Firebase is not configured, signup, sign-in and password reset show a clear unavailable message instead of pretending to create an online account.
+- The app no longer falls back to storing user passwords in localStorage. Do not distribute the app as having working online registration until Firebase is configured and tested on a device.
+
 ## Configuration and production safety
 
 Configure Firebase, Supabase and AdMob values in the app's configuration section before production use. Never put Firebase service-account credentials, Supabase service-role keys, private signing keys or other secrets in this public repository.
