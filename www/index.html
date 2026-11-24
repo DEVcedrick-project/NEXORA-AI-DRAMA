@@ -1257,6 +1257,10 @@
         url: "",
         anonKey: ""
       },
+      studioCatalog: {
+        url: "https://gbpjixlubrmgzqflbkwz.supabase.co",
+        publishableKey: "sb_publishable_aTvIirLiL64wiEFekuF-YQ_4TXy-Zty"
+      },
       admob: {
         androidRewardedId: "ca-app-pub-3940256099942544/5224354917",
         iosRewardedId: "ca-app-pub-3940256099942544/1712485313",
@@ -1264,8 +1268,8 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.4.0';
-    const STORAGE_KEY = 'nexora_ai_drama_cloud_v5';
+    const APP_CURRENT_VERSION = 'v2.5.0';
+    const STORAGE_KEY = 'nexora_ai_drama_cloud_v6';
     const FB_CONFIG_STORAGE_KEY = 'nexora_firebase_rtdb_config_v1';
     const SB_CONFIG_STORAGE_KEY = 'nexora_supabase_config_v1';
     const ADMOB_CONFIG_STORAGE_KEY = 'nexora_admob_config_v1';
@@ -1283,155 +1287,19 @@
     // =========================================================================
     // 1. DEFAULT SERIES CATALOG
     // =========================================================================
-    function buildDefaultEpisodes(seriesTitle, customHooks) {
-      const list = [];
-      for (let i = 1; i <= 12; i++) {
-        const hook = customHooks[i - 1] || `Chapter ${i}: The Hidden Truth Unfolds`;
-        list.push({
-          num: i,
-          title: hook,
-          duration: 60 + (i % 4) * 12,
-          isFree: i <= 3,
-          coinCost: i <= 3 ? 0 : 20,
-          videoUrl: '',
-          subtitleUrl: '',
-          subtitleLines: [
-            `"You thought you could erase me from ${seriesTitle}?"`,
-            `"Look closely at the signature on this contract..."`,
-            `"Tonight, every debt gets paid in full."`
-          ]
-        });
-      }
-      return list;
-    }
-
-    const DEFAULT_SERIES_CATALOG = [
-      {
-        id: 'love-behind-lies',
-        title: 'Love Behind the Lies',
-        creator: '@NexoraOriginals',
-        genre: 'Romance',
-        views: '4.8M',
-        likes: 184200,
-        accentA: '#ff2e63',
-        accentB: '#6d28d9',
-        tagline: 'Betrayed at her own wedding, she returns as the conglomerate’s secret chairwoman.',
-        episodes: buildDefaultEpisodes('Love Behind the Lies', [
-          'The Wedding Altar Betrayal',
-          'A Diamond Ring in the Rain',
-          'The Real Chairwoman Arrives',
-          'Kneel Before Your New Boss',
-          'DNA Report on the Gala Screen',
-          'Who Owns the Penthouse Now?'
-        ])
-      },
-      {
-        id: 'spoiled-no-more',
-        title: 'Spoiled No More',
-        creator: '@NexoraDramaLab',
-        genre: 'Revenge',
-        views: '3.9M',
-        likes: 149500,
-        accentA: '#f59e0b',
-        accentB: '#b91c1c',
-        tagline: 'Cast out by her adoptive family, the true heiress inherits three global banks.',
-        episodes: buildDefaultEpisodes('Spoiled No More', [
-          'Disowned on Her 21st Birthday',
-          'The Fake Sister’s Banquet Trap',
-          'Three Billion Wired at Midnight',
-          'Buying Out the Family Mansion',
-          'Black Card vs. Gold Card',
-          'Too Late to Beg for Mercy'
-        ])
-      },
-      {
-        id: 'sight-makes-billionaires',
-        title: 'The Sight That Makes Billionaires',
-        creator: '@AI_CinemaStudio',
-        genre: 'Fantasy',
-        views: '5.2M',
-        likes: 219800,
-        accentA: '#10b981',
-        accentB: '#1d4ed8',
-        tagline: 'After a lightning storm, an intern sees hidden market values above every object.',
-        episodes: buildDefaultEpisodes('The Sight That Makes Billionaires', [
-          'Golden Numbers in the Sky',
-          'The ₱500 Antique Jade Seal',
-          'Outbidding the Auction King',
-          'Predicting the Opening Bell',
-          'Secret Vault Under Floor 88',
-          'Empire Built in 72 Hours'
-        ])
-      },
-      {
-        id: 'billionaire-loves-beggar',
-        title: 'The Billionaire in Love with a Beggar',
-        creator: '@NexoraRomance',
-        genre: 'Billionaire',
-        views: '6.1M',
-        likes: 264000,
-        accentA: '#ec4899',
-        accentB: '#4f46e5',
-        tagline: 'Disguised as a street musician, a tech mogul falls for the girl who shared her last meal.',
-        episodes: buildDefaultEpisodes('The Billionaire in Love with a Beggar', [
-          'Half a Warm Bun in Winter',
-          'The Secret CEO Behind the Mask',
-          'Who Dared Humiliate Her?',
-          'Private Jet at the Alleyway',
-          'Contract Marriage Revelation',
-          'Every Star in the City for Her'
-        ])
-      }
-    ];
-
-    // =========================================================================
-    // 2. CENTRALIZED APP STATE & RUNTIME LIFECYCLE
-    // =========================================================================
     const state = {
       activeMainTab: 'foryou',
       activeDiscoverGenre: 'All',
-      activeSeriesId: 'love-behind-lies',
-      activeEpisodeBySeries: {
-        'love-behind-lies': 1,
-        'spoiled-no-more': 1,
-        'sight-makes-billionaires': 1,
-        'billionaire-loves-beggar': 1
-      },
-      continueWatching: {
-        'love-behind-lies': {
-          seriesId: 'love-behind-lies',
-          epNum: 1,
-          progressPct: 34,
-          updatedAt: Date.now()
-        }
-      },
+      activeSeriesId: '',
+      activeEpisodeBySeries: {},
+      continueWatching: {},
       appVersion: APP_CURRENT_VERSION,
       pendingOtaUpdate: null,
       activeNotifFilter: 'all',
-      notifications: [
-        {
-          id: 'notif_welcome_ota',
-          type: 'update',
-          title: 'Safe OTA Update Engine Ready (v2.4.0)',
-          body: 'Future updates & new dramas arrive live without deleting your APK or losing your Coins & VIP.',
-          time: 'Just now',
-          unread: true,
-          version: 'v2.4.0'
-        },
-        {
-          id: 'notif_upload_ep4',
-          type: 'upload',
-          title: 'New Cliffhanger: Love Behind the Lies',
-          body: 'Episodes 1–12 are live! Continue watching Ep 1 or unlock Ep 4 with your welcome bonus.',
-          time: '5m ago',
-          unread: true,
-          seriesId: 'love-behind-lies',
-          epNum: 1
-        }
-      ],
+      notifications: [],
       user: {
-        name: 'Aria Vance',
-        uid: 'NX-849201',
+        name: 'NEXORA Viewer',
+        uid: '',
         avatarIdx: 0,
         email: '',
         isGuest: true
@@ -1443,15 +1311,9 @@
       vipPlanLabel: '',
       starterPackClaimed: false,
       unlockedEpisodes: {},
-      savedSeries: ['love-behind-lies'],
+      savedSeries: [],
       likedSeries: {},
-      commentsBySeries: {
-        'love-behind-lies': [
-          { user: 'camille.ph', text: 'Ep 3 cliffhanger gave me chills!! 🔥', time: '2m ago' },
-          { user: 'jayson_v', text: 'Used my Watch-to-Earn coins on Ep 4, worth it!', time: '9m ago' },
-          { user: 'mikaela_r', text: 'The AI cinematography looks like a real K-drama.', time: '18m ago' }
-        ]
-      },
+      commentsBySeries: {},
       walletHistory: [
         { title: 'Welcome Bonus Gift', amount: '+60 Bonus Coins', type: 'credit', time: 'Today' }
       ],
@@ -1475,7 +1337,7 @@
         watch30sSec: 0,
         commentClaimed: false
       },
-      seriesCatalog: JSON.parse(JSON.stringify(DEFAULT_SERIES_CATALOG)),
+      seriesCatalog: [],
       firebase: {
         connected: false,
         authUid: '',
@@ -1528,6 +1390,10 @@
       fbDb: null,
       fbUnsubs: [],
       sbClient: null,
+      catalogClient: null,
+      catalogRefreshTimer: null,
+      catalogLoading: true,
+      catalogError: '',
       resetConfirmStep: false,
       splashDismissed: false,
       splashTimer: null,
@@ -2421,6 +2287,168 @@
       runtime.fbUnsubs.push(unsubUnlocks);
     }
 
+
+    // =========================================================================
+    // 4B. LIVE PUBLISHED AI DRAMA CATALOG (READ-ONLY STUDIO INTEGRATION)
+    // This client reads only published rows through the existing public RLS policies.
+    // It never writes to NEXORA STUDIO or its database.
+    // =========================================================================
+    function mapPublishedStudioDrama(drama, episodeRows, index) {
+      const palette = [
+        ['#ff2e63', '#6d28d9'],
+        ['#f59e0b', '#b91c1c'],
+        ['#10b981', '#1d4ed8'],
+        ['#ec4899', '#4f46e5'],
+        ['#0ea5e9', '#7c3aed']
+      ];
+      const colors = palette[index % palette.length];
+      const episodes = episodeRows
+        .filter(ep => ep && ep.status === 'published' && typeof ep.video_url === 'string' && ep.video_url.trim())
+        .map(ep => ({
+          num: Number(ep.episode_number) || 1,
+          title: ep.title || `Episode ${ep.episode_number}`,
+          duration: Math.max(1, Math.round(Number(ep.duration_seconds) || 60)),
+          isFree: Number(ep.episode_number) <= 3,
+          coinCost: Number(ep.episode_number) <= 3 ? 0 : 20,
+          videoUrl: ep.video_url.trim(),
+          posterUrl: ep.thumbnail_url || drama.cover_url || '',
+          subtitleUrl: '',
+          subtitleLines: ep.synopsis ? [ep.synopsis] : []
+        }))
+        .sort((a, b) => a.num - b.num);
+      if (!episodes.length) return null;
+      const firstOwner = episodeRows.find(ep => ep.video_owner && String(ep.video_owner).trim())?.video_owner;
+      return {
+        id: drama.id,
+        title: drama.title || 'Untitled Drama',
+        creator: firstOwner || 'NEXORA STUDIO',
+        genre: drama.genre || 'Drama',
+        views: 'NEW',
+        likes: 0,
+        accentA: colors[0],
+        accentB: colors[1],
+        tagline: drama.synopsis || '',
+        coverUrl: drama.cover_url || '',
+        episodes
+      };
+    }
+
+    async function refreshPublishedDramaCatalog(showErrors = false) {
+      const client = runtime.catalogClient;
+      if (!client) return false;
+      try {
+        const { data: dramas, error: dramaError } = await client
+          .from('ai_dramas')
+          .select('id, title, synopsis, genre, cover_url, status, created_at')
+          .eq('status', 'published')
+          .order('created_at', { ascending: false });
+        if (dramaError) throw dramaError;
+
+        let mapped = [];
+        if (Array.isArray(dramas) && dramas.length) {
+          const ids = dramas.map(drama => drama.id);
+          const { data: episodes, error: episodeError } = await client
+            .from('ai_drama_episodes')
+            .select('id, drama_id, episode_number, title, synopsis, video_url, video_owner, thumbnail_url, duration_seconds, status, sort_order')
+            .in('drama_id', ids)
+            .eq('status', 'published')
+            .order('sort_order', { ascending: true })
+            .order('episode_number', { ascending: true });
+          if (episodeError) throw episodeError;
+          const episodeRows = Array.isArray(episodes) ? episodes : [];
+          mapped = dramas
+            .map((drama, index) => mapPublishedStudioDrama(
+              drama,
+              episodeRows.filter(ep => ep.drama_id === drama.id),
+              index
+            ))
+            .filter(Boolean);
+        }
+
+        const previousIds = new Set(state.seriesCatalog.map(item => item.id));
+        const nextIds = new Set(mapped.map(item => item.id));
+        state.seriesCatalog = mapped;
+        state.activeEpisodeBySeries = Object.fromEntries(
+          Object.entries(state.activeEpisodeBySeries).filter(([id]) => nextIds.has(id))
+        );
+        state.savedSeries = state.savedSeries.filter(id => nextIds.has(id));
+        state.likedSeries = Object.fromEntries(Object.entries(state.likedSeries).filter(([id]) => nextIds.has(id)));
+        state.commentsBySeries = Object.fromEntries(Object.entries(state.commentsBySeries).filter(([id]) => nextIds.has(id)));
+        state.continueWatching = Object.fromEntries(Object.entries(state.continueWatching).filter(([id]) => nextIds.has(id)));
+        state.unlockedEpisodes = Object.fromEntries(
+          Object.entries(state.unlockedEpisodes).filter(([key]) => nextIds.has(key.split('_ep')[0]))
+        );
+        state.notifications = state.notifications.filter(item =>
+          !['notif_welcome_ota', 'notif_upload_ep4'].includes(item.id) &&
+          (!item.seriesId || nextIds.has(item.seriesId))
+        );
+
+        if (!nextIds.has(state.activeSeriesId)) state.activeSeriesId = mapped[0]?.id || '';
+        mapped.forEach(series => {
+          const selected = state.activeEpisodeBySeries[series.id];
+          if (!series.episodes.some(ep => ep.num === selected)) {
+            state.activeEpisodeBySeries[series.id] = series.episodes[0].num;
+          }
+        });
+
+        runtime.catalogError = '';
+        runtime.catalogLoading = false;
+        saveAppState();
+        renderVerticalFeed();
+        renderDiscoverView();
+        renderMyListView();
+
+        const added = mapped.find(item => !previousIds.has(item.id));
+        if (added && previousIds.size > 0) {
+          pushInAppNotification({
+            type: 'upload',
+            title: `New Drama: ${added.title}`,
+            body: 'A new published drama is ready to watch from NEXORA STUDIO.',
+            seriesId: added.id,
+            epNum: 1
+          }, true);
+        }
+        return true;
+      } catch (error) {
+        runtime.catalogError = error?.message || 'Catalog unavailable';
+        runtime.catalogLoading = false;
+        renderVerticalFeed();
+        renderDiscoverView();
+        if (showErrors) showToast('Could not refresh the published drama catalog.');
+        return false;
+      }
+    }
+
+    async function initPublishedDramaCatalog() {
+      const cfg = NEXORA_DEFAULT_CONFIG.studioCatalog;
+      if (!cfg?.url || !cfg?.publishableKey) {
+        runtime.catalogLoading = false;
+        runtime.catalogError = 'Studio catalog is not configured.';
+        renderVerticalFeed();
+        return false;
+      }
+      try {
+        runtime.catalogClient = createClient(cfg.url, cfg.publishableKey, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        });
+        await refreshPublishedDramaCatalog(false);
+        if (runtime.catalogRefreshTimer) clearInterval(runtime.catalogRefreshTimer);
+        runtime.catalogRefreshTimer = setInterval(() => {
+          if (!document.hidden) refreshPublishedDramaCatalog(false);
+        }, 60000);
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) refreshPublishedDramaCatalog(false);
+        });
+        window.addEventListener('focus', () => refreshPublishedDramaCatalog(false));
+        return true;
+      } catch (error) {
+        runtime.catalogLoading = false;
+        runtime.catalogError = error?.message || 'Catalog initialization failed';
+        renderVerticalFeed();
+        return false;
+      }
+    }
+
     async function initSupabaseClient(customCfg = null, pullRemote = true) {
       try {
         let cfg = customCfg;
@@ -3087,67 +3115,8 @@
       });
     }
 
-    function drawAnimatedDramaCanvas(series, ep, timeSec) {
-      const canvas = document.getElementById(`canvas-${series.id}`);
-      if (!canvas) return;
-      const shell = document.getElementById('app-shell');
-      const rect = canvas.getBoundingClientRect();
-      const w = Math.max(300, Math.round(rect.width || canvas.clientWidth || shell?.clientWidth || 412));
-      const h = Math.max(520, Math.round(rect.height || canvas.clientHeight || shell?.clientHeight || 760));
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-
-      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-      }
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.save();
-      ctx.scale(dpr, dpr);
-
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      grad.addColorStop(0, series.accentA || '#ff2e63');
-      grad.addColorStop(0.5, '#110f1d');
-      grad.addColorStop(1, series.accentB || '#6d28d9');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-
-      for (let i = 0; i < 6; i++) {
-        const x = w * (0.2 + 0.6 * Math.sin(timeSec * 0.45 + i * 1.7));
-        const y = h * (0.24 + 0.48 * Math.cos(timeSec * 0.35 + i * 2.1));
-        const r = 48 + (i % 3) * 32;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
-        ctx.fill();
-      }
-
-      const vignette = ctx.createRadialGradient(w * 0.5, h * 0.45, w * 0.15, w * 0.5, h * 0.45, h * 0.65);
-      vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(5,5,10,0.62)');
-      ctx.fillStyle = vignette;
-      ctx.fillRect(0, 0, w, h);
-
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.font = '900 21px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(series.title.toUpperCase(), w / 2, h * 0.43);
-
-      ctx.fillStyle = '#fbbf24';
-      ctx.font = '700 12px JetBrains Mono, monospace';
-      ctx.fillText(`EPISODE ${ep.num} • ${ep.title}`, w / 2, h * 0.43 + 26);
-
-      ctx.restore();
-    }
-
     function redrawActiveCanvasNow() {
-      const series = getSeriesById(state.activeSeriesId);
-      if (!series) return;
-      const epNum = state.activeEpisodeBySeries[series.id] || 1;
-      const ep = series.episodes.find(e => e.num === epNum) || series.episodes[0];
-      drawAnimatedDramaCanvas(series, ep, performance.now() / 1000);
+      // Published video and its poster are rendered directly; there is no synthetic demo canvas.
     }
 
     // =========================================================================
@@ -3287,7 +3256,7 @@
     // 9. FOR YOU VERTICAL FEED, HYBRID MP4/HLS + CANVAS & INTERACTIONS
     // =========================================================================
     function getSeriesById(id) {
-      return state.seriesCatalog.find(s => s.id === id) || state.seriesCatalog[0];
+      return state.seriesCatalog.find(s => s.id === id) || null;
     }
 
     function formatNumberCompact(num) {
@@ -3347,6 +3316,8 @@
       if (spinnerEl) spinnerEl.classList.add('hidden');
       if (videoEl) {
         videoEl.pause();
+        videoEl.removeAttribute('src');
+        videoEl.load();
         videoEl.classList.add('hidden');
       }
       if (runtime.hlsInstances[seriesId]) {
@@ -3356,11 +3327,9 @@
       if (state.activeSeriesId === seriesId) {
         runtime.isBuffering = false;
         runtime.activeVideoState.hasRealVideo = false;
-        updateStreamHudBadges('PREVIEW');
+        updateStreamHudBadges('STREAM ERROR');
       }
-      if (reason) {
-        showToast(`⚠️ Stream unavailable (${reason}) — switched to Canvas preview`);
-      }
+      if (reason) showToast(`⚠️ Published episode unavailable (${reason}). Please try again later.`);
     }
 
     function mountActiveEpisodeMedia(seriesId) {
@@ -3369,8 +3338,6 @@
       const epNum = state.activeEpisodeBySeries[series.id] || 1;
       const ep = series.episodes.find(e => e.num === epNum) || series.episodes[0];
       const unlocked = isEpisodeUnlocked(series, ep);
-
-      drawAnimatedDramaCanvas(series, ep, performance.now() / 1000);
 
       state.seriesCatalog.forEach(s => {
         if (s.id !== series.id) {
@@ -3654,6 +3621,18 @@
       destroyAllHlsInstances();
       runtime.activeVideoState.url = '';
 
+      if (!state.seriesCatalog.length) {
+        const message = runtime.catalogLoading
+          ? 'Connecting to the NEXORA STUDIO catalog…'
+          : runtime.catalogError
+            ? 'The drama catalog could not be loaded. Check your connection and try again.'
+            : 'No published AI dramas yet. New dramas will appear here when NEXORA STUDIO publishes them.';
+        feed.innerHTML = `<div class="h-full w-full flex flex-col items-center justify-center px-8 text-center bg-[#090910]"><div class="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-400/20 flex items-center justify-center text-3xl mb-5">🎬</div><h2 class="text-lg font-black text-white">NEXORA AI DRAMA</h2><p class="text-xs leading-relaxed text-zinc-400 mt-2">${escapeHtml(message)}</p><p class="text-[10px] text-zinc-600 mt-4">Published episodes sync automatically. No APK reinstall required.</p></div>`;
+        state.activeSeriesId = '';
+        updateStreamHudBadges('CATALOG');
+        return;
+      }
+
       feed.innerHTML = state.seriesCatalog.map((series, idx) => {
         const activeEpNum = state.activeEpisodeBySeries[series.id] || 1;
         const ep = series.episodes.find(e => e.num === activeEpNum) || series.episodes[0];
@@ -3676,8 +3655,8 @@
               <p class="text-[11px] text-zinc-200/85 mt-2 max-w-[270px] line-clamp-2">${escapeHtml(series.tagline)}</p>
             </div>
 
-            <canvas id="canvas-${series.id}" data-idx="${idx}" class="absolute inset-0 w-full h-full block"></canvas>
-            <video id="video-${series.id}" playsinline preload="metadata" crossorigin="anonymous" class="hidden absolute inset-0 w-full h-full object-cover bg-black"></video>
+            <img id="poster-${series.id}" src="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" alt="${escapeHtml(series.title)} poster" class="absolute inset-0 w-full h-full object-cover ${ep.posterUrl || series.coverUrl ? '' : 'hidden'}" />
+            <video id="video-${series.id}" poster="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" playsinline preload="metadata" crossorigin="anonymous" class="hidden absolute inset-0 w-full h-full object-cover bg-black"></video>
 
             <div id="buffer-spinner-${series.id}" class="hidden pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
               <div class="w-10 h-10 rounded-full border-3 border-white/20 border-t-[#ff2e63] animate-spin"></div>
@@ -3884,6 +3863,7 @@
 
     function shareSeriesLink(seriesId) {
       const series = getSeriesById(seriesId);
+      if (!series) return;
       const epNum = state.activeEpisodeBySeries[seriesId] || 1;
       const shareText = `Watch "${series.title}" (Ep ${epNum}) on NEXORA AI DRAMA!`;
       try {
@@ -3909,6 +3889,10 @@
 
           if (!document.hidden && state.activeMainTab === 'foryou') {
             const activeSeries = getSeriesById(state.activeSeriesId);
+            if (!activeSeries || !Array.isArray(activeSeries.episodes) || !activeSeries.episodes.length) {
+              runtime.rafId = requestAnimationFrame(tick);
+              return;
+            }
             const epNum = state.activeEpisodeBySeries[activeSeries.id] || 1;
             const ep = activeSeries.episodes.find(e => e.num === epNum) || activeSeries.episodes[0];
             const unlocked = isEpisodeUnlocked(activeSeries, ep);
@@ -3916,23 +3900,11 @@
             const usingRealVideo = videoEl && !videoEl.classList.contains('hidden') && runtime.activeVideoState.hasRealVideo;
 
             if (!usingRealVideo) {
-              drawAnimatedDramaCanvas(activeSeries, ep, (now / 1000) * runtime.playbackSpeed);
-
-              const cycleSec = ((now / 1000) * runtime.playbackSpeed) % 18;
-              const pct = Math.min(100, (cycleSec / 18) * 100);
-              const scrubber = document.getElementById(`scrubber-fill-${activeSeries.id}`);
-              if (scrubber) scrubber.style.width = `${pct}%`;
-
-              const timeEl = document.getElementById(`timecode-${activeSeries.id}`);
-              if (timeEl) timeEl.textContent = `${formatTimecode(cycleSec)} / 00:18`;
-
-              if (!runtime.isPaused && unlocked) {
-                recordContinueWatchingProgress(activeSeries.id, ep.num, pct);
-              }
-
-              if (pct >= 75) {
-                preloadNextEpisodeMedia(activeSeries, ep.num);
-              }
+              const poster = document.getElementById(`poster-${activeSeries.id}`);
+              if (poster) poster.classList.remove('hidden');
+            } else {
+              const poster = document.getElementById(`poster-${activeSeries.id}`);
+              if (poster) poster.classList.add('hidden');
             }
 
             const subEl = document.getElementById(`subtitle-text-${activeSeries.id}`);
@@ -3942,7 +3914,7 @@
               subEl.textContent = ep.subtitleLines[lineIdx];
             }
 
-            const isVideoActuallyPlaying = !usingRealVideo || (!videoEl.paused && !runtime.isBuffering);
+            const isVideoActuallyPlaying = Boolean(usingRealVideo && !videoEl.paused && !runtime.isBuffering);
             if (!runtime.isPaused && !runtime.isSheetOpen && unlocked && isVideoActuallyPlaying) {
               advanceWatchToEarnTimer(dt);
             }
@@ -3960,6 +3932,7 @@
     // =========================================================================
     function openEpisodeDrawer(seriesId) {
       const series = getSeriesById(seriesId);
+      if (!series) return;
       const activeEpNum = state.activeEpisodeBySeries[series.id] || 1;
       closeAllSheets();
 
@@ -3994,7 +3967,9 @@
       document.getElementById('episode-sheet')?.classList.remove('translate-y-full');
     }
 
-    function selectEpisodeFromDrawer(seriesId, epNum) {      const series = getSeriesById(seriesId);
+    function selectEpisodeFromDrawer(seriesId, epNum) {
+      const series = getSeriesById(seriesId);
+      if (!series) return;
       const ep = series.episodes.find(e => e.num === epNum);
       if (!ep) return;
 
@@ -4012,6 +3987,7 @@
 
     function openCommentDrawer(seriesId) {
       const series = getSeriesById(seriesId);
+      if (!series) return;
       state.activeSeriesId = seriesId;
       closeAllSheets();
 
@@ -4073,7 +4049,7 @@
     }
 
     function renderDiscoverView() {
-      const genres = ['All', 'Romance', 'Revenge', 'Fantasy', 'Billionaire'];
+      const genres = ['All', ...new Set(state.seriesCatalog.map(s => s.genre).filter(Boolean))];
       const pillsEl = document.getElementById('discover-genre-pills');
       if (pillsEl) {
         pillsEl.innerHTML = genres.map(g => {
@@ -4105,6 +4081,8 @@
             </button>
           </div>
         `;
+      } else if (spotlightEl) {
+        spotlightEl.innerHTML = '<p class="text-xs text-zinc-500 text-center py-6">No published dramas yet. Check back soon.</p>';
       }
 
       const query = (document.getElementById('discover-search-input')?.value || '').trim().toLowerCase();
@@ -4966,6 +4944,7 @@
       initCapacitorAdMobBridge();
       initFirebaseRealtimeSync(null);
       initSupabaseClient(null, true);
+      initPublishedDramaCatalog();
     }
 
     window.addEventListener('resize', () => {
