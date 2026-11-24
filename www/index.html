@@ -1176,9 +1176,9 @@
         publishableKey: "sb_publishable_aTvIirLiL64wiEFekuF-YQ_4TXy-Zty"
       },
       admob: {
-        androidRewardedId: "ca-app-pub-3940256099942544/5224354917",
+        androidRewardedId: "ca-app-pub-4497851143738030/7456409377",
         iosRewardedId: "ca-app-pub-3940256099942544/1712485313",
-        isTesting: true
+        isTesting: false
       }
     };
 
@@ -4532,12 +4532,26 @@
       const admob = getCapacitorAdMobPlugin();
       const isNative = Boolean(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
 
-      if (admob && isNative) {
+      if (isNative) {
+        if (!admob) {
+          runtime.pendingAdTarget = null;
+          runtime.isSheetOpen = false;
+          showToast('AdMob is not available in this APK. Please rebuild and install the latest version.');
+          return;
+        }
+
+        let rewardGranted = false;
+        const grantNativeRewardOnce = () => {
+          if (rewardGranted) return;
+          rewardGranted = true;
+          completeRewardedAdClaim();
+        };
+
         try {
           if (!state.admob.initialized) {
             await admob.initialize({
               requestTrackingAuthorization: true,
-              initializeForTesting: Boolean(state.admob.isTesting)
+              initializeForTesting: false
             });
             state.admob.initialized = true;
           }
@@ -4549,42 +4563,57 @@
             ? (state.admob.iosRewardedId || NEXORA_DEFAULT_CONFIG.admob.iosRewardedId)
             : (state.admob.androidRewardedId || NEXORA_DEFAULT_CONFIG.admob.androidRewardedId);
 
-          cleanupAdMobListeners();
-          let earnedReward = false;
-
-          if (typeof admob.addListener === 'function') {
-            const rewardHandle = await admob.addListener('onRewardedVideoAdReward', () => {
-              earnedReward = true;
-            });
-            const dismissHandle = await admob.addListener('onRewardedVideoAdDismissed', () => {
-              cleanupAdMobListeners();
-              if (earnedReward) {
-                completeRewardedAdClaim();
-              } else {
-                runtime.pendingAdTarget = null;
-                runtime.isSheetOpen = false;
-                showToast('Ad closed before completion — no reward granted.');
-              }
-            });
-            const failHandle = await admob.addListener('onRewardedVideoAdFailedToLoad', () => {
-              cleanupAdMobListeners();
-              openBrowserFallbackRewardedAdModal();
-            });
-            runtime.admobListeners.push(rewardHandle, dismissHandle, failHandle);
+          if (!adId || adId.includes('3940256099942544')) {
+            throw new Error('A production rewarded ad unit ID is not configured.');
           }
 
-          showToast('📺 Loading Google AdMob Rewarded Video...');
-          await admob.prepareRewardVideoAd({
-            adId,
-            isTesting: Boolean(state.admob.isTesting)
-          });
-          await admob.showRewardVideoAd();
-          return;
-        } catch (_nativeAdErr) {
           cleanupAdMobListeners();
+          if (typeof admob.addListener === 'function') {
+            const rewardHandle = await admob.addListener('onRewardedVideoAdReward', grantNativeRewardOnce);
+            const dismissHandle = await admob.addListener('onRewardedVideoAdDismissed', () => {
+              cleanupAdMobListeners();
+              if (!rewardGranted) {
+                runtime.pendingAdTarget = null;
+                runtime.isSheetOpen = false;
+                showToast('Ad closed before completion — no coins were awarded.');
+              }
+            });
+            const failHandle = await admob.addListener('onRewardedVideoAdFailedToLoad', (error) => {
+              cleanupAdMobListeners();
+              runtime.pendingAdTarget = null;
+              runtime.isSheetOpen = false;
+              showToast('Rewarded ad could not load. Please try again later.');
+              console.warn('AdMob rewarded ad failed to load:', error);
+            });
+            const showFailHandle = await admob.addListener('onRewardedVideoAdFailedToShow', (error) => {
+              cleanupAdMobListeners();
+              runtime.pendingAdTarget = null;
+              runtime.isSheetOpen = false;
+              showToast('Rewarded ad could not be shown. Please try again.');
+              console.warn('AdMob rewarded ad failed to show:', error);
+            });
+            runtime.admobListeners.push(rewardHandle, dismissHandle, failHandle, showFailHandle);
+          }
+
+          showToast('Loading Google rewarded video...');
+          await admob.prepareRewardVideoAd({ adId, isTesting: false });
+          const rewardResult = await admob.showRewardVideoAd();
+          if (rewardResult && Number(rewardResult.amount) >= 0) {
+            grantNativeRewardOnce();
+          }
+          return;
+        } catch (nativeAdError) {
+          cleanupAdMobListeners();
+          runtime.pendingAdTarget = null;
+          runtime.isSheetOpen = false;
+          showToast('Rewarded ad unavailable. No coins were added. Please try again.');
+          console.warn('AdMob rewarded flow failed:', nativeAdError);
+          return;
         }
       }
 
+      // Browser preview is not an actual advertisement and must never be used to
+      // grant production rewards. It remains a visual-only development fallback.
       openBrowserFallbackRewardedAdModal();
     }
 
