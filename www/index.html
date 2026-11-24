@@ -1285,7 +1285,7 @@
     }
 
     // =========================================================================
-    // 1. DEFAULT SERIES CATALOG
+    // 1. LIVE PUBLISHED SERIES CATALOG
     // =========================================================================
     const state = {
       activeMainTab: 'foryou',
@@ -1904,7 +1904,7 @@
 
     function getSortedContinueWatchingList() {
       return Object.values(state.continueWatching || {})
-        .filter(item => item && item.seriesId)
+        .filter(item => item && item.seriesId && getSeriesById(item.seriesId))
         .sort((a, b) => (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0));
     }
 
@@ -3363,7 +3363,7 @@
           seriesId: series.id,
           epNum: ep.num,
           url: '',
-          mode: 'PREVIEW',
+          mode: 'CATALOG',
           hasRealVideo: false
         };
         return;
@@ -4044,6 +4044,7 @@
 
     function renderDiscoverView() {
       const genres = ['All', ...new Set(state.seriesCatalog.map(s => s.genre).filter(Boolean))];
+      if (!genres.includes(state.activeDiscoverGenre)) state.activeDiscoverGenre = 'All';
       const pillsEl = document.getElementById('discover-genre-pills');
       if (pillsEl) {
         pillsEl.innerHTML = genres.map(g => {
@@ -4070,7 +4071,7 @@
             <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-300">Trending Now • ${escapeHtml(topSeries.views)}</span>
             <h3 class="text-sm font-black text-white truncate mt-0.5">${escapeHtml(topSeries.title)}</h3>
             <p class="text-[11px] text-zinc-300 line-clamp-2 mt-0.5">${escapeHtml(topSeries.tagline)}</p>
-            <button onclick="selectEpisodeFromDrawer('${topSeries.id}', 1)" class="mt-2 px-3 py-1 rounded-xl bg-white text-black font-black text-[11px]">
+            <button onclick="selectEpisodeFromDrawer('${topSeries.id}', ${topSeries.episodes[0].num})" class="mt-2 px-3 py-1 rounded-xl bg-white text-black font-black text-[11px]">
               ▶ Watch Ep 1 Free
             </button>
           </div>
@@ -4091,7 +4092,7 @@
         gridEl.innerHTML = filtered.length === 0
           ? `<p class="col-span-2 text-xs text-zinc-500 text-center py-8">No matching dramas found.</p>`
           : filtered.map((s, i) => `
-              <div onclick="selectEpisodeFromDrawer('${s.id}', 1)" class="cursor-pointer rounded-2xl bg-[#13131c] border border-zinc-800 hover:border-zinc-700 overflow-hidden transition group">
+              <div onclick="selectEpisodeFromDrawer('${s.id}', ${s.episodes[0].num})" class="cursor-pointer rounded-2xl bg-[#13131c] border border-zinc-800 hover:border-zinc-700 overflow-hidden transition group">
                 <div class="h-32 p-3 flex flex-col justify-between relative" style="background: linear-gradient(135deg, ${s.accentA}, ${s.accentB});">
                   <div class="flex items-center justify-between">
                     <span class="px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-black text-white">#${i + 1}</span>
@@ -4112,13 +4113,13 @@
     }
 
     function renderMyListView() {
-      const unlockedKeys = Object.keys(state.unlockedEpisodes).filter(k => Boolean(state.unlockedEpisodes[k]));
+      const unlockedKeys = Object.keys(state.unlockedEpisodes).filter(k => Boolean(state.unlockedEpisodes[k]) && getSeriesById(k.split('_ep')[0]));
       const badge = document.getElementById('mylist-unlocked-badge');
       if (badge) badge.textContent = `${unlockedKeys.length} Unlocked`;
 
       const continueContainer = document.getElementById('mylist-continue-container');
       if (continueContainer) {
-        const cwList = getSortedContinueWatchingList();
+        const cwList = getSortedContinueWatchingList().filter(cw => getSeriesById(cw.seriesId));
         if (!cwList.length) {
           continueContainer.innerHTML = `<p class="text-xs text-zinc-500 p-4 rounded-2xl bg-[#13131c] border border-zinc-800 text-center">Watch any episode to automatically save your resume point here.</p>`;
         } else {
@@ -4151,7 +4152,8 @@
         if (!state.savedSeries.length) {
           savedContainer.innerHTML = `<p class="text-xs text-zinc-500 p-4 rounded-2xl bg-[#13131c] border border-zinc-800 text-center">No saved dramas yet. Tap Save on any series in For You.</p>`;
         } else {
-          savedContainer.innerHTML = state.savedSeries.map(id => {
+          const savedIds = state.savedSeries.filter(id => getSeriesById(id));
+          savedContainer.innerHTML = savedIds.length ? savedIds.map(id => {
             const s = getSeriesById(id);
             const epNum = state.activeEpisodeBySeries[id] || 1;
             return `
@@ -4166,7 +4168,7 @@
                 </button>
               </div>
             `;
-          }).join('');
+          }).join('') : '<p class="text-xs text-zinc-500 p-4 text-center">No saved dramas yet.</p>';
         }
       }
 
