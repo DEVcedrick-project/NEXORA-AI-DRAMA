@@ -149,7 +149,7 @@ jobs:
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/release-key.jks
 
       - name: Build and sign release APK
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        if: steps.signing.outputs.enabled == 'true'
         working-directory: android
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -167,7 +167,7 @@ jobs:
           rm -f release-key.jks "$ALIGNED"
 
       - name: Upload signed release APK
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        if: steps.signing.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: NEXORA-AI-DRAMA-release-APK
