@@ -1158,8 +1158,14 @@
     // =========================================================================
     const NEXORA_DEFAULT_CONFIG = {
       firebase: {
-        apiKey: "",
-        databaseURL: "https://nexora-admin-6313f-default-rtdb.firebaseio.com"
+        apiKey: "AIzaSyAwjPOpcrjzeJMhSczHcOmTBwMmXFRPKRk",
+        authDomain: "nexora-ai-drama.firebaseapp.com",
+        databaseURL: "https://nexora-ai-drama-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "nexora-ai-drama",
+        storageBucket: "nexora-ai-drama.firebasestorage.app",
+        messagingSenderId: "201389649043",
+        appId: "1:201389649043:web:fd6846443425fbe885f166",
+        measurementId: "G-KFQ2GJ1ZPD"
       },
       supabase: {
         url: "",
@@ -2021,6 +2027,14 @@
               cfg = { ...NEXORA_DEFAULT_CONFIG.firebase };
             }
           }
+        }
+
+        // Migrate installations that still have the retired Firebase project saved locally.
+        if (cfg && cfg.databaseURL === "https://nexora-admin-6313f-default-rtdb.firebaseio.com") {
+          cfg = { ...NEXORA_DEFAULT_CONFIG.firebase };
+          try {
+            window.localStorage.setItem(FB_CONFIG_STORAGE_KEY, JSON.stringify(cfg));
+          } catch (_e) {}
         }
 
         if (!cfg || !cfg.apiKey || !cfg.databaseURL) {
