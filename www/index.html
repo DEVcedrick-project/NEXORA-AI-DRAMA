@@ -2365,7 +2365,11 @@
             .filter(Boolean);
         }
 
+        const catalogChanged = JSON.stringify(state.seriesCatalog) !== JSON.stringify(mapped);
+        if (!catalogChanged && !runtime.catalogLoading && !runtime.catalogError) return true;
+
         const previousIds = new Set(state.seriesCatalog.map(item => item.id));
+        const previousEpisodeKeys = new Set(state.seriesCatalog.flatMap(item => item.episodes.map(ep => `${item.id}:${ep.num}`)));
         const nextIds = new Set(mapped.map(item => item.id));
         state.seriesCatalog = mapped;
         state.activeEpisodeBySeries = Object.fromEntries(
@@ -2398,14 +2402,25 @@
         renderDiscoverView();
         renderMyListView();
 
-        const added = mapped.find(item => !previousIds.has(item.id));
-        if (added && previousIds.size > 0) {
+        const addedDrama = mapped.find(item => !previousIds.has(item.id));
+        const addedEpisode = mapped
+          .flatMap(item => item.episodes.map(ep => ({ series: item, episode: ep })))
+          .find(item => !previousEpisodeKeys.has(`${item.series.id}:${item.episode.num}`));
+        if (previousIds.size > 0 && addedDrama) {
           pushInAppNotification({
             type: 'upload',
-            title: `New Drama: ${added.title}`,
+            title: `New Drama: ${addedDrama.title}`,
             body: 'A new published drama is ready to watch from NEXORA STUDIO.',
-            seriesId: added.id,
-            epNum: 1
+            seriesId: addedDrama.id,
+            epNum: addedDrama.episodes[0].num
+          }, true);
+        } else if (previousIds.size > 0 && addedEpisode) {
+          pushInAppNotification({
+            type: 'upload',
+            title: `${addedEpisode.series.title} • Episode ${addedEpisode.episode.num}`,
+            body: 'A new published episode is ready to stream from NEXORA STUDIO.',
+            seriesId: addedEpisode.series.id,
+            epNum: addedEpisode.episode.num
           }, true);
         }
         return true;
