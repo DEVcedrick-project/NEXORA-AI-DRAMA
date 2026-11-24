@@ -4677,7 +4677,17 @@
           }
 
           showToast('Loading Google rewarded video...');
-          await admob.prepareRewardVideoAd({ adId, isTesting: false });
+          let loadTimeoutId = null;
+          try {
+            await Promise.race([
+              admob.prepareRewardVideoAd({ adId, isTesting: false }),
+              new Promise((_, reject) => {
+                loadTimeoutId = setTimeout(() => reject(new Error('Rewarded ad load timed out after 5 seconds.')), 5000);
+              })
+            ]);
+          } finally {
+            if (loadTimeoutId) clearTimeout(loadTimeoutId);
+          }
           const rewardResult = await admob.showRewardVideoAd();
           if (rewardResult && Number(rewardResult.amount) >= 0) {
             grantNativeRewardOnce();
@@ -4693,9 +4703,14 @@
         }
       }
 
-      // Browser preview is not an actual advertisement and must never be used to
-      // grant production rewards. It remains a visual-only development fallback.
-      openBrowserFallbackRewardedAdModal();
+      // Never show a fake "SPONSORED AD" screen in the browser/web preview.
+      // If no real native ad provider is available, close the ad request without
+      // displaying a placeholder or granting coins/unlocking an episode.
+      runtime.pendingAdTarget = null;
+      runtime.isSheetOpen = false;
+      const adSheet = document.getElementById('ad-player-sheet');
+      if (adSheet) adSheet.classList.add('translate-y-full');
+      showToast('No rewarded ad is available right now. Please try again later.');
     }
 
     function cancelActiveRewardedAd() {
