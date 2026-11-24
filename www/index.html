@@ -2770,7 +2770,7 @@
 
     function isEpisodeUnlocked(series, ep) {
       if (!series || !ep) return false;
-      if (ep.isFree || ep.num <= 3) return true;
+      if (Number(ep.num) <= 3) return true;
       if (state.isVip && (state.vipExpiresAt === 0 || state.vipExpiresAt > Date.now())) return true;
       return Boolean(state.unlockedEpisodes[`${series.id}_ep${ep.num}`]);
     }
@@ -3525,7 +3525,7 @@
 
                 <div class="w-full max-w-[270px] space-y-2 mt-4">
                   <button onclick="unlockEpisodeWithCoins('${series.id}', ${ep.num})" class="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-[#ff2e63] to-violet-600 text-white font-black text-xs shadow-lg">
-                    🪙 Unlock with ${ep.coinCost} Coins (Bal: ${getTotalCoins()})
+                    🪙 Unlock with ${Number(ep.coinCost) || 20} Coins (Bal: ${getTotalCoins()})
                   </button>
                   <button onclick="triggerRewardedAd({ seriesId: '${series.id}', epNum: ${ep.num} })" class="w-full py-2.5 px-4 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-amber-500/40 text-amber-300 font-extrabold text-xs">
                     ▶ Watch Ad to Unlock This Episode
