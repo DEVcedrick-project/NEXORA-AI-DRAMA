@@ -3521,11 +3521,11 @@
                 </button>
               </div>
 
-              <button onclick="toggleLikeSeries('${series.id}')" class="flex flex-col items-center gap-0.5">
-                <div class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-xl transition active:scale-125">
+              <button id="like-button-${series.id}" onclick="toggleLikeSeries('${series.id}')" class="flex flex-col items-center gap-0.5">
+                <div id="like-icon-${series.id}" class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-xl transition active:scale-125">
                   ${isLiked ? '❤️' : '🤍'}
                 </div>
-                <span class="text-[10px] font-bold text-white drop-shadow">${formatNumberCompact(series.likes + (isLiked ? 1 : 0))}</span>
+                <span id="like-count-${series.id}" class="text-[10px] font-bold text-white drop-shadow">${formatNumberCompact(series.likes + (isLiked ? 1 : 0))}</span>
               </button>
 
               <button onclick="openEpisodeDrawer('${series.id}')" class="flex flex-col items-center gap-0.5">
@@ -3648,14 +3648,26 @@
       if (!state.likedSeries[seriesId]) {
         state.likedSeries[seriesId] = true;
         saveAppState();
-        renderVerticalFeed();
+        updateSeriesLikeUI(seriesId);
       }
+    }
+
+    function updateSeriesLikeUI(seriesId) {
+      const series = getSeriesById(seriesId);
+      if (!series) return;
+      const isLiked = Boolean(state.likedSeries[seriesId]);
+      const icon = document.getElementById(`like-icon-${seriesId}`);
+      const count = document.getElementById(`like-count-${seriesId}`);
+      if (icon) icon.textContent = isLiked ? '❤️' : '🤍';
+      if (count) count.textContent = formatNumberCompact(series.likes + (isLiked ? 1 : 0));
     }
 
     function toggleLikeSeries(seriesId) {
       state.likedSeries[seriesId] = !state.likedSeries[seriesId];
       saveAppState();
-      renderVerticalFeed();
+      // Update only the heart and count. Re-rendering the feed destroys the
+      // active video element and resets playback to the beginning.
+      updateSeriesLikeUI(seriesId);
     }
 
     function toggleSaveSeries(seriesId) {
