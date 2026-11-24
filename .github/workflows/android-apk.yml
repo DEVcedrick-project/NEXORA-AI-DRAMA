@@ -12,6 +12,8 @@ on:
       - 'supabase/**'
       - 'resources/**'
       - 'scripts/**'
+      - 'resources/**'
+      - 'scripts/**'
       - '.github/workflows/android-apk.yml'
   push:
     branches: [main]
@@ -21,6 +23,8 @@ on:
       - 'package-lock.json'
       - 'capacitor.config.json'
       - 'supabase/**'
+      - 'resources/**'
+      - 'scripts/**'
       - '.github/workflows/android-apk.yml'
 
 permissions:
