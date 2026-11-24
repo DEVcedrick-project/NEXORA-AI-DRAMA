@@ -72,7 +72,6 @@ private object DramaApi {
         val request = Request.Builder()
             .url(BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/" + path)
             .header("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
-            .header("Authorization", "Bearer " + BuildConfig.SUPABASE_PUBLISHABLE_KEY)
             .header("Accept", "application/json")
             .get()
             .build()
