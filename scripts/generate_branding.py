@@ -1,5 +1,6 @@
 from pathlib import Path
 import shutil
+import re
 import xml.etree.ElementTree as ET
 import cairosvg
 from PIL import Image
@@ -54,12 +55,24 @@ mark_png.unlink()
 
 manifest = ROOT / "android/app/src/main/AndroidManifest.xml"
 if manifest.exists():
-    tree = ET.parse(manifest)
-    app = tree.getroot().find("application")
-    if app is not None:
-        app.set("{http://schemas.android.com/apk/res/android}icon", "@mipmap/ic_launcher")
-        app.set("{http://schemas.android.com/apk/res/android}roundIcon", "@mipmap/ic_launcher_round")
-    tree.write(manifest, encoding="utf-8", xml_declaration=True)
+    manifest_text = manifest.read_text(encoding="utf-8")
+    def apply_launcher_icons(match):
+        tag = match.group(0)
+        for attr, value in (
+            ("icon", "@mipmap/ic_launcher"),
+            ("roundIcon", "@mipmap/ic_launcher_round"),
+        ):
+            pattern = rf'android:{attr}="[^"]*"'
+            replacement = f'android:{attr}="{value}"'
+            if re.search(pattern, tag):
+                tag = re.sub(pattern, replacement, tag, count=1)
+            else:
+                tag = tag[:-1] + f' {replacement}>'
+        return tag
+    manifest_text, count = re.subn(r"<application\\b[^>]*>", apply_launcher_icons, manifest_text, count=1)
+    if count != 1:
+        raise SystemExit("Could not find the Android application tag to set the launcher icon")
+    manifest.write_text(manifest_text, encoding="utf-8")
 
 strings = values / "strings.xml"
 if strings.exists():
