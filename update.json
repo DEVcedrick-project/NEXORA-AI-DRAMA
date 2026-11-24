@@ -1,6 +1,6 @@
 {
-  "version": "2.5.0",
+  "version": "2.5.1",
   "title": "NEXORA AI DRAMA",
-  "notes": "You are using the latest published app version.",
+  "notes": "Update infrastructure prepared. A signed update will be published after permanent Android signing is configured.",
   "downloadUrl": ""
 }
