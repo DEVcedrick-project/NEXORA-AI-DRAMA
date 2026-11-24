@@ -3961,9 +3961,9 @@
       const topSeries = state.seriesCatalog[0];
       if (spotlightEl && topSeries) {
         spotlightEl.innerHTML = `
-          <div class="w-16 h-24 rounded-2xl bg-gradient-to-br from-[#ff2e63] to-violet-700 flex flex-col items-center justify-center text-white font-black shrink-0 shadow-lg">
-            <span class="text-[9px] uppercase tracking-wider opacity-80">#1 Hot</span>
-            <span class="text-lg">🎬</span>
+          <div class="w-16 h-24 rounded-2xl bg-gradient-to-br from-[#ff2e63] to-violet-700 relative overflow-hidden shrink-0 shadow-lg">
+            ${topSeries.episodes[0].posterUrl || topSeries.coverUrl ? `<img src="${escapeHtml(topSeries.episodes[0].posterUrl || topSeries.coverUrl)}" alt="${escapeHtml(topSeries.title)} thumbnail" loading="lazy" class="absolute inset-0 w-full h-full object-cover">` : '<div class="absolute inset-0 flex items-center justify-center text-2xl">🎬</div>'}
+            <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded-full bg-black/65 text-[9px] uppercase tracking-wider text-white font-black">#1 Hot</span>
           </div>
           <div class="min-w-0 flex-1">
             <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-300">Trending Now • ${escapeHtml(topSeries.views)}</span>
@@ -3991,12 +3991,14 @@
           ? `<p class="col-span-2 text-xs text-zinc-500 text-center py-8">No matching dramas found.</p>`
           : filtered.map((s, i) => `
               <div onclick="selectEpisodeFromDrawer('${s.id}', ${s.episodes[0].num})" class="cursor-pointer rounded-2xl bg-[#13131c] border border-zinc-800 hover:border-zinc-700 overflow-hidden transition group">
-                <div class="h-32 p-3 flex flex-col justify-between relative" style="background: linear-gradient(135deg, ${s.accentA}, ${s.accentB});">
-                  <div class="flex items-center justify-between">
+                <div class="h-32 p-3 flex flex-col justify-between relative overflow-hidden" style="background: linear-gradient(135deg, ${s.accentA}, ${s.accentB});">
+                  ${s.episodes[0]?.posterUrl || s.coverUrl ? `<img src="${escapeHtml(s.episodes[0]?.posterUrl || s.coverUrl)}" alt="${escapeHtml(s.title)} thumbnail" loading="lazy" class="absolute inset-0 w-full h-full object-cover">` : '<div class="absolute inset-0 flex items-center justify-center text-3xl opacity-80">🎬</div>'}
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30"></div>
+                  <div class="relative z-10 flex items-center justify-between">
                     <span class="px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-black text-white">#${i + 1}</span>
                     <span class="px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-mono text-amber-300">${escapeHtml(s.views)}</span>
                   </div>
-                  <span class="text-xs font-black text-white drop-shadow line-clamp-2">${escapeHtml(s.title)}</span>
+                  <span class="relative z-10 text-xs font-black text-white drop-shadow line-clamp-2">${escapeHtml(s.title)}</span>
                 </div>
                 <div class="p-2.5 space-y-1">
                   <div class="flex items-center justify-between text-[10px] text-zinc-400">
