@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e879ff"/><stop offset=".48" stop-color="#8b35ff"/><stop offset="1" stop-color="#4210a8"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1a6"/><stop offset=".38" stop-color="#ffcb55"/><stop offset=".72" stop-color="#e99a20"/><stop offset="1" stop-color="#fff0a1"/></linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <circle cx="256" cy="256" r="226" fill="#090512" stroke="#35105e" stroke-width="8"/>
+  <circle cx="256" cy="256" r="207" fill="none" stroke="#8b35ff" stroke-opacity=".24" stroke-width="3"/>
+  <path d="M174 146 L195 88 L236 132 L256 73 L278 132 L319 88 L339 146" fill="none" stroke="url(#gold)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M173 150 Q256 178 340 150 L330 177 Q256 199 183 177 Z" fill="url(#gold)" stroke="#fff0a1" stroke-width="3"/>
+  <path d="M128 355 L128 188 L204 188 L315 323 L315 188 L384 188 L384 355 L307 355 L197 223 L197 355 Z" fill="url(#purple)" stroke="#d9a4ff" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M233 245 L300 281 L233 318 Z" fill="url(#gold)" stroke="#fff0a1" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M77 342 C150 421 333 423 435 278 C379 345 207 392 89 319" fill="none" stroke="url(#gold)" stroke-width="13" stroke-linecap="round" filter="url(#glow)"/>
+  <circle cx="174" cy="146" r="8" fill="#fff0a1"/><circle cx="256" cy="73" r="9" fill="#fff0a1"/><circle cx="339" cy="146" r="8" fill="#fff0a1"/>
+</svg>
