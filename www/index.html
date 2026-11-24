@@ -891,10 +891,6 @@
           <label class="block text-[11px] font-bold text-zinc-300 mb-1">Account Email Address</label>
           <input id="reset-email-input" type="email" required placeholder="you@example.com" class="w-full bg-black/70 border border-zinc-800 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none" />
         </div>
-        <div id="local-reset-newpass-wrapper" class="hidden">
-          <label class="block text-[11px] font-bold text-amber-300 mb-1">New Local Preview Password (Min 6 chars)</label>
-          <input id="reset-newpass-input" type="password" minlength="6" placeholder="Enter new password" class="w-full bg-black/70 border border-amber-500/40 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none" />
-        </div>
         <button type="submit" id="btn-submit-reset" class="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black text-xs shadow-lg shadow-amber-500/20 active:scale-[0.99] transition">
           Send Password Reset Link
         </button>
@@ -918,7 +914,8 @@
 
       <!-- Firebase RTDB Credentials Form -->
       <form onsubmit="handleSaveFirebaseConfig(event)" class="space-y-2.5">
-        <p class="text-xs font-extrabold text-white">Connect Live Firebase Realtime Database</p>
+        <p class="text-xs font-extrabold text-white">Connect Firebase Authentication &amp; Realtime Database</p>
+        <p class="text-[10px] leading-relaxed text-amber-200">Enable Email/Password sign-in in Firebase Console → Authentication → Sign-in method. Use the Web API key from this same Firebase project.</p>
         <div>
           <label class="block text-[10px] font-bold text-zinc-400 mb-1">Firebase Web API Key</label>
           <input id="fb-apikey-input" type="text" placeholder="AIzaSy..." class="w-full bg-black/70 border border-zinc-800 focus:border-violet-500 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
