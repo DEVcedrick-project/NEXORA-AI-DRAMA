@@ -4177,6 +4177,17 @@
       const confirmPw = document.getElementById('signup-confirm-input').value;
       const keepGuestProgress = document.getElementById('signup-link-guest-checkbox').checked;
 
+      // Never store account passwords in localStorage. Require a configured Firebase Auth backend.
+      if (!state.firebase.connected || !runtime.fbAuth) {
+        setAuthFeedback('Account registration is temporarily unavailable. The app owner must configure Firebase Authentication before users can create secure online accounts. Your password has not been saved.', 'error');
+        return;
+      }
+
+      if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+        setAuthFeedback('Enter a valid email address.', 'error');
+        return;
+      }
+
       if (password.length < 6) {
         setAuthFeedback('Password must be at least 6 characters.', 'error');
         return;
@@ -4221,16 +4232,6 @@
           setAuthFeedback(err?.message || 'Could not create Firebase account.', 'error');
           return;
         }
-      } else {
-        const vault = readLocalAccountVault();
-        vault[email] = {
-          email,
-          password,
-          profileName: state.user.name,
-          uid: state.user.uid,
-          snapshot: buildSerializableStateSnapshot()
-        };
-        writeLocalAccountVault(vault);
       }
 
       saveAppState();
@@ -4246,6 +4247,11 @@
       const email = document.getElementById('login-email-input').value.trim().toLowerCase();
       const password = document.getElementById('login-password-input').value;
 
+      if (!state.firebase.connected || !runtime.fbAuth) {
+        setAuthFeedback('Secure sign-in is unavailable until Firebase Authentication is configured by the app owner.', 'error');
+        return;
+      }
+
       if (state.firebase.connected && runtime.fbAuth) {
         try {
           const res = await signInWithEmailAndPassword(runtime.fbAuth, email, password);
@@ -4259,25 +4265,6 @@
         } catch (err) {
           setAuthFeedback(err?.message || 'Invalid email or password.', 'error');
           return;
-        }
-      } else {
-        const vault = readLocalAccountVault();
-        const record = vault[email];
-        if (!record || record.password !== password) {
-          setAuthFeedback('No matching local account found or password is incorrect.', 'error');
-          return;
-        }
-        state.user.email = email;
-        state.user.name = record.profileName || email.split('@')[0];
-        state.user.uid = record.uid || state.user.uid;
-        state.user.isGuest = false;
-        if (record.snapshot) {
-          state.purchasedCoins = Number(record.snapshot.purchasedCoins) || 0;
-          state.bonusCoins = Number(record.snapshot.bonusCoins) || 0;
-          state.isVip = Boolean(record.snapshot.isVip);
-          state.vipExpiresAt = Number(record.snapshot.vipExpiresAt) || 0;
-          state.vipPlanLabel = record.snapshot.vipPlanLabel || '';
-          state.unlockedEpisodes = record.snapshot.unlockedEpisodes || {};
         }
       }
 
@@ -4294,6 +4281,11 @@
       const email = document.getElementById('reset-email-input').value.trim().toLowerCase();
       const newLocalPass = document.getElementById('reset-newpass-input').value;
 
+      if (!state.firebase.connected || !runtime.fbAuth) {
+        setAuthFeedback('Password reset is unavailable until Firebase Authentication is configured by the app owner.', 'error');
+        return;
+      }
+
       if (state.firebase.connected && runtime.fbAuth) {
         try {
           await sendPasswordResetEmail(runtime.fbAuth, email);
@@ -4304,18 +4296,6 @@
         return;
       }
 
-      const vault = readLocalAccountVault();
-      if (!vault[email]) {
-        setAuthFeedback('No local account registered with this email.', 'error');
-        return;
-      }
-      if (!newLocalPass || newLocalPass.length < 6) {
-        setAuthFeedback('Enter a new password of at least 6 characters below.', 'info');
-        return;
-      }
-      vault[email].password = newLocalPass;
-      writeLocalAccountVault(vault);
-      setAuthFeedback('Password updated! You can now log in with your new password.', 'success');
     }
 
     async function handleSignOutAccount() {
