@@ -45,12 +45,18 @@ jobs:
         env:
           ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
         run: |
-          APP_ID="${ADMOB_APP_ID:-ca-app-pub-3940256099942544~3347511713}"
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          test -f "$MANIFEST"
-          if ! grep -q 'com.google.android.gms.ads.APPLICATION_ID' "$MANIFEST"; then
-            sed -i "s|</application>|    <meta-data android:name=\\"com.google.android.gms.ads.APPLICATION_ID\\" android:value=\\"$APP_ID\\"/>\\n    </application>|" "$MANIFEST"
-          fi
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          text = manifest.read_text()
+          if "com.google.android.gms.ads.APPLICATION_ID" not in text:
+              app_id = os.environ.get("ADMOB_APP_ID") or "ca-app-pub-3940256099942544~3347511713"
+              metadata = f'    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="{app_id}"/>\\n'
+              text = text.replace("</application>", metadata + "    </application>", 1)
+              manifest.write_text(text)
+          PY
 
       - name: Build debug APK
         working-directory: android
