@@ -943,67 +943,14 @@
       <div class="flex items-start justify-between">
         <div>
           <span class="text-[10px] font-extrabold uppercase tracking-wider text-violet-400">Firebase • Supabase • AdMob • OTA</span>
-          <h3 class="text-base font-black text-white mt-0.5">Cloud Sync &amp; Admin Simulator</h3>
+          <h3 class="text-base font-black text-white mt-0.5">Cloud Services &amp; App Settings</h3>
         </div>
         <button onclick="closeAllSheets()" class="p-1.5 rounded-full bg-zinc-800 text-zinc-300">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
-      <div class="p-3.5 rounded-2xl bg-gradient-to-br from-violet-950/40 to-black border border-violet-500/35 space-y-2.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-extrabold text-violet-300">🎛️ Live Admin Studio Push Simulator</span>
-          <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-200">Instant Pop-Up</span>
-        </div>
-        <p class="text-[11px] text-zinc-400 leading-snug">
-          Simulate real-time updates pushed from Nexora Admin Studio directly into the viewer app:
-        </p>
-        <div class="grid grid-cols-1 gap-2">
-          <button onclick="simulateAdminPublishNewEpisode()" class="w-full py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-emerald-500/35 text-left text-xs font-bold text-white flex items-center justify-between">
-            <span>🎬 Push New Episode Upload + Pop-Up Alert</span>
-            <span class="text-[10px] text-emerald-400">Run →</span>
-          </button>
-          <button onclick="simulateAdminSystemOtaUpdate()" class="w-full py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-amber-400/35 text-left text-xs font-bold text-amber-200 flex items-center justify-between">
-            <span>🛡️ Push Safe OTA System Update (No APK Delete)</span>
-            <span class="text-[10px] text-amber-400">Run →</span>
-          </button>
-          <button onclick="simulateAdminToggleEp4Lock()" class="w-full py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-left text-xs font-bold text-white flex items-center justify-between">
-            <span>🔓 Toggle Episode 4 Lock (Free Hook ↔ 20 Coins)</span>
-            <span class="text-[10px] text-violet-400">Run →</span>
-          </button>
-          <button onclick="simulateAdminGrant30DayVip()" class="w-full py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-left text-xs font-bold text-amber-300 flex items-center justify-between">
-            <span>👑 Grant 30-Day VIP Pass + 100 Bonus Coins</span>
-            <span class="text-[10px] text-amber-400">Run →</span>
-          </button>
-          <button onclick="openApkAssetsModal()" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500/20 to-[#ff2e63]/20 hover:opacity-90 border border-amber-400/40 text-left text-xs font-extrabold text-amber-200 flex items-center justify-between">
-            <span>🎨 Export External APK App Icon &amp; Splash PNGs</span>
-            <span class="text-[10px] text-amber-300">Open →</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="p-3.5 rounded-2xl bg-gradient-to-br from-sky-950/35 to-black border border-sky-500/35 space-y-2.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-extrabold text-sky-300">📡 Test Real MP4 / HLS Stream URL</span>
-          <span id="stream-tester-target-label" class="text-[9px] font-mono px-2 py-0.5 rounded bg-sky-500/20 text-sky-200">Active Ep 1</span>
-        </div>
-        <div class="space-y-2">
-          <input id="test-stream-url-input" type="url" placeholder="https://example.com/drama/ep01.m3u8 or .mp4" class="w-full bg-black/80 border border-zinc-800 focus:border-sky-400 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
-          <div class="grid grid-cols-3 gap-1.5">
-            <button type="button" onclick="fillSampleStreamUrl('hls')" class="py-1.5 px-2 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/35 text-[10px] font-extrabold text-sky-300 transition">
-              Sample HLS
-            </button>
-            <button type="button" onclick="fillSampleStreamUrl('mp4')" class="py-1.5 px-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-[10px] font-extrabold text-emerald-300 transition">
-              Sample MP4
-            </button>
-            <button type="button" onclick="fillSampleStreamUrl('clear')" class="py-1.5 px-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-zinc-300 transition">
-              Canvas Mode            </button>
-          </div>
-          <button type="button" onclick="applyTestStreamUrlToActiveEpisode()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-black text-xs shadow-lg shadow-sky-500/20 transition">
-            Apply Stream URL &amp; Play Live
-          </button>
-        </div>
-      </div>
+      <!-- Demo admin simulator and sample stream tester removed: publishing is handled by NEXORA STUDIO. -->
 
       <!-- Firebase RTDB Credentials Form -->
       <form onsubmit="handleSaveFirebaseConfig(event)" class="space-y-2.5">
@@ -1242,7 +1189,7 @@
       sendPasswordResetEmail,
       signOut
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getDatabase, ref, onValue, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+    import { getDatabase, ref, onValue, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/+esm";
 
     // =========================================================================
@@ -2821,145 +2768,9 @@
     }
 
     // =========================================================================
-    // 5. LIVE ADMIN STUDIO PUSH SIMULATOR & STREAM URL TESTER
+    // 5. PUBLISHED STUDIO CONTENT ONLY — no in-app publishing simulator.
     // =========================================================================
-    function fillSampleStreamUrl(kind) {
-      const input = document.getElementById('test-stream-url-input');
-      if (!input) return;
-      if (kind === 'hls') {
-        input.value = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
-      } else if (kind === 'mp4') {
-        input.value = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
-      } else {
-        input.value = '';
-      }
-    }
 
-    function applyTestStreamUrlToActiveEpisode() {
-      const input = document.getElementById('test-stream-url-input');
-      const url = (input?.value || '').trim();
-      const series = getSeriesById(state.activeSeriesId);
-      const epNum = state.activeEpisodeBySeries[series.id] || 1;
-      const ep = series.episodes.find(e => e.num === epNum);
-      if (!ep) return;
-
-      ep.videoUrl = url;
-      runtime.activeVideoState.url = '';
-
-      if (state.firebase.connected && runtime.fbDb) {
-        update(ref(runtime.fbDb, `series/${series.id}/episodes/${epNum - 1}`), {
-          videoUrl: url
-        }).catch(() => {});
-      }
-
-      closeAllSheets();
-      switchMainTab('foryou');
-      renderVerticalFeed();
-      showToast(url ? `📡 Streaming real video on Ep ${epNum}!` : `🎨 Switched Ep ${epNum} to Canvas preview`);
-    }
-
-    function simulateAdminToggleEp4Lock() {
-      const series = getSeriesById(state.activeSeriesId);
-      const ep4 = series.episodes.find(e => e.num === 4);
-      if (!ep4) return;
-      ep4.isFree = !ep4.isFree;
-      ep4.coinCost = ep4.isFree ? 0 : 20;
-
-      if (state.firebase.connected && runtime.fbDb) {
-        update(ref(runtime.fbDb, `series/${series.id}/episodes/3`), {
-          isFree: ep4.isFree,
-          coinCost: ep4.coinCost
-        }).catch(() => {});
-      }
-
-      renderVerticalFeed();
-      renderDiscoverView();
-      renderRtdbSchemaInspector();
-      showToast(`🎛️ Admin Push: "${series.title}" Ep 4 is now ${ep4.isFree ? 'FREE HOOK' : 'LOCKED (20 Coins)'}`);
-    }
-
-    function simulateAdminPublishNewEpisode() {
-      const series = getSeriesById(state.activeSeriesId);
-      const nextNum = series.episodes.length + 1;
-      const newEp = {
-        num: nextNum,
-        title: `Bonus Finale #${nextNum}: The Final Verdict`,
-        duration: 75,
-        isFree: true,
-        coinCost: 0,
-        videoUrl: '',
-        subtitleUrl: '',
-        subtitleLines: [
-          `"Breaking News: Live from the NEXORA Tower!"`,
-          `"Every secret in ${series.title} is now public."`,
-          `"Season finale unlocked!"`
-        ]
-      };
-      series.episodes.push(newEp);
-
-      if (state.firebase.connected && runtime.fbDb) {
-        set(ref(runtime.fbDb, `series/${series.id}/episodes/${nextNum - 1}`), newEp).catch(() => {});
-      }
-
-      closeAllSheets();
-      renderVerticalFeed();
-      renderDiscoverView();
-      renderRtdbSchemaInspector();
-
-      pushInAppNotification({
-        type: 'upload',
-        title: `${series.title} • Ep ${nextNum} Uploaded!`,
-        body: `New free preview chapter "${newEp.title}" is ready to stream now.`,
-        seriesId: series.id,
-        epNum: nextNum
-      }, true);
-    }
-
-    function simulateAdminSystemOtaUpdate() {
-      const parts = state.appVersion.replace('v', '').split('.').map(n => Number(n) || 0);
-      const nextVersion = `v${parts[0]}.${parts[1] + 1}.0`;
-      closeAllSheets();
-
-      state.pendingOtaUpdate = {
-        version: nextVersion,
-        title: `NEXORA ${nextVersion} Live Engine Update`,
-        notes: 'Upgrades vertical HLS playback, adds new drama episodes, and preserves your APK, Coins, VIP Pass & Watchlist.'
-      };
-
-      pushInAppNotification({
-        id: `ota_${nextVersion}_${Date.now()}`,
-        type: 'update',
-        title: state.pendingOtaUpdate.title,
-        body: state.pendingOtaUpdate.notes,
-        version: nextVersion
-      }, true);
-    }
-
-    function simulateAdminGrant30DayVip() {
-      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-      const base = state.isVip && state.vipExpiresAt > Date.now() ? state.vipExpiresAt : Date.now();
-      state.isVip = true;
-      state.vipExpiresAt = base + thirtyDaysMs;
-      state.vipPlanLabel = '30-Day VIP Pass';
-      creditCoins(100, 'bonus', 'Admin Studio VIP Gift (+100 Coins)');
-
-      if (state.firebase.connected && runtime.fbDb && state.firebase.authUid) {
-        update(ref(runtime.fbDb, `users/${state.firebase.authUid}/vipStatus`), {
-          isVip: true,
-          vipExpiresAt: state.vipExpiresAt,
-          planLabel: state.vipPlanLabel
-        }).catch(() => {});
-      }
-
-      saveAppState();
-      syncWalletUI();
-      renderVerticalFeed();
-      renderRtdbSchemaInspector();
-      syncStateToSupabaseNow(false);
-      showToast('👑 Admin Push: 30-Day VIP Pass + 100 Bonus Coins granted!');
-    }
-
-    // =========================================================================
     // 6. WALLET, UNLOCK & COIN LEDGER LOGIC
     // =========================================================================
     function getTotalCoins() {
@@ -4884,12 +4695,6 @@
       syncStateToSupabaseNow,
       handleSaveAdmobConfig,
       pushLocalStateToFirebaseNow,
-      fillSampleStreamUrl,
-      applyTestStreamUrlToActiveEpisode,
-      simulateAdminToggleEp4Lock,
-      simulateAdminPublishNewEpisode,
-      simulateAdminSystemOtaUpdate,
-      simulateAdminGrant30DayVip,
       unlockEpisodeWithCoins,
       openWteSheet,
       claimWteReward,
