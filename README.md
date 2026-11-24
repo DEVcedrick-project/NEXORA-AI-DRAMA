@@ -19,12 +19,12 @@ The Android project is generated from this Capacitor project during the GitHub A
 3. Choose **Run workflow** or push a change to `main`.
 4. Open the completed workflow run and download the `NEXORA-AI-DRAMA-debug-APK` artifact.
 
-The workflow currently creates a debug APK. A debug APK is for testing and direct installation; it is not a Play Store release and does not provide a permanent signing identity for reliable in-place updates.
+The workflow creates a debug APK for testing. It creates a signed release APK only when all four permanent signing secrets are configured in GitHub Actions: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Keep the same keystore for every release; changing it breaks Android in-place updates.
 
 ## App identity
 
 - App name: NEXORA AI DRAMA
-- Application ID: `com.devcedrick.nexoraaidrama`
+- Application ID: `com.nexora.aidrama`
 - Web app directory: `www`
 - Android packaging: Capacitor 8
 
@@ -59,7 +59,7 @@ NEXORA STUDIO remains a separate project and was not modified for this integrati
 - The app checks `update.json` at startup and every six hours while it is open.
 - To publish an update, upload a release APK signed with the **same permanent signing key** as the installed app, then update `version`, `notes`, and `downloadUrl` in `update.json`.
 - Android's installer must confirm the installation. Existing app data is retained only when the application ID and signing certificate match.
-- The current GitHub Actions workflow produces a **debug APK**. It is not suitable as a production update channel. Configure a permanent release keystore and signed-release workflow before distributing production updates.
+- The GitHub Actions workflow produces a debug APK until the four permanent signing secrets are configured. Once configured, it also produces a signed release APK. The signing keystore must be backed up securely and reused for every update. A new signing key cannot update an app signed by a different key; one migration reinstall may be required if the currently installed app was signed with a temporary debug key.
 - Do not set `downloadUrl` until a real signed APK is published. An empty URL intentionally prevents a fake update action.
 
 ## Android notifications
