@@ -57,7 +57,7 @@ Add the base64 output and the key details under **GitHub → Settings → Secret
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-After these secrets are configured, GitHub Actions creates both the debug test APK and a signed release APK. The same application ID (`com.devcedrick.nexoraaidrama`) and the same signing key must be kept for every release; the workflow automatically increases `versionCode` on each run. Losing or changing the signing key prevents Android from installing an update over the existing signed app.
+After these secrets are configured, GitHub Actions creates the debug test APK, a signed release APK, and a signed Android App Bundle (`.aab`) for Play Console. The same application ID (`com.devcedrick.nexoraaidrama`) and the same signing key must be kept for every release; the workflow automatically increases `versionCode` on each run. Losing or changing the signing key prevents Android from installing an update over the existing signed app.
 
 ## Android configuration
 
