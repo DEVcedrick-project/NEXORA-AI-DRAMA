@@ -4279,8 +4279,6 @@
     async function handlePasswordResetRequest(event) {
       event.preventDefault();
       const email = document.getElementById('reset-email-input').value.trim().toLowerCase();
-      const newLocalPass = document.getElementById('reset-newpass-input').value;
-
       if (!state.firebase.connected || !runtime.fbAuth) {
         setAuthFeedback('Password reset is unavailable until Firebase Authentication is configured by the app owner.', 'error');
         return;
