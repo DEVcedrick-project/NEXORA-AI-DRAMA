@@ -69,7 +69,7 @@ if manifest.exists():
             else:
                 tag = tag[:-1] + f' {replacement}>'
         return tag
-    manifest_text, count = re.subn(r"<application\\b[^>]*>", apply_launcher_icons, manifest_text, count=1)
+    manifest_text, count = re.subn(r"<application\b[^>]*>", apply_launcher_icons, manifest_text, count=1)
     if count != 1:
         raise SystemExit("Could not find the Android application tag to set the launcher icon")
     manifest.write_text(manifest_text, encoding="utf-8")
