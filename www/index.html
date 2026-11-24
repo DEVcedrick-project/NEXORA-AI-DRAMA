@@ -3502,7 +3502,7 @@
               <div class="w-10 h-10 rounded-full border-3 border-white/20 border-t-[#ff2e63] animate-spin"></div>
             </div>
 
-            <div onclick="handleVideoStageTap(event, '${series.id}')" ondblclick="handleVideoStageDoubleTap(event, '${series.id}')" class="absolute inset-0 z-10 cursor-pointer"></div>
+            <div onclick="handleVideoStageTap(event, '${series.id}')" ondblclick="handleVideoStageDoubleTap(event, '${series.id}')" onpointerdown="handleVideoStagePointerDown(event, '${series.id}')" onpointerup="handleVideoStagePointerUp(event, '${series.id}')" onpointercancel="handleVideoStagePointerUp(event, '${series.id}')" class="absolute inset-0 z-10 cursor-pointer touch-manipulation"></div>
 
             <div id="pause-indicator-${series.id}" class="hidden pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
               <div class="w-16 h-16 rounded-full bg-black/55 backdrop-blur-md border border-white/20 flex items-center justify-center text-white">
@@ -3638,41 +3638,87 @@
       feed.querySelectorAll('.snap-slide').forEach(slide => runtime.observer.observe(slide));
     }
 
-    function handleVideoStageTap(_event, seriesId) {
+    function handleVideoStageTap(event, seriesId) {
       if (state.activeSeriesId !== seriesId) return;
-      runtime.isPaused = !runtime.isPaused;
-      const pauseEl = document.getElementById(`pause-indicator-${seriesId}`);
-      if (pauseEl) pauseEl.classList.toggle('hidden', !runtime.isPaused);
-
-      const videoEl = document.getElementById(`video-${seriesId}`);
-      if (videoEl && !videoEl.classList.contains('hidden')) {
-        if (runtime.isPaused) {
-          videoEl.pause();
-        } else {
-          videoEl.play().catch(() => {});
-        }
+      if (runtime.longPressTriggered) {
+        runtime.longPressTriggered = false;
+        event?.preventDefault?.();
+        return;
       }
+
+      // Delay single-tap pause/play briefly so a second tap can become a seek.
+      if (runtime.videoTapTimer) {
+        clearTimeout(runtime.videoTapTimer);
+        runtime.videoTapTimer = null;
+        handleVideoStageDoubleTap(event, seriesId);
+        return;
+      }
+      runtime.videoTapTimer = setTimeout(() => {
+        runtime.videoTapTimer = null;
+        if (state.activeSeriesId !== seriesId) return;
+        runtime.isPaused = !runtime.isPaused;
+        const pauseEl = document.getElementById(`pause-indicator-${seriesId}`);
+        if (pauseEl) pauseEl.classList.toggle('hidden', !runtime.isPaused);
+        const videoEl = document.getElementById(`video-${seriesId}`);
+        if (videoEl && !videoEl.classList.contains('hidden')) {
+          if (runtime.isPaused) videoEl.pause();
+          else videoEl.play().catch(() => {});
+        }
+      }, 260);
     }
 
     function handleVideoStageDoubleTap(event, seriesId) {
+      if (runtime.videoTapTimer) {
+        clearTimeout(runtime.videoTapTimer);
+        runtime.videoTapTimer = null;
+      }
+      if (state.activeSeriesId !== seriesId) return;
+      const videoEl = document.getElementById(`video-${seriesId}`);
+      if (!videoEl || videoEl.classList.contains('hidden') || !Number.isFinite(videoEl.duration)) return;
+
       const slide = document.getElementById(`feed-slide-${seriesId}`);
+      const rect = (slide || event.currentTarget)?.getBoundingClientRect?.();
+      if (!rect) return;
+      const rewind = event.clientX < rect.left + rect.width / 2;
+      const delta = rewind ? -10 : 10;
+      videoEl.currentTime = Math.max(0, Math.min(videoEl.duration || Infinity, videoEl.currentTime + delta));
+
+      const feedback = document.createElement('div');
+      feedback.className = 'pointer-events-none absolute z-30 top-1/2 -translate-y-1/2 ' +
+        (rewind ? 'left-8' : 'right-8') +
+        ' rounded-2xl bg-black/65 border border-white/20 px-4 py-3 text-white text-sm font-black shadow-xl';
+      feedback.textContent = rewind ? '⏪ 10 seconds' : '10 seconds ⏩';
       if (slide) {
-        const rect = slide.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const burst = document.createElement('div');
-        burst.className = 'pointer-events-none absolute z-30 text-6xl animate-heart-burst';
-        burst.style.left = `${x}px`;
-        burst.style.top = `${y}px`;
-        burst.textContent = '❤️';
-        slide.appendChild(burst);
-        setTimeout(() => burst.remove(), 900);
+        slide.appendChild(feedback);
+        setTimeout(() => feedback.remove(), 650);
       }
-      if (!state.likedSeries[seriesId]) {
-        state.likedSeries[seriesId] = true;
-        saveAppState();
-        updateSeriesLikeUI(seriesId);
+    }
+
+    function handleVideoStagePointerDown(event, seriesId) {
+      if (event.pointerType === 'mouse' || state.activeSeriesId !== seriesId) return;
+      runtime.videoLongPressTimer = setTimeout(() => {
+        runtime.videoLongPressTimer = null;
+        runtime.longPressTriggered = true;
+        const videoEl = document.getElementById(`video-${seriesId}`);
+        if (!videoEl || videoEl.classList.contains('hidden')) return;
+        runtime.longPressPreviousSpeed = videoEl.playbackRate || runtime.playbackSpeed || 1;
+        videoEl.playbackRate = 2;
+        const btn = document.getElementById('hud-speed-btn');
+        if (btn) btn.textContent = '2.0x';
+        showToast('⏩ 2× speed — release to return to normal');
+      }, 450);
+    }
+
+    function handleVideoStagePointerUp(_event, seriesId) {
+      if (runtime.videoLongPressTimer) {
+        clearTimeout(runtime.videoLongPressTimer);
+        runtime.videoLongPressTimer = null;
       }
+      if (!runtime.longPressTriggered) return;
+      const videoEl = document.getElementById(`video-${seriesId}`);
+      if (videoEl) videoEl.playbackRate = runtime.longPressPreviousSpeed || runtime.playbackSpeed || 1;
+      const btn = document.getElementById('hud-speed-btn');
+      if (btn) btn.textContent = `${runtime.playbackSpeed.toFixed(runtime.playbackSpeed % 1 === 0 ? 1 : 2)}x`;
     }
 
     function updateSeriesLikeUI(seriesId) {
@@ -4738,6 +4784,8 @@
       seekVideoProgress,
       handleVideoStageTap,
       handleVideoStageDoubleTap,
+      handleVideoStagePointerDown,
+      handleVideoStagePointerUp,
       toggleLikeSeries,
       toggleSaveSeries,
       shareSeriesLink,
