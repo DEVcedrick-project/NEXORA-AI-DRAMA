@@ -2,6 +2,15 @@ name: Build NEXORA AI DRAMA APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'www/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'supabase/**'
+      - '.github/workflows/android-apk.yml'
   push:
     branches: [main]
     paths:
@@ -21,6 +30,22 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Check viewer JavaScript syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("www/index.html").read_text()
+          start = html.find('<script type="module">')
+          if start < 0:
+              raise SystemExit("Module script not found")
+          start = html.find('>', start) + 1
+          end = html.find('</script>', start)
+          if end < 0:
+              raise SystemExit("Module script closing tag not found")
+          Path("/tmp/nexora-viewer.mjs").write_text(html[start:end])
+          PY
+          node --check /tmp/nexora-viewer.mjs
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

@@ -179,7 +179,7 @@
             </span>
             <button onclick="dismissLiveNotifPopup()" class="text-zinc-400 hover:text-white p-0.5 text-xs leading-none" title="Dismiss">✕</button>
           </div>
-          <h4 id="live-notif-title" class="text-xs font-black text-white mt-1 truncate">Love Behind the Lies • Ep 13</h4>
+          <h4 id="live-notif-title" class="text-xs font-black text-white mt-1 truncate">New drama published</h4>
           <p id="live-notif-body" class="text-[11px] text-zinc-300 leading-snug mt-0.5 line-clamp-2">
             New cliffhanger episode uploaded! Watch now or continue where you left off.
           </p>
@@ -293,7 +293,7 @@
 
         <div class="absolute top-2.5 right-3 z-20 flex items-center gap-1.5">
           <span id="hud-stream-mode-badge" class="px-2 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-[9px] font-mono font-extrabold tracking-wider text-zinc-300">
-            PREVIEW
+            LIVE CATALOG
           </span>
           <button onclick="cyclePlaybackSpeed()" id="hud-speed-btn" title="Cycle Playback Speed (1.0x - 2.0x)" class="px-2.5 py-1 rounded-full bg-black/75 hover:bg-zinc-900 backdrop-blur-md border border-white/15 text-[10px] font-mono font-extrabold text-amber-300 transition active:scale-95">
             1.0x
@@ -309,7 +309,7 @@
             <span class="w-5 h-5 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-[10px] font-black shrink-0">▶</span>
             <div class="min-w-0 flex-1">
               <span class="block text-[8px] font-mono font-extrabold uppercase tracking-wider text-emerald-300">Continue Watching</span>
-              <span id="foryou-continue-label" class="block text-[10px] font-bold text-white truncate">Love Behind the Lies • Ep 1</span>
+              <span id="foryou-continue-label" class="block text-[10px] font-bold text-white truncate">Continue watching</span>
             </div>
           </button>
         </div>
@@ -681,8 +681,8 @@
       <div class="flex items-start justify-between gap-2 pb-3 border-b border-zinc-800 shrink-0">
         <div>
           <span id="ep-drawer-genre" class="text-[10px] font-extrabold uppercase tracking-wider text-[#ff2e63]">Romance • Revenge</span>
-          <h3 id="ep-drawer-title" class="text-base font-black text-white mt-0.5">Love Behind the Lies</h3>
-          <p class="text-[11px] text-zinc-400">Ep 1–3 Free • Ep 4–12 Unlock with 20 Coins, Ad, or VIP</p>
+          <h3 id="ep-drawer-title" class="text-base font-black text-white mt-0.5">Select a drama</h3>
+          <p class="text-[11px] text-zinc-400">Published episodes from NEXORA STUDIO</p>
         </div>
         <button onclick="closeAllSheets()" class="p-1.5 rounded-full bg-zinc-800 text-zinc-300">
           <i data-lucide="x" class="w-4 h-4"></i>
@@ -943,67 +943,14 @@
       <div class="flex items-start justify-between">
         <div>
           <span class="text-[10px] font-extrabold uppercase tracking-wider text-violet-400">Firebase • Supabase • AdMob • OTA</span>
-          <h3 class="text-base font-black text-white mt-0.5">Cloud Sync &amp; Admin Simulator</h3>
+          <h3 class="text-base font-black text-white mt-0.5">Cloud Services &amp; App Settings</h3>
         </div>
         <button onclick="closeAllSheets()" class="p-1.5 rounded-full bg-zinc-800 text-zinc-300">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
-      <div class="p-3.5 rounded-2xl bg-gradient-to-br from-violet-950/40 to-black border border-violet-500/35 space-y-2.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-extrabold text-violet-300">🎛️ Live Admin Studio Push Simulator</span>
-          <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-200">Instant Pop-Up</span>
-        </div>
-        <p class="text-[11px] text-zinc-400 leading-snug">
-          Simulate real-time updates pushed from Nexora Admin Studio directly into the viewer app:
-        </p>
-        <div class="grid grid-cols-1 gap-2">
-          <button onclick="simulateAdminPublishNewEpisode()" class="w-full py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-emerald-500/35 text-left text-xs font-bold text-white flex items-center justify-between">
-            <span>🎬 Push New Episode Upload + Pop-Up Alert</span>
-            <span class="text-[10px] text-emerald-400">Run →</span>
-          </button>
-          <button onclick="simulateAdminSystemOtaUpdate()" class="w-full py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-amber-400/35 text-left text-xs font-bold text-amber-200 flex items-center justify-between">
-            <span>🛡️ Push Safe OTA System Update (No APK Delete)</span>
-            <span class="text-[10px] text-amber-400">Run →</span>
-          </button>
-          <button onclick="simulateAdminToggleEp4Lock()" class="w-full py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-left text-xs font-bold text-white flex items-center justify-between">
-            <span>🔓 Toggle Episode 4 Lock (Free Hook ↔ 20 Coins)</span>
-            <span class="text-[10px] text-violet-400">Run →</span>
-          </button>
-          <button onclick="simulateAdminGrant30DayVip()" class="w-full py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-left text-xs font-bold text-amber-300 flex items-center justify-between">
-            <span>👑 Grant 30-Day VIP Pass + 100 Bonus Coins</span>
-            <span class="text-[10px] text-amber-400">Run →</span>
-          </button>
-          <button onclick="openApkAssetsModal()" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500/20 to-[#ff2e63]/20 hover:opacity-90 border border-amber-400/40 text-left text-xs font-extrabold text-amber-200 flex items-center justify-between">
-            <span>🎨 Export External APK App Icon &amp; Splash PNGs</span>
-            <span class="text-[10px] text-amber-300">Open →</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="p-3.5 rounded-2xl bg-gradient-to-br from-sky-950/35 to-black border border-sky-500/35 space-y-2.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-extrabold text-sky-300">📡 Test Real MP4 / HLS Stream URL</span>
-          <span id="stream-tester-target-label" class="text-[9px] font-mono px-2 py-0.5 rounded bg-sky-500/20 text-sky-200">Active Ep 1</span>
-        </div>
-        <div class="space-y-2">
-          <input id="test-stream-url-input" type="url" placeholder="https://example.com/drama/ep01.m3u8 or .mp4" class="w-full bg-black/80 border border-zinc-800 focus:border-sky-400 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
-          <div class="grid grid-cols-3 gap-1.5">
-            <button type="button" onclick="fillSampleStreamUrl('hls')" class="py-1.5 px-2 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/35 text-[10px] font-extrabold text-sky-300 transition">
-              Sample HLS
-            </button>
-            <button type="button" onclick="fillSampleStreamUrl('mp4')" class="py-1.5 px-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-[10px] font-extrabold text-emerald-300 transition">
-              Sample MP4
-            </button>
-            <button type="button" onclick="fillSampleStreamUrl('clear')" class="py-1.5 px-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-zinc-300 transition">
-              Canvas Mode            </button>
-          </div>
-          <button type="button" onclick="applyTestStreamUrlToActiveEpisode()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-black text-xs shadow-lg shadow-sky-500/20 transition">
-            Apply Stream URL &amp; Play Live
-          </button>
-        </div>
-      </div>
+      <!-- Demo admin simulator and sample stream tester removed: publishing is handled by NEXORA STUDIO. -->
 
       <!-- Firebase RTDB Credentials Form -->
       <form onsubmit="handleSaveFirebaseConfig(event)" class="space-y-2.5">
@@ -1242,7 +1189,7 @@
       sendPasswordResetEmail,
       signOut
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getDatabase, ref, onValue, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+    import { getDatabase, ref, onValue, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/+esm";
 
     // =========================================================================
@@ -1257,6 +1204,10 @@
         url: "",
         anonKey: ""
       },
+      studioCatalog: {
+        url: "https://gbpjixlubrmgzqflbkwz.supabase.co",
+        publishableKey: "sb_publishable_aTvIirLiL64wiEFekuF-YQ_4TXy-Zty"
+      },
       admob: {
         androidRewardedId: "ca-app-pub-3940256099942544/5224354917",
         iosRewardedId: "ca-app-pub-3940256099942544/1712485313",
@@ -1264,8 +1215,8 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.4.0';
-    const STORAGE_KEY = 'nexora_ai_drama_cloud_v5';
+    const APP_CURRENT_VERSION = 'v2.5.0';
+    const STORAGE_KEY = 'nexora_ai_drama_cloud_v6';
     const FB_CONFIG_STORAGE_KEY = 'nexora_firebase_rtdb_config_v1';
     const SB_CONFIG_STORAGE_KEY = 'nexora_supabase_config_v1';
     const ADMOB_CONFIG_STORAGE_KEY = 'nexora_admob_config_v1';
@@ -1281,157 +1232,21 @@
     }
 
     // =========================================================================
-    // 1. DEFAULT SERIES CATALOG
-    // =========================================================================
-    function buildDefaultEpisodes(seriesTitle, customHooks) {
-      const list = [];
-      for (let i = 1; i <= 12; i++) {
-        const hook = customHooks[i - 1] || `Chapter ${i}: The Hidden Truth Unfolds`;
-        list.push({
-          num: i,
-          title: hook,
-          duration: 60 + (i % 4) * 12,
-          isFree: i <= 3,
-          coinCost: i <= 3 ? 0 : 20,
-          videoUrl: '',
-          subtitleUrl: '',
-          subtitleLines: [
-            `"You thought you could erase me from ${seriesTitle}?"`,
-            `"Look closely at the signature on this contract..."`,
-            `"Tonight, every debt gets paid in full."`
-          ]
-        });
-      }
-      return list;
-    }
-
-    const DEFAULT_SERIES_CATALOG = [
-      {
-        id: 'love-behind-lies',
-        title: 'Love Behind the Lies',
-        creator: '@NexoraOriginals',
-        genre: 'Romance',
-        views: '4.8M',
-        likes: 184200,
-        accentA: '#ff2e63',
-        accentB: '#6d28d9',
-        tagline: 'Betrayed at her own wedding, she returns as the conglomerate’s secret chairwoman.',
-        episodes: buildDefaultEpisodes('Love Behind the Lies', [
-          'The Wedding Altar Betrayal',
-          'A Diamond Ring in the Rain',
-          'The Real Chairwoman Arrives',
-          'Kneel Before Your New Boss',
-          'DNA Report on the Gala Screen',
-          'Who Owns the Penthouse Now?'
-        ])
-      },
-      {
-        id: 'spoiled-no-more',
-        title: 'Spoiled No More',
-        creator: '@NexoraDramaLab',
-        genre: 'Revenge',
-        views: '3.9M',
-        likes: 149500,
-        accentA: '#f59e0b',
-        accentB: '#b91c1c',
-        tagline: 'Cast out by her adoptive family, the true heiress inherits three global banks.',
-        episodes: buildDefaultEpisodes('Spoiled No More', [
-          'Disowned on Her 21st Birthday',
-          'The Fake Sister’s Banquet Trap',
-          'Three Billion Wired at Midnight',
-          'Buying Out the Family Mansion',
-          'Black Card vs. Gold Card',
-          'Too Late to Beg for Mercy'
-        ])
-      },
-      {
-        id: 'sight-makes-billionaires',
-        title: 'The Sight That Makes Billionaires',
-        creator: '@AI_CinemaStudio',
-        genre: 'Fantasy',
-        views: '5.2M',
-        likes: 219800,
-        accentA: '#10b981',
-        accentB: '#1d4ed8',
-        tagline: 'After a lightning storm, an intern sees hidden market values above every object.',
-        episodes: buildDefaultEpisodes('The Sight That Makes Billionaires', [
-          'Golden Numbers in the Sky',
-          'The ₱500 Antique Jade Seal',
-          'Outbidding the Auction King',
-          'Predicting the Opening Bell',
-          'Secret Vault Under Floor 88',
-          'Empire Built in 72 Hours'
-        ])
-      },
-      {
-        id: 'billionaire-loves-beggar',
-        title: 'The Billionaire in Love with a Beggar',
-        creator: '@NexoraRomance',
-        genre: 'Billionaire',
-        views: '6.1M',
-        likes: 264000,
-        accentA: '#ec4899',
-        accentB: '#4f46e5',
-        tagline: 'Disguised as a street musician, a tech mogul falls for the girl who shared her last meal.',
-        episodes: buildDefaultEpisodes('The Billionaire in Love with a Beggar', [
-          'Half a Warm Bun in Winter',
-          'The Secret CEO Behind the Mask',
-          'Who Dared Humiliate Her?',
-          'Private Jet at the Alleyway',
-          'Contract Marriage Revelation',
-          'Every Star in the City for Her'
-        ])
-      }
-    ];
-
-    // =========================================================================
-    // 2. CENTRALIZED APP STATE & RUNTIME LIFECYCLE
+    // 1. LIVE PUBLISHED SERIES CATALOG
     // =========================================================================
     const state = {
       activeMainTab: 'foryou',
       activeDiscoverGenre: 'All',
-      activeSeriesId: 'love-behind-lies',
-      activeEpisodeBySeries: {
-        'love-behind-lies': 1,
-        'spoiled-no-more': 1,
-        'sight-makes-billionaires': 1,
-        'billionaire-loves-beggar': 1
-      },
-      continueWatching: {
-        'love-behind-lies': {
-          seriesId: 'love-behind-lies',
-          epNum: 1,
-          progressPct: 34,
-          updatedAt: Date.now()
-        }
-      },
+      activeSeriesId: '',
+      activeEpisodeBySeries: {},
+      continueWatching: {},
       appVersion: APP_CURRENT_VERSION,
       pendingOtaUpdate: null,
       activeNotifFilter: 'all',
-      notifications: [
-        {
-          id: 'notif_welcome_ota',
-          type: 'update',
-          title: 'Safe OTA Update Engine Ready (v2.4.0)',
-          body: 'Future updates & new dramas arrive live without deleting your APK or losing your Coins & VIP.',
-          time: 'Just now',
-          unread: true,
-          version: 'v2.4.0'
-        },
-        {
-          id: 'notif_upload_ep4',
-          type: 'upload',
-          title: 'New Cliffhanger: Love Behind the Lies',
-          body: 'Episodes 1–12 are live! Continue watching Ep 1 or unlock Ep 4 with your welcome bonus.',
-          time: '5m ago',
-          unread: true,
-          seriesId: 'love-behind-lies',
-          epNum: 1
-        }
-      ],
+      notifications: [],
       user: {
-        name: 'Aria Vance',
-        uid: 'NX-849201',
+        name: 'NEXORA Viewer',
+        uid: '',
         avatarIdx: 0,
         email: '',
         isGuest: true
@@ -1443,15 +1258,9 @@
       vipPlanLabel: '',
       starterPackClaimed: false,
       unlockedEpisodes: {},
-      savedSeries: ['love-behind-lies'],
+      savedSeries: [],
       likedSeries: {},
-      commentsBySeries: {
-        'love-behind-lies': [
-          { user: 'camille.ph', text: 'Ep 3 cliffhanger gave me chills!! 🔥', time: '2m ago' },
-          { user: 'jayson_v', text: 'Used my Watch-to-Earn coins on Ep 4, worth it!', time: '9m ago' },
-          { user: 'mikaela_r', text: 'The AI cinematography looks like a real K-drama.', time: '18m ago' }
-        ]
-      },
+      commentsBySeries: {},
       walletHistory: [
         { title: 'Welcome Bonus Gift', amount: '+60 Bonus Coins', type: 'credit', time: 'Today' }
       ],
@@ -1475,7 +1284,7 @@
         watch30sSec: 0,
         commentClaimed: false
       },
-      seriesCatalog: JSON.parse(JSON.stringify(DEFAULT_SERIES_CATALOG)),
+      seriesCatalog: [],
       firebase: {
         connected: false,
         authUid: '',
@@ -1506,7 +1315,7 @@
         seriesId: '',
         epNum: 0,
         url: '',
-        mode: 'PREVIEW',
+        mode: 'CATALOG',
         hasRealVideo: false
       },
       hlsInstances: {},
@@ -1528,6 +1337,10 @@
       fbDb: null,
       fbUnsubs: [],
       sbClient: null,
+      catalogClient: null,
+      catalogRefreshTimer: null,
+      catalogLoading: true,
+      catalogError: '',
       resetConfirmStep: false,
       splashDismissed: false,
       splashTimer: null,
@@ -2016,7 +1829,7 @@
       if (state.pendingOtaUpdate) {
         openOtaUpdateModal(state.pendingOtaUpdate.version, state.pendingOtaUpdate.title, state.pendingOtaUpdate.notes);
       } else {
-        simulateAdminSystemOtaUpdate();
+        showToast('No system update is currently available.');
       }
     }
 
@@ -2038,7 +1851,7 @@
 
     function getSortedContinueWatchingList() {
       return Object.values(state.continueWatching || {})
-        .filter(item => item && item.seriesId)
+        .filter(item => item && item.seriesId && getSeriesById(item.seriesId))
         .sort((a, b) => (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0));
     }
 
@@ -2421,6 +2234,183 @@
       runtime.fbUnsubs.push(unsubUnlocks);
     }
 
+
+    // =========================================================================
+    // 4B. LIVE PUBLISHED AI DRAMA CATALOG (READ-ONLY STUDIO INTEGRATION)
+    // This client reads only published rows through the existing public RLS policies.
+    // It never writes to NEXORA STUDIO or its database.
+    // =========================================================================
+    function mapPublishedStudioDrama(drama, episodeRows, index) {
+      const palette = [
+        ['#ff2e63', '#6d28d9'],
+        ['#f59e0b', '#b91c1c'],
+        ['#10b981', '#1d4ed8'],
+        ['#ec4899', '#4f46e5'],
+        ['#0ea5e9', '#7c3aed']
+      ];
+      const colors = palette[index % palette.length];
+      const episodes = episodeRows
+        .filter(ep => ep && ep.status === 'published' && typeof ep.video_url === 'string' && ep.video_url.trim())
+        .map(ep => ({
+          num: Number(ep.episode_number) || 1,
+          title: ep.title || `Episode ${ep.episode_number}`,
+          duration: Math.max(1, Math.round(Number(ep.duration_seconds) || 60)),
+          isFree: Number(ep.episode_number) <= 3,
+          coinCost: Number(ep.episode_number) <= 3 ? 0 : 20,
+          videoUrl: ep.video_url.trim(),
+          posterUrl: ep.thumbnail_url || drama.cover_url || '',
+          subtitleUrl: '',
+          subtitleLines: ep.synopsis ? [ep.synopsis] : []
+        }))
+        .sort((a, b) => a.num - b.num);
+      if (!episodes.length) return null;
+      const firstOwner = episodeRows.find(ep => ep.video_owner && String(ep.video_owner).trim())?.video_owner;
+      return {
+        id: drama.id,
+        title: drama.title || 'Untitled Drama',
+        creator: firstOwner || 'NEXORA STUDIO',
+        genre: drama.genre || 'Drama',
+        views: 'NEW',
+        likes: 0,
+        accentA: colors[0],
+        accentB: colors[1],
+        tagline: drama.synopsis || '',
+        coverUrl: drama.cover_url || '',
+        episodes
+      };
+    }
+
+    async function refreshPublishedDramaCatalog(showErrors = false) {
+      const client = runtime.catalogClient;
+      if (!client) return false;
+      try {
+        const { data: dramas, error: dramaError } = await client
+          .from('ai_dramas')
+          .select('id, title, synopsis, genre, cover_url, status, created_at')
+          .eq('status', 'published')
+          .order('created_at', { ascending: false });
+        if (dramaError) throw dramaError;
+
+        let mapped = [];
+        if (Array.isArray(dramas) && dramas.length) {
+          const ids = dramas.map(drama => drama.id);
+          const { data: episodes, error: episodeError } = await client
+            .from('ai_drama_episodes')
+            .select('id, drama_id, episode_number, title, synopsis, video_url, video_owner, thumbnail_url, duration_seconds, status, sort_order')
+            .in('drama_id', ids)
+            .eq('status', 'published')
+            .order('sort_order', { ascending: true })
+            .order('episode_number', { ascending: true });
+          if (episodeError) throw episodeError;
+          const episodeRows = Array.isArray(episodes) ? episodes : [];
+          mapped = dramas
+            .map((drama, index) => mapPublishedStudioDrama(
+              drama,
+              episodeRows.filter(ep => ep.drama_id === drama.id),
+              index
+            ))
+            .filter(Boolean);
+        }
+
+        const catalogChanged = JSON.stringify(state.seriesCatalog) !== JSON.stringify(mapped);
+        if (!catalogChanged && !runtime.catalogLoading && !runtime.catalogError) return true;
+
+        const previousIds = new Set(state.seriesCatalog.map(item => item.id));
+        const previousEpisodeKeys = new Set(state.seriesCatalog.flatMap(item => item.episodes.map(ep => `${item.id}:${ep.num}`)));
+        const nextIds = new Set(mapped.map(item => item.id));
+        state.seriesCatalog = mapped;
+        state.activeEpisodeBySeries = Object.fromEntries(
+          Object.entries(state.activeEpisodeBySeries).filter(([id]) => nextIds.has(id))
+        );
+        state.savedSeries = state.savedSeries.filter(id => nextIds.has(id));
+        state.likedSeries = Object.fromEntries(Object.entries(state.likedSeries).filter(([id]) => nextIds.has(id)));
+        state.commentsBySeries = Object.fromEntries(Object.entries(state.commentsBySeries).filter(([id]) => nextIds.has(id)));
+        state.continueWatching = Object.fromEntries(Object.entries(state.continueWatching).filter(([id]) => nextIds.has(id)));
+        state.unlockedEpisodes = Object.fromEntries(
+          Object.entries(state.unlockedEpisodes).filter(([key]) => nextIds.has(key.split('_ep')[0]))
+        );
+        state.notifications = state.notifications.filter(item =>
+          !['notif_welcome_ota', 'notif_upload_ep4'].includes(item.id) &&
+          (!item.seriesId || nextIds.has(item.seriesId))
+        );
+
+        if (!nextIds.has(state.activeSeriesId)) state.activeSeriesId = mapped[0]?.id || '';
+        mapped.forEach(series => {
+          const selected = state.activeEpisodeBySeries[series.id];
+          if (!series.episodes.some(ep => ep.num === selected)) {
+            state.activeEpisodeBySeries[series.id] = series.episodes[0].num;
+          }
+        });
+
+        runtime.catalogError = '';
+        runtime.catalogLoading = false;
+        saveAppState();
+        renderVerticalFeed();
+        renderDiscoverView();
+        renderMyListView();
+
+        const addedDrama = mapped.find(item => !previousIds.has(item.id));
+        const addedEpisode = mapped
+          .flatMap(item => item.episodes.map(ep => ({ series: item, episode: ep })))
+          .find(item => !previousEpisodeKeys.has(`${item.series.id}:${item.episode.num}`));
+        if (previousIds.size > 0 && addedDrama) {
+          pushInAppNotification({
+            type: 'upload',
+            title: `New Drama: ${addedDrama.title}`,
+            body: 'A new published drama is ready to watch from NEXORA STUDIO.',
+            seriesId: addedDrama.id,
+            epNum: addedDrama.episodes[0].num
+          }, true);
+        } else if (previousIds.size > 0 && addedEpisode) {
+          pushInAppNotification({
+            type: 'upload',
+            title: `${addedEpisode.series.title} • Episode ${addedEpisode.episode.num}`,
+            body: 'A new published episode is ready to stream from NEXORA STUDIO.',
+            seriesId: addedEpisode.series.id,
+            epNum: addedEpisode.episode.num
+          }, true);
+        }
+        return true;
+      } catch (error) {
+        runtime.catalogError = error?.message || 'Catalog unavailable';
+        runtime.catalogLoading = false;
+        renderVerticalFeed();
+        renderDiscoverView();
+        if (showErrors) showToast('Could not refresh the published drama catalog.');
+        return false;
+      }
+    }
+
+    async function initPublishedDramaCatalog() {
+      const cfg = NEXORA_DEFAULT_CONFIG.studioCatalog;
+      if (!cfg?.url || !cfg?.publishableKey) {
+        runtime.catalogLoading = false;
+        runtime.catalogError = 'Studio catalog is not configured.';
+        renderVerticalFeed();
+        return false;
+      }
+      try {
+        runtime.catalogClient = createClient(cfg.url, cfg.publishableKey, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        });
+        await refreshPublishedDramaCatalog(false);
+        if (runtime.catalogRefreshTimer) clearInterval(runtime.catalogRefreshTimer);
+        runtime.catalogRefreshTimer = setInterval(() => {
+          if (!document.hidden) refreshPublishedDramaCatalog(false);
+        }, 60000);
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) refreshPublishedDramaCatalog(false);
+        });
+        window.addEventListener('focus', () => refreshPublishedDramaCatalog(false));
+        return true;
+      } catch (error) {
+        runtime.catalogLoading = false;
+        runtime.catalogError = error?.message || 'Catalog initialization failed';
+        renderVerticalFeed();
+        return false;
+      }
+    }
+
     async function initSupabaseClient(customCfg = null, pullRemote = true) {
       try {
         let cfg = customCfg;
@@ -2778,145 +2768,9 @@
     }
 
     // =========================================================================
-    // 5. LIVE ADMIN STUDIO PUSH SIMULATOR & STREAM URL TESTER
+    // 5. PUBLISHED STUDIO CONTENT ONLY — no in-app publishing simulator.
     // =========================================================================
-    function fillSampleStreamUrl(kind) {
-      const input = document.getElementById('test-stream-url-input');
-      if (!input) return;
-      if (kind === 'hls') {
-        input.value = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
-      } else if (kind === 'mp4') {
-        input.value = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
-      } else {
-        input.value = '';
-      }
-    }
 
-    function applyTestStreamUrlToActiveEpisode() {
-      const input = document.getElementById('test-stream-url-input');
-      const url = (input?.value || '').trim();
-      const series = getSeriesById(state.activeSeriesId);
-      const epNum = state.activeEpisodeBySeries[series.id] || 1;
-      const ep = series.episodes.find(e => e.num === epNum);
-      if (!ep) return;
-
-      ep.videoUrl = url;
-      runtime.activeVideoState.url = '';
-
-      if (state.firebase.connected && runtime.fbDb) {
-        update(ref(runtime.fbDb, `series/${series.id}/episodes/${epNum - 1}`), {
-          videoUrl: url
-        }).catch(() => {});
-      }
-
-      closeAllSheets();
-      switchMainTab('foryou');
-      renderVerticalFeed();
-      showToast(url ? `📡 Streaming real video on Ep ${epNum}!` : `🎨 Switched Ep ${epNum} to Canvas preview`);
-    }
-
-    function simulateAdminToggleEp4Lock() {
-      const series = getSeriesById(state.activeSeriesId);
-      const ep4 = series.episodes.find(e => e.num === 4);
-      if (!ep4) return;
-      ep4.isFree = !ep4.isFree;
-      ep4.coinCost = ep4.isFree ? 0 : 20;
-
-      if (state.firebase.connected && runtime.fbDb) {
-        update(ref(runtime.fbDb, `series/${series.id}/episodes/3`), {
-          isFree: ep4.isFree,
-          coinCost: ep4.coinCost
-        }).catch(() => {});
-      }
-
-      renderVerticalFeed();
-      renderDiscoverView();
-      renderRtdbSchemaInspector();
-      showToast(`🎛️ Admin Push: "${series.title}" Ep 4 is now ${ep4.isFree ? 'FREE HOOK' : 'LOCKED (20 Coins)'}`);
-    }
-
-    function simulateAdminPublishNewEpisode() {
-      const series = getSeriesById(state.activeSeriesId);
-      const nextNum = series.episodes.length + 1;
-      const newEp = {
-        num: nextNum,
-        title: `Bonus Finale #${nextNum}: The Final Verdict`,
-        duration: 75,
-        isFree: true,
-        coinCost: 0,
-        videoUrl: '',
-        subtitleUrl: '',
-        subtitleLines: [
-          `"Breaking News: Live from the NEXORA Tower!"`,
-          `"Every secret in ${series.title} is now public."`,
-          `"Season finale unlocked!"`
-        ]
-      };
-      series.episodes.push(newEp);
-
-      if (state.firebase.connected && runtime.fbDb) {
-        set(ref(runtime.fbDb, `series/${series.id}/episodes/${nextNum - 1}`), newEp).catch(() => {});
-      }
-
-      closeAllSheets();
-      renderVerticalFeed();
-      renderDiscoverView();
-      renderRtdbSchemaInspector();
-
-      pushInAppNotification({
-        type: 'upload',
-        title: `${series.title} • Ep ${nextNum} Uploaded!`,
-        body: `New free preview chapter "${newEp.title}" is ready to stream now.`,
-        seriesId: series.id,
-        epNum: nextNum
-      }, true);
-    }
-
-    function simulateAdminSystemOtaUpdate() {
-      const parts = state.appVersion.replace('v', '').split('.').map(n => Number(n) || 0);
-      const nextVersion = `v${parts[0]}.${parts[1] + 1}.0`;
-      closeAllSheets();
-
-      state.pendingOtaUpdate = {
-        version: nextVersion,
-        title: `NEXORA ${nextVersion} Live Engine Update`,
-        notes: 'Upgrades vertical HLS playback, adds new drama episodes, and preserves your APK, Coins, VIP Pass & Watchlist.'
-      };
-
-      pushInAppNotification({
-        id: `ota_${nextVersion}_${Date.now()}`,
-        type: 'update',
-        title: state.pendingOtaUpdate.title,
-        body: state.pendingOtaUpdate.notes,
-        version: nextVersion
-      }, true);
-    }
-
-    function simulateAdminGrant30DayVip() {
-      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-      const base = state.isVip && state.vipExpiresAt > Date.now() ? state.vipExpiresAt : Date.now();
-      state.isVip = true;
-      state.vipExpiresAt = base + thirtyDaysMs;
-      state.vipPlanLabel = '30-Day VIP Pass';
-      creditCoins(100, 'bonus', 'Admin Studio VIP Gift (+100 Coins)');
-
-      if (state.firebase.connected && runtime.fbDb && state.firebase.authUid) {
-        update(ref(runtime.fbDb, `users/${state.firebase.authUid}/vipStatus`), {
-          isVip: true,
-          vipExpiresAt: state.vipExpiresAt,
-          planLabel: state.vipPlanLabel
-        }).catch(() => {});
-      }
-
-      saveAppState();
-      syncWalletUI();
-      renderVerticalFeed();
-      renderRtdbSchemaInspector();
-      syncStateToSupabaseNow(false);
-      showToast('👑 Admin Push: 30-Day VIP Pass + 100 Bonus Coins granted!');
-    }
-
-    // =========================================================================
     // 6. WALLET, UNLOCK & COIN LEDGER LOGIC
     // =========================================================================
     function getTotalCoins() {
@@ -3087,67 +2941,8 @@
       });
     }
 
-    function drawAnimatedDramaCanvas(series, ep, timeSec) {
-      const canvas = document.getElementById(`canvas-${series.id}`);
-      if (!canvas) return;
-      const shell = document.getElementById('app-shell');
-      const rect = canvas.getBoundingClientRect();
-      const w = Math.max(300, Math.round(rect.width || canvas.clientWidth || shell?.clientWidth || 412));
-      const h = Math.max(520, Math.round(rect.height || canvas.clientHeight || shell?.clientHeight || 760));
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-
-      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-      }
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.save();
-      ctx.scale(dpr, dpr);
-
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      grad.addColorStop(0, series.accentA || '#ff2e63');
-      grad.addColorStop(0.5, '#110f1d');
-      grad.addColorStop(1, series.accentB || '#6d28d9');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-
-      for (let i = 0; i < 6; i++) {
-        const x = w * (0.2 + 0.6 * Math.sin(timeSec * 0.45 + i * 1.7));
-        const y = h * (0.24 + 0.48 * Math.cos(timeSec * 0.35 + i * 2.1));
-        const r = 48 + (i % 3) * 32;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
-        ctx.fill();
-      }
-
-      const vignette = ctx.createRadialGradient(w * 0.5, h * 0.45, w * 0.15, w * 0.5, h * 0.45, h * 0.65);
-      vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(5,5,10,0.62)');
-      ctx.fillStyle = vignette;
-      ctx.fillRect(0, 0, w, h);
-
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.font = '900 21px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(series.title.toUpperCase(), w / 2, h * 0.43);
-
-      ctx.fillStyle = '#fbbf24';
-      ctx.font = '700 12px JetBrains Mono, monospace';
-      ctx.fillText(`EPISODE ${ep.num} • ${ep.title}`, w / 2, h * 0.43 + 26);
-
-      ctx.restore();
-    }
-
     function redrawActiveCanvasNow() {
-      const series = getSeriesById(state.activeSeriesId);
-      if (!series) return;
-      const epNum = state.activeEpisodeBySeries[series.id] || 1;
-      const ep = series.episodes.find(e => e.num === epNum) || series.episodes[0];
-      drawAnimatedDramaCanvas(series, ep, performance.now() / 1000);
+      // Published video and its poster are rendered directly; there is no synthetic demo canvas.
     }
 
     // =========================================================================
@@ -3287,7 +3082,7 @@
     // 9. FOR YOU VERTICAL FEED, HYBRID MP4/HLS + CANVAS & INTERACTIONS
     // =========================================================================
     function getSeriesById(id) {
-      return state.seriesCatalog.find(s => s.id === id) || state.seriesCatalog[0];
+      return state.seriesCatalog.find(s => s.id === id) || null;
     }
 
     function formatNumberCompact(num) {
@@ -3347,6 +3142,8 @@
       if (spinnerEl) spinnerEl.classList.add('hidden');
       if (videoEl) {
         videoEl.pause();
+        videoEl.removeAttribute('src');
+        videoEl.load();
         videoEl.classList.add('hidden');
       }
       if (runtime.hlsInstances[seriesId]) {
@@ -3356,11 +3153,9 @@
       if (state.activeSeriesId === seriesId) {
         runtime.isBuffering = false;
         runtime.activeVideoState.hasRealVideo = false;
-        updateStreamHudBadges('PREVIEW');
+        updateStreamHudBadges('STREAM ERROR');
       }
-      if (reason) {
-        showToast(`⚠️ Stream unavailable (${reason}) — switched to Canvas preview`);
-      }
+      if (reason) showToast(`⚠️ Published episode unavailable (${reason}). Please try again later.`);
     }
 
     function mountActiveEpisodeMedia(seriesId) {
@@ -3369,8 +3164,6 @@
       const epNum = state.activeEpisodeBySeries[series.id] || 1;
       const ep = series.episodes.find(e => e.num === epNum) || series.episodes[0];
       const unlocked = isEpisodeUnlocked(series, ep);
-
-      drawAnimatedDramaCanvas(series, ep, performance.now() / 1000);
 
       state.seriesCatalog.forEach(s => {
         if (s.id !== series.id) {
@@ -3396,7 +3189,7 @@
           seriesId: series.id,
           epNum: ep.num,
           url: '',
-          mode: 'PREVIEW',
+          mode: 'CATALOG',
           hasRealVideo: false
         };
         return;
@@ -3654,6 +3447,18 @@
       destroyAllHlsInstances();
       runtime.activeVideoState.url = '';
 
+      if (!state.seriesCatalog.length) {
+        const message = runtime.catalogLoading
+          ? 'Connecting to the NEXORA STUDIO catalog…'
+          : runtime.catalogError
+            ? 'The drama catalog could not be loaded. Check your connection and try again.'
+            : 'No published AI dramas yet. New dramas will appear here when NEXORA STUDIO publishes them.';
+        feed.innerHTML = `<div class="h-full w-full flex flex-col items-center justify-center px-8 text-center bg-[#090910]"><div class="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-400/20 flex items-center justify-center text-3xl mb-5">🎬</div><h2 class="text-lg font-black text-white">NEXORA AI DRAMA</h2><p class="text-xs leading-relaxed text-zinc-400 mt-2">${escapeHtml(message)}</p><p class="text-[10px] text-zinc-600 mt-4">Published episodes sync automatically. No APK reinstall required.</p></div>`;
+        state.activeSeriesId = '';
+        updateStreamHudBadges('CATALOG');
+        return;
+      }
+
       feed.innerHTML = state.seriesCatalog.map((series, idx) => {
         const activeEpNum = state.activeEpisodeBySeries[series.id] || 1;
         const ep = series.episodes.find(e => e.num === activeEpNum) || series.episodes[0];
@@ -3676,8 +3481,8 @@
               <p class="text-[11px] text-zinc-200/85 mt-2 max-w-[270px] line-clamp-2">${escapeHtml(series.tagline)}</p>
             </div>
 
-            <canvas id="canvas-${series.id}" data-idx="${idx}" class="absolute inset-0 w-full h-full block"></canvas>
-            <video id="video-${series.id}" playsinline preload="metadata" crossorigin="anonymous" class="hidden absolute inset-0 w-full h-full object-cover bg-black"></video>
+            <img id="poster-${series.id}" src="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" alt="${escapeHtml(series.title)} poster" class="absolute inset-0 w-full h-full object-cover ${ep.posterUrl || series.coverUrl ? '' : 'hidden'}" />
+            <video id="video-${series.id}" poster="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" playsinline preload="metadata" crossorigin="anonymous" class="hidden absolute inset-0 w-full h-full object-cover bg-black"></video>
 
             <div id="buffer-spinner-${series.id}" class="hidden pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
               <div class="w-10 h-10 rounded-full border-3 border-white/20 border-t-[#ff2e63] animate-spin"></div>
@@ -3794,12 +3599,6 @@
         `;
       }).join('');
 
-      state.seriesCatalog.forEach(s => {
-        const epNum = state.activeEpisodeBySeries[s.id] || 1;
-        const ep = s.episodes.find(e => e.num === epNum) || s.episodes[0];
-        drawAnimatedDramaCanvas(s, ep, performance.now() / 1000);
-      });
-
       safeCreateIcons();
       setupFeedIntersectionObserver();
       mountActiveEpisodeMedia(state.activeSeriesId);
@@ -3884,6 +3683,7 @@
 
     function shareSeriesLink(seriesId) {
       const series = getSeriesById(seriesId);
+      if (!series) return;
       const epNum = state.activeEpisodeBySeries[seriesId] || 1;
       const shareText = `Watch "${series.title}" (Ep ${epNum}) on NEXORA AI DRAMA!`;
       try {
@@ -3909,6 +3709,10 @@
 
           if (!document.hidden && state.activeMainTab === 'foryou') {
             const activeSeries = getSeriesById(state.activeSeriesId);
+            if (!activeSeries || !Array.isArray(activeSeries.episodes) || !activeSeries.episodes.length) {
+              runtime.rafId = requestAnimationFrame(tick);
+              return;
+            }
             const epNum = state.activeEpisodeBySeries[activeSeries.id] || 1;
             const ep = activeSeries.episodes.find(e => e.num === epNum) || activeSeries.episodes[0];
             const unlocked = isEpisodeUnlocked(activeSeries, ep);
@@ -3916,23 +3720,11 @@
             const usingRealVideo = videoEl && !videoEl.classList.contains('hidden') && runtime.activeVideoState.hasRealVideo;
 
             if (!usingRealVideo) {
-              drawAnimatedDramaCanvas(activeSeries, ep, (now / 1000) * runtime.playbackSpeed);
-
-              const cycleSec = ((now / 1000) * runtime.playbackSpeed) % 18;
-              const pct = Math.min(100, (cycleSec / 18) * 100);
-              const scrubber = document.getElementById(`scrubber-fill-${activeSeries.id}`);
-              if (scrubber) scrubber.style.width = `${pct}%`;
-
-              const timeEl = document.getElementById(`timecode-${activeSeries.id}`);
-              if (timeEl) timeEl.textContent = `${formatTimecode(cycleSec)} / 00:18`;
-
-              if (!runtime.isPaused && unlocked) {
-                recordContinueWatchingProgress(activeSeries.id, ep.num, pct);
-              }
-
-              if (pct >= 75) {
-                preloadNextEpisodeMedia(activeSeries, ep.num);
-              }
+              const poster = document.getElementById(`poster-${activeSeries.id}`);
+              if (poster) poster.classList.remove('hidden');
+            } else {
+              const poster = document.getElementById(`poster-${activeSeries.id}`);
+              if (poster) poster.classList.add('hidden');
             }
 
             const subEl = document.getElementById(`subtitle-text-${activeSeries.id}`);
@@ -3942,7 +3734,7 @@
               subEl.textContent = ep.subtitleLines[lineIdx];
             }
 
-            const isVideoActuallyPlaying = !usingRealVideo || (!videoEl.paused && !runtime.isBuffering);
+            const isVideoActuallyPlaying = Boolean(usingRealVideo && !videoEl.paused && !runtime.isBuffering);
             if (!runtime.isPaused && !runtime.isSheetOpen && unlocked && isVideoActuallyPlaying) {
               advanceWatchToEarnTimer(dt);
             }
@@ -3960,6 +3752,7 @@
     // =========================================================================
     function openEpisodeDrawer(seriesId) {
       const series = getSeriesById(seriesId);
+      if (!series) return;
       const activeEpNum = state.activeEpisodeBySeries[series.id] || 1;
       closeAllSheets();
 
@@ -3994,7 +3787,9 @@
       document.getElementById('episode-sheet')?.classList.remove('translate-y-full');
     }
 
-    function selectEpisodeFromDrawer(seriesId, epNum) {      const series = getSeriesById(seriesId);
+    function selectEpisodeFromDrawer(seriesId, epNum) {
+      const series = getSeriesById(seriesId);
+      if (!series) return;
       const ep = series.episodes.find(e => e.num === epNum);
       if (!ep) return;
 
@@ -4012,6 +3807,7 @@
 
     function openCommentDrawer(seriesId) {
       const series = getSeriesById(seriesId);
+      if (!series) return;
       state.activeSeriesId = seriesId;
       closeAllSheets();
 
@@ -4073,7 +3869,8 @@
     }
 
     function renderDiscoverView() {
-      const genres = ['All', 'Romance', 'Revenge', 'Fantasy', 'Billionaire'];
+      const genres = ['All', ...new Set(state.seriesCatalog.map(s => s.genre).filter(Boolean))];
+      if (!genres.includes(state.activeDiscoverGenre)) state.activeDiscoverGenre = 'All';
       const pillsEl = document.getElementById('discover-genre-pills');
       if (pillsEl) {
         pillsEl.innerHTML = genres.map(g => {
@@ -4100,11 +3897,13 @@
             <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-300">Trending Now • ${escapeHtml(topSeries.views)}</span>
             <h3 class="text-sm font-black text-white truncate mt-0.5">${escapeHtml(topSeries.title)}</h3>
             <p class="text-[11px] text-zinc-300 line-clamp-2 mt-0.5">${escapeHtml(topSeries.tagline)}</p>
-            <button onclick="selectEpisodeFromDrawer('${topSeries.id}', 1)" class="mt-2 px-3 py-1 rounded-xl bg-white text-black font-black text-[11px]">
+            <button onclick="selectEpisodeFromDrawer('${topSeries.id}', ${topSeries.episodes[0].num})" class="mt-2 px-3 py-1 rounded-xl bg-white text-black font-black text-[11px]">
               ▶ Watch Ep 1 Free
             </button>
           </div>
         `;
+      } else if (spotlightEl) {
+        spotlightEl.innerHTML = '<p class="text-xs text-zinc-500 text-center py-6">No published dramas yet. Check back soon.</p>';
       }
 
       const query = (document.getElementById('discover-search-input')?.value || '').trim().toLowerCase();
@@ -4119,7 +3918,7 @@
         gridEl.innerHTML = filtered.length === 0
           ? `<p class="col-span-2 text-xs text-zinc-500 text-center py-8">No matching dramas found.</p>`
           : filtered.map((s, i) => `
-              <div onclick="selectEpisodeFromDrawer('${s.id}', 1)" class="cursor-pointer rounded-2xl bg-[#13131c] border border-zinc-800 hover:border-zinc-700 overflow-hidden transition group">
+              <div onclick="selectEpisodeFromDrawer('${s.id}', ${s.episodes[0].num})" class="cursor-pointer rounded-2xl bg-[#13131c] border border-zinc-800 hover:border-zinc-700 overflow-hidden transition group">
                 <div class="h-32 p-3 flex flex-col justify-between relative" style="background: linear-gradient(135deg, ${s.accentA}, ${s.accentB});">
                   <div class="flex items-center justify-between">
                     <span class="px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-black text-white">#${i + 1}</span>
@@ -4140,13 +3939,13 @@
     }
 
     function renderMyListView() {
-      const unlockedKeys = Object.keys(state.unlockedEpisodes).filter(k => Boolean(state.unlockedEpisodes[k]));
+      const unlockedKeys = Object.keys(state.unlockedEpisodes).filter(k => Boolean(state.unlockedEpisodes[k]) && getSeriesById(k.split('_ep')[0]));
       const badge = document.getElementById('mylist-unlocked-badge');
       if (badge) badge.textContent = `${unlockedKeys.length} Unlocked`;
 
       const continueContainer = document.getElementById('mylist-continue-container');
       if (continueContainer) {
-        const cwList = getSortedContinueWatchingList();
+        const cwList = getSortedContinueWatchingList().filter(cw => getSeriesById(cw.seriesId));
         if (!cwList.length) {
           continueContainer.innerHTML = `<p class="text-xs text-zinc-500 p-4 rounded-2xl bg-[#13131c] border border-zinc-800 text-center">Watch any episode to automatically save your resume point here.</p>`;
         } else {
@@ -4179,7 +3978,8 @@
         if (!state.savedSeries.length) {
           savedContainer.innerHTML = `<p class="text-xs text-zinc-500 p-4 rounded-2xl bg-[#13131c] border border-zinc-800 text-center">No saved dramas yet. Tap Save on any series in For You.</p>`;
         } else {
-          savedContainer.innerHTML = state.savedSeries.map(id => {
+          const savedIds = state.savedSeries.filter(id => getSeriesById(id));
+          savedContainer.innerHTML = savedIds.length ? savedIds.map(id => {
             const s = getSeriesById(id);
             const epNum = state.activeEpisodeBySeries[id] || 1;
             return `
@@ -4194,14 +3994,14 @@
                 </button>
               </div>
             `;
-          }).join('');
+          }).join('') : '<p class="text-xs text-zinc-500 p-4 text-center">No saved dramas yet.</p>';
         }
       }
 
       const unlockedContainer = document.getElementById('mylist-unlocked-container');
       if (unlockedContainer) {
         if (!unlockedKeys.length) {
-          unlockedContainer.innerHTML = `<p class="text-xs text-zinc-500 p-4 rounded-2xl bg-[#13131c] border border-zinc-800 text-center">Episodes 4–12 unlocked with Coins or Ads will appear here.</p>`;
+          unlockedContainer.innerHTML = `<p class="text-xs text-zinc-500 p-4 rounded-2xl bg-[#13131c] border border-zinc-800 text-center">Episodes unlocked with Coins or Ads will appear here.</p>`;
         } else {
           unlockedContainer.innerHTML = unlockedKeys.map(key => {
             const parts = key.split('_ep');
@@ -4895,12 +4695,6 @@
       syncStateToSupabaseNow,
       handleSaveAdmobConfig,
       pushLocalStateToFirebaseNow,
-      fillSampleStreamUrl,
-      applyTestStreamUrlToActiveEpisode,
-      simulateAdminToggleEp4Lock,
-      simulateAdminPublishNewEpisode,
-      simulateAdminSystemOtaUpdate,
-      simulateAdminGrant30DayVip,
       unlockEpisodeWithCoins,
       openWteSheet,
       claimWteReward,
@@ -4966,6 +4760,7 @@
       initCapacitorAdMobBridge();
       initFirebaseRealtimeSync(null);
       initSupabaseClient(null, true);
+      initPublishedDramaCatalog();
     }
 
     window.addEventListener('resize', () => {
