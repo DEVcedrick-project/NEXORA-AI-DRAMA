@@ -195,7 +195,7 @@
 
         <button onclick="openFirebaseConfigModal()" id="header-sync-pill" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-[9px] font-bold text-amber-300 transition shrink-0">
           <span id="header-sync-dot" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-          <span id="header-sync-label">Local</span>
+          <span id="header-sync-label" class="hidden"></span>
         </button>
       </div>
 
@@ -4287,6 +4287,9 @@
 
       // Never store account passwords in localStorage. Require a configured Firebase Auth backend.
       if (!state.firebase.connected || !runtime.fbAuth) {
+        // Clear credentials immediately; never persist them when Firebase Auth is unavailable.
+        document.getElementById('signup-password-input').value = '';
+        document.getElementById('signup-confirm-input').value = '';
         setAuthFeedback('Account registration is temporarily unavailable. The app owner must configure Firebase Authentication before users can create secure online accounts. Your password has not been saved.', 'error');
         return;
       }
