@@ -46,3 +46,15 @@ The viewer app reads its published catalog directly from the existing NEXORA STU
 - The app uses the project's public publishable key and the existing anonymous SELECT/RLS policies. It does not write to the Studio database.
 
 NEXORA STUDIO remains a separate project and was not modified for this integration. When the Studio owner publishes a drama and its episodes, they appear in the viewer app automatically without an APK rebuild or reinstall.
+
+## App update checks
+
+- The app checks `update.json` at startup and every six hours while it is open.
+- To publish an update, upload a release APK signed with the **same permanent signing key** as the installed app, then update `version`, `notes`, and `downloadUrl` in `update.json`.
+- Android's installer must confirm the installation. Existing app data is retained only when the application ID and signing certificate match.
+- The current GitHub Actions workflow produces a **debug APK**. It is not suitable as a production update channel. Configure a permanent release keystore and signed-release workflow before distributing production updates.
+- Do not set `downloadUrl` until a real signed APK is published. An empty URL intentionally prevents a fake update action.
+
+## Android notifications
+
+The app currently creates in-app alerts when the published NEXORA STUDIO catalog refresh detects a newly published drama or episode while the app is running. System-tray notifications that arrive while the app is closed require Firebase Cloud Messaging (FCM), Android Firebase configuration, and a trusted server-side sender. Those credentials and native FCM setup are not present in this repository yet; do not treat the current in-app alert as background push delivery.
