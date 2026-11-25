@@ -5007,8 +5007,7 @@
       const startupTasks = [
         Promise.resolve().then(() => initFirebaseRealtimeSync(null)),
         Promise.resolve().then(() => initSupabaseClient(null, true)),
-        Promise.resolve().then(() => initPublishedDramaCatalog()),
-        Promise.resolve().then(() => initNativePushNotifications())
+        Promise.resolve().then(() => initPublishedDramaCatalog())
       ];
       void Promise.allSettled(startupTasks).then(() => {
         if (!runtime.splashDismissed) setStartupStatus('Ready. Enjoy the story.');
@@ -5016,6 +5015,12 @@
 
       // Keep the branded intro short; slow or offline services cannot delay entry.
       runtime.splashTimer = setTimeout(() => dismissSplashScreen(), 1800);
+
+      // Ask for notification permission only after the first screen is visible,
+      // so the Android permission dialog never interrupts the branded splash.
+      window.setTimeout(() => {
+        void initNativePushNotifications();
+      }, 2400);
 
       // Non-critical checks run after the first screen is interactive.
       window.setTimeout(() => {
