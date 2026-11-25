@@ -357,7 +357,7 @@ jobs:
             const manifest = {
               version,
               title: `NEXORA AI DRAMA v${version}`,
-              notes: 'Includes the native in-app updater, stability improvements, and the latest NEXORA experience.',
+              notes: 'Replaces Android Download Manager with a private in-app APK download, live progress inside NEXORA, and direct handoff to Android install confirmation.',
               downloadUrl: `https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v${version}/NEXORA-AI-DRAMA-release.apk`
             };
             const content = Buffer.from(JSON.stringify(manifest, null, 2) + '\n').toString('base64');
