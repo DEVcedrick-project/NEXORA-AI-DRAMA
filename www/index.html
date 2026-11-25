@@ -1056,6 +1056,8 @@
     const APP_CURRENT_VERSION = 'v2.6.2';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
     const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+    let updateCheckInFlight = null;
+    let lastPromptedUpdateVersion = '';
     const STORAGE_KEY = 'nexora_ai_drama_cloud_v6';
     const FB_CONFIG_STORAGE_KEY = 'nexora_firebase_rtdb_config_v1';
     const SB_CONFIG_STORAGE_KEY = 'nexora_supabase_config_v1';
@@ -1646,28 +1648,65 @@
     }
 
     async function checkForSystemUpdatesNow(silent = false) {
-      try {
-        const response = await fetch(APP_UPDATE_MANIFEST_URL, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`Update check failed (${response.status})`);
-        const manifest = await response.json();
-        const version = String(manifest.version || '').trim();
-        const downloadUrl = String(manifest.downloadUrl || '').trim();
-        if (!version || !/^https:\/\//i.test(downloadUrl) || compareAppVersions(version, APP_CURRENT_VERSION) <= 0) {
-          state.pendingOtaUpdate = null;
-          if (!silent) showToast('NEXORA AI DRAMA is up to date.');
+      if (updateCheckInFlight) return updateCheckInFlight;
+      updateCheckInFlight = (async () => {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 10000);
+        try {
+          const response = await fetch(APP_UPDATE_MANIFEST_URL, {
+            cache: 'no-store',
+            signal: controller.signal
+          });
+          if (!response.ok) throw new Error(`Update check failed (${response.status})`);
+          const manifest = await response.json();
+          const version = String(manifest.version || '').trim();
+          const downloadUrl = String(manifest.downloadUrl || '').trim();
+          if (!/^v?\\d+\\.\\d+\\.\\d+$/.test(version) || !/^https:\/\//i.test(downloadUrl)) {
+            throw new Error('The update manifest is incomplete or invalid.');
+          }
+          if (compareAppVersions(version, APP_CURRENT_VERSION) <= 0) {
+            state.pendingOtaUpdate = null;
+            if (!silent) showToast('NEXORA AI DRAMA is up to date.');
+            return false;
+          }
+
+          const normalizedVersion = version.startsWith('v') ? version : `v${version}`;
+          state.pendingOtaUpdate = {
+            version: normalizedVersion,
+            title: String(manifest.title || 'NEXORA AI DRAMA update').slice(0, 120),
+            notes: String(manifest.notes || 'Performance improvements and new features.').slice(0, 1000),
+            downloadUrl
+          };
+
+          // Do not reopen the same update every 30 minutes after the user taps
+          // Remind Later. The prompt can appear again on the next app launch.
+          const modal = document.getElementById('ota-update-modal');
+          if (lastPromptedUpdateVersion !== normalizedVersion && modal?.classList.contains('hidden')) {
+            lastPromptedUpdateVersion = normalizedVersion;
+            openOtaUpdateModal(
+              state.pendingOtaUpdate.version,
+              state.pendingOtaUpdate.title,
+              state.pendingOtaUpdate.notes
+            );
+          }
+          return true;
+        } catch (error) {
+          if (!silent) {
+            const message = error?.name === 'AbortError'
+              ? 'Update check timed out. Try again when your connection is stable.'
+              : (error?.message || 'Could not check for updates. Try again later.');
+            showToast(message);
+          }
+          // Keep the last valid pending update if the network is temporarily unavailable.
           return false;
+        } finally {
+          window.clearTimeout(timeoutId);
         }
-        state.pendingOtaUpdate = {
-          version: version.startsWith('v') ? version : `v${version}`,
-          title: String(manifest.title || 'NEXORA AI DRAMA update'),
-          notes: String(manifest.notes || 'Performance improvements and new features.'),
-          downloadUrl
-        };
-        openOtaUpdateModal(state.pendingOtaUpdate.version, state.pendingOtaUpdate.title, state.pendingOtaUpdate.notes);
-        return true;
-      } catch (error) {
-        if (!silent) showToast(error?.message || 'Could not check for updates. Try again later.');
-        return false;
+      })();
+      try {
+        return await updateCheckInFlight;
+      } finally {
+        updateCheckInFlight = null;
       }
     }
 
