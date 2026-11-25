@@ -1,6 +1,6 @@
 {
-  "version": "2.6.1",
-  "title": "NEXORA AI DRAMA v2.6.1",
-  "notes": "In-place Android update prompt, clearer update status, and app-data-preserving update flow.",
-  "downloadUrl": "https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v2.6.1/NEXORA-AI-DRAMA-release.apk"
+  "version": "2.6.2",
+  "title": "NEXORA AI DRAMA v2.6.2",
+  "notes": "Adds Android push notifications for newly published episodes and app updates, plus improved background notification registration.",
+  "downloadUrl": "https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v2.6.2/NEXORA-AI-DRAMA-release.apk"
 }
