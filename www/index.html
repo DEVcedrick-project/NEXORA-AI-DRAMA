@@ -2808,8 +2808,19 @@
         'apk-assets-sheet',
         'notification-sheet'
       ].forEach(id => {
-        document.getElementById(id)?.classList.add('translate-y-full');
+        const sheet = document.getElementById(id);
+        if (sheet) {
+          sheet.classList.add('translate-y-full');
+          sheet.setAttribute('aria-hidden', 'true');
+        }
       });
+
+      // Fully remove the full-screen rewarded-ad layer whenever overlays close.
+      const adSheet = document.getElementById('ad-player-sheet');
+      if (adSheet) {
+        adSheet.classList.add('translate-y-full', 'hidden');
+        adSheet.setAttribute('aria-hidden', 'true');
+      }
     }
 
     function redrawActiveCanvasNow() {
@@ -4592,7 +4603,11 @@
               cleanupAdMobListeners();
               runtime.pendingAdTarget = null;
               runtime.isSheetOpen = false;
-              document.getElementById('ad-player-sheet')?.classList.add('translate-y-full');
+              const failedAdSheet = document.getElementById('ad-player-sheet');
+              if (failedAdSheet) {
+                failedAdSheet.classList.add('translate-y-full', 'hidden');
+                failedAdSheet.setAttribute('aria-hidden', 'true');
+              }
               showToast('No ad is available right now. Please try again later.');
               console.warn('AdMob rewarded interstitial failed to load:', error);
             });
@@ -4600,7 +4615,11 @@
               cleanupAdMobListeners();
               runtime.pendingAdTarget = null;
               runtime.isSheetOpen = false;
-              document.getElementById('ad-player-sheet')?.classList.add('translate-y-full');
+              const failedAdSheet = document.getElementById('ad-player-sheet');
+          if (failedAdSheet) {
+            failedAdSheet.classList.add('translate-y-full', 'hidden');
+            failedAdSheet.setAttribute('aria-hidden', 'true');
+          }
               showToast('No ad is available right now. Please try again later.');
               console.warn('AdMob rewarded interstitial failed to show:', error);
             });
