@@ -5067,7 +5067,18 @@
           return;
         }
 
-        const grantNativeRewardOnce = () => {
+        const grantNativeRewardOnce = (reward) => {
+          // A dismissal, empty callback, or malformed SDK payload is never a reward.
+          // AdMob's rewarded-interstitial callback must contain a positive amount
+          // and a non-empty reward type before any entitlement can be granted.
+          const rewardAmount = Number(reward && reward.amount);
+          const rewardType = typeof (reward && reward.type) === 'string'
+            ? reward.type.trim()
+            : '';
+          if (!Number.isFinite(rewardAmount) || rewardAmount <= 0 || !rewardType) {
+            console.warn('[NEXORA ads] Ignored invalid rewarded-interstitial payload:', reward);
+            return;
+          }
           // Ignore delayed/duplicate callbacks from an earlier ad attempt.
           if (runtime.adAttemptId !== adAttemptId || runtime.adRewardClaimed) return;
           runtime.adRewardClaimed = true;
@@ -5129,9 +5140,10 @@
             adId: loadedAd && loadedAd.adUnitId ? loadedAd.adUnitId : adId
           });
 
-          // The plugin resolves this promise only when the user earns the reward.
-          if (runtime.adAttemptId === adAttemptId && rewardResult && Number(rewardResult.amount) > 0) {
-            grantNativeRewardOnce();
+          // The SDK promise is an independent reward signal. Validate its full
+          // reward payload just like the Rewarded event; never trust dismissal.
+          if (runtime.adAttemptId === adAttemptId) {
+            grantNativeRewardOnce(rewardResult);
           }
           return;
         } catch (nativeAdError) {
