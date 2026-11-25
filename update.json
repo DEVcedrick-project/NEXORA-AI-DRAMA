@@ -1,6 +1,6 @@
 {
-  "version": "2.6.12",
-  "title": "NEXORA AI DRAMA v2.6.12",
-  "notes": "Includes the native in-app updater, stability improvements, and the latest NEXORA experience.",
-  "downloadUrl": "https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v2.6.12/NEXORA-AI-DRAMA-release.apk"
+  "version": "2.6.13",
+  "title": "NEXORA AI DRAMA v2.6.13",
+  "notes": "Replaces Android Download Manager with a private in-app APK download, live progress inside NEXORA, and direct handoff to Android install confirmation.",
+  "downloadUrl": "https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v2.6.13/NEXORA-AI-DRAMA-release.apk"
 }
