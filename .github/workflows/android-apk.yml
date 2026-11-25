@@ -6,7 +6,6 @@ on:
     branches: [main]
     paths:
       - 'www/**'
-      - 'update.json'
       - 'package.json'
       - 'package-lock.json'
       - 'capacitor.config.json'
@@ -79,6 +78,9 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+      - name: Install native in-app APK updater
+        run: |
+          python scripts/install-native-updater.py
       - name: Configure NEXORA AI DRAMA Firebase Android app
         run: |
           test -s google-services.json
@@ -175,6 +177,12 @@ jobs:
           import json, os, re
           from pathlib import Path
           version = json.loads(Path("package.json").read_text())["version"]
+          html = Path("www/index.html")
+          html_text = html.read_text()
+          html_text, count = re.subn(r"const APP_CURRENT_VERSION = ['\"]v?\\d+\\.\\d+\\.\\d+['\"];", f"const APP_CURRENT_VERSION = 'v{version}';", html_text, count=1)
+          if count != 1:
+              raise SystemExit("Could not inject current app version into updater")
+          html.write_text(html_text)
           major, minor, patch = (int(part) for part in version.split("."))
           version_code = major * 1000000 + minor * 1000 + patch
           gradle = Path("android/app/build.gradle")
@@ -320,6 +328,39 @@ jobs:
           overwrite_files: true
           generate_release_notes: false
           make_latest: true
+
+      - name: Publish update manifest after successful signed release
+        if: steps.signing.outputs.enabled == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        env:
+          APP_VERSION: ${{ steps.version.outputs.value }}
+        with:
+          script: |
+            const version = process.env.APP_VERSION;
+            const path = 'update.json';
+            const manifest = {
+              version,
+              title: `NEXORA AI DRAMA v${version}`,
+              notes: 'Includes the native in-app updater, stability improvements, and the latest NEXORA experience.',
+              downloadUrl: `https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v${version}/NEXORA-AI-DRAMA-release.apk`
+            };
+            const content = Buffer.from(JSON.stringify(manifest, null, 2) + '\\n').toString('base64');
+            const current = await github.rest.repos.getContent({
+              owner: context.repo.owner, repo: context.repo.repo, path, ref: 'main'
+            });
+            const existing = Buffer.from(current.data.content, 'base64').toString('utf8');
+            if (JSON.stringify(JSON.parse(existing)) === JSON.stringify(manifest)) {
+              core.info('Update manifest already points to this release.');
+            } else {
+              await github.rest.repos.createOrUpdateFileContents({
+                owner: context.repo.owner, repo: context.repo.repo, path,
+                message: `Publish NEXORA AI DRAMA v${version} update manifest`,
+                content,
+                sha: current.data.sha,
+                branch: 'main'
+              });
+              core.info(`Published update manifest for v${version}.`);
+            }
 
       - name: Notify Android users about the new app version
         if: steps.signing.outputs.enabled == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
