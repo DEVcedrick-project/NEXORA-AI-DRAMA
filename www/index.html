@@ -1829,15 +1829,51 @@
     }
 
     function syncCurrentSessionToLocalAccountVault() {
-      if (!state.user.email) return;
+      if (!state.user.email || state.user.isGuest) return;
       const emailKey = state.user.email.trim().toLowerCase();
       const vault = readLocalAccountVault();
-      if (vault[emailKey]) {
-        vault[emailKey].profileName = state.user.name;
-        vault[emailKey].uid = state.user.uid;
-        vault[emailKey].snapshot = buildSerializableStateSnapshot();
-        writeLocalAccountVault(vault);
-      }
+      vault[emailKey] = {
+        ...(vault[emailKey] || {}),
+        profileName: state.user.name,
+        uid: state.user.uid,
+        snapshot: buildSerializableStateSnapshot(),
+        savedAt: Date.now()
+      };
+      writeLocalAccountVault(vault);
+    }
+
+    // Coins and VIP are account-owned. Never carry the previous session's
+    // wallet into a different Firebase UID, even when the new account has no
+    // cloud wallet record yet.
+    function resetAccountWalletState() {
+      state.purchasedCoins = 0;
+      state.bonusCoins = 60;
+      state.isVip = false;
+      state.vipExpiresAt = 0;
+      state.vipPlanLabel = '';
+      state.starterPackClaimed = false;
+      state.unlockedEpisodes = {};
+      state.walletHistory = [
+        { title: 'Welcome Bonus Gift', amount: '+60 Bonus Coins', type: 'credit', time: 'Today' }
+      ];
+    }
+
+    function restoreLocalAccountWallet(email) {
+      const emailKey = String(email || '').trim().toLowerCase();
+      if (!emailKey) return false;
+      const saved = readLocalAccountVault()[emailKey]?.snapshot;
+      if (!saved || typeof saved !== 'object') return false;
+      state.purchasedCoins = Math.max(0, Math.floor(Number(saved.purchasedCoins) || 0));
+      state.bonusCoins = Math.max(0, Math.floor(Number(saved.bonusCoins) || 0));
+      const exp = Number(saved.vipExpiresAt) || 0;
+      state.vipExpiresAt = exp;
+      state.isVip = Boolean(saved.isVip) && (!exp || exp > Date.now());
+      state.vipPlanLabel = state.isVip ? String(saved.vipPlanLabel || 'VIP Pass') : '';
+      state.starterPackClaimed = Boolean(saved.starterPackClaimed);
+      state.unlockedEpisodes = saved.unlockedEpisodes && typeof saved.unlockedEpisodes === 'object'
+        ? { ...saved.unlockedEpisodes } : {};
+      if (Array.isArray(saved.walletHistory)) state.walletHistory = saved.walletHistory.slice(0, 25);
+      return true;
     }
 
     function saveAppState() {
@@ -2222,9 +2258,12 @@
 
       const unsubWallet = onValue(ref(db, `users/${uid}/wallet`), (snap) => {
         const w = snap.val();
-        if (!w || typeof w !== 'object') return;
-        state.purchasedCoins = Math.max(0, Math.floor(Number(w.purchasedCoins) || 0));
-        state.bonusCoins = Math.max(0, Math.floor(Number(w.bonusCoins) || 0));
+        if (w && typeof w === 'object') {
+          state.purchasedCoins = Math.max(0, Math.floor(Number(w.purchasedCoins) || 0));
+          state.bonusCoins = Math.max(0, Math.floor(Number(w.bonusCoins) || 0));
+        }
+        // A missing wallet belongs to this UID only; do not retain the wallet
+        // from the account that was signed in before it.
         saveAppState();
         syncWalletUI();
       }, () => {});
@@ -2232,11 +2271,10 @@
 
       const unsubVip = onValue(ref(db, `users/${uid}/vipStatus`), (snap) => {
         const v = snap.val();
-        if (!v || typeof v !== 'object') return;
-        const exp = Number(v.vipExpiresAt) || 0;
+        const exp = Number(v?.vipExpiresAt) || 0;
         state.vipExpiresAt = exp;
-        state.isVip = Boolean(v.isVip) && (exp === 0 || exp > Date.now());
-        state.vipPlanLabel = state.isVip ? (v.planLabel || 'VIP Pass') : '';
+        state.isVip = Boolean(v?.isVip) && (!exp || exp > Date.now());
+        state.vipPlanLabel = state.isVip ? (v?.planLabel || 'VIP Pass') : '';
         saveAppState();
         syncWalletUI();
         renderVerticalFeed();
@@ -4469,14 +4507,14 @@
       const displayName = name || 'NEXORA Member';
       try {
         let credUser = null;
-        if (runtime.fbAuth.currentUser && runtime.fbAuth.currentUser.isAnonymous) {
-          const credential = EmailAuthProvider.credential(email, password);
-          const linked = await linkWithCredential(runtime.fbAuth.currentUser, credential);
-          credUser = linked.user;
-        } else {
-          const created = await createUserWithEmailAndPassword(runtime.fbAuth, email, password);
-          credUser = created.user;
-        }
+        // Creating another account must never link or inherit the current
+        // guest/member wallet. Save the old account locally, sign it out, and
+        // start the new Firebase UID with its own starter balance.
+        saveAppState();
+        if (runtime.fbAuth.currentUser) await signOut(runtime.fbAuth);
+        resetAccountWalletState();
+        const created = await createUserWithEmailAndPassword(runtime.fbAuth, email, password);
+        credUser = created.user;
         if (!credUser) throw new Error('Firebase did not return a registered user.');
         // Account creation/linking is authoritative. A profile-name update is optional:
         // do not report registration as failed after Firebase has already created the account.
@@ -4528,6 +4566,11 @@
           const u = res.user;
           // Report only after Firebase confirms a successful interactive email login.
           void reportNexoraAuthEvent('login');
+          // Preserve the account being left, then load only the target account's
+          // local fallback before reading its UID-scoped cloud records.
+          saveAppState();
+          resetAccountWalletState();
+          restoreLocalAccountWallet(u.email || email);
           state.firebase.authUid = u.uid;
           state.user.uid = u.uid;
           state.user.email = u.email || email;
@@ -4598,20 +4641,32 @@
     }
 
     async function handleSignOutAccount() {
+      // Persist the member's own snapshot before leaving it. The guest session
+      // gets a clean wallet and cannot see or spend the member's coins/VIP.
+      saveAppState();
+      clearFirebaseListeners();
       if (runtime.fbAuth) {
         try {
           await signOut(runtime.fbAuth);
-          await signInAnonymously(runtime.fbAuth);
-          if (runtime.fbAuth.currentUser) {
-            state.firebase.authUid = runtime.fbAuth.currentUser.uid;
-            state.user.uid = runtime.fbAuth.currentUser.uid;
-            attachRealtimeListeners(runtime.fbDb, runtime.fbAuth.currentUser.uid);
+          resetAccountWalletState();
+          const guest = await signInAnonymously(runtime.fbAuth);
+          if (guest.user) {
+            state.firebase.authUid = guest.user.uid;
+            state.user.uid = guest.user.uid;
+            attachRealtimeListeners(runtime.fbDb, guest.user.uid);
           }
-        } catch (_e) {}
+        } catch (signOutError) {
+          console.warn('[NEXORA] Sign-out did not complete:', signOutError);
+          showToast('Could not safely switch to Guest mode. Please try again.');
+          return;
+        }
+      } else {
+        resetAccountWalletState();
       }
       state.user.email = '';
       state.user.isGuest = true;
       saveAppState();
+      syncWalletUI();
       updateAuthStatusUI();
       showToast('Signed out to Guest mode.');
     }
