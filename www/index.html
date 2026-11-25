@@ -1760,7 +1760,7 @@
           if (result.status === 'completed') {
             if (progressFill) progressFill.style.width = '100%';
             if (progressLabel) progressLabel.textContent = 'Download complete. Opening Android install confirmation…';
-            if (progressPct) progressPct.textContent = 'Opening Android's secure package installer';
+            if (progressPct) progressPct.textContent = 'Opening Android secure package installer';
             try {
               const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
               const installResult = await NexoraUpdater.installDownloadedApk({ downloadId: Number(downloadId) });
