@@ -179,7 +179,7 @@ jobs:
           version = json.loads(Path("package.json").read_text())["version"]
           html = Path("www/index.html")
           html_text = html.read_text()
-          html_text, count = re.subn(r"const APP_CURRENT_VERSION = ['\"]v?\\d+\\.\\d+\\.\\d+['\"];", f"const APP_CURRENT_VERSION = 'v{version}';", html_text, count=1)
+          html_text, count = re.subn(r"const APP_CURRENT_VERSION = [^;]+;", f"const APP_CURRENT_VERSION = 'v{version}';", html_text, count=1)
           if count != 1:
               raise SystemExit("Could not inject current app version into updater")
           html.write_text(html_text)
@@ -344,7 +344,7 @@ jobs:
               notes: 'Includes the native in-app updater, stability improvements, and the latest NEXORA experience.',
               downloadUrl: `https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v${version}/NEXORA-AI-DRAMA-release.apk`
             };
-            const content = Buffer.from(JSON.stringify(manifest, null, 2) + '\\n').toString('base64');
+            const content = Buffer.from(JSON.stringify(manifest, null, 2) + '\n').toString('base64');
             const current = await github.rest.repos.getContent({
               owner: context.repo.owner, repo: context.repo.repo, path, ref: 'main'
             });
