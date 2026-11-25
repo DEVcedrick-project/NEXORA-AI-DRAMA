@@ -2920,9 +2920,14 @@
       }
 
       if (tabName === 'foryou') {
+        startMainAnimationLoop();
         mountActiveEpisodeMedia(state.activeSeriesId);
         redrawActiveCanvasNow();
       } else {
+        if (runtime.rafId) {
+          cancelAnimationFrame(runtime.rafId);
+          runtime.rafId = 0;
+        }
         const vid = document.getElementById(`video-${state.activeSeriesId}`);
         if (vid && !vid.paused) vid.pause();
         if (tabName === 'discover') renderDiscoverView();
@@ -3512,7 +3517,7 @@
               <p class="text-[11px] text-zinc-200/85 mt-2 max-w-[270px] line-clamp-2">${escapeHtml(series.tagline)}</p>
             </div>
 
-            <img id="poster-${series.id}" src="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" alt="${escapeHtml(series.title)} poster" class="absolute inset-0 w-full h-full object-cover ${ep.posterUrl || series.coverUrl ? '' : 'hidden'}" />
+            <img id="poster-${series.id}" src="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" alt="${escapeHtml(series.title)} poster" class="absolute inset-0 w-full h-full object-cover ${ep.posterUrl || series.coverUrl ? '' : 'hidden'}" loading="lazy" decoding="async" />
             <video id="video-${series.id}" poster="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" playsinline preload="none" crossorigin="anonymous" class="hidden absolute inset-0 w-full h-full object-cover bg-black"></video>
 
             <div id="buffer-spinner-${series.id}" class="hidden pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
