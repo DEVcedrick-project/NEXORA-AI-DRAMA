@@ -1,6 +1,6 @@
 {
-  "version": "2.5.8",
+  "version": "2.5.9",
   "title": "NEXORA AI DRAMA",
-  "notes": "Version 2.5.8: Android update versioning, safer app data storage, and clearer installer guidance.",
-  "downloadUrl": "https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/latest/download/NEXORA-AI-DRAMA-release.apk"
+  "notes": "Version 2.5.9: account registration reliability and verified Studio-to-viewer media synchronization.",
+  "downloadUrl": ""
 }
