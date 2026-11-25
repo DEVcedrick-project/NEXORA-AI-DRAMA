@@ -299,6 +299,22 @@ jobs:
           generate_release_notes: false
           make_latest: true
 
+      - name: Notify Android users about the new app version
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          NEXORA_RELEASE_WEBHOOK_SECRET: ${{ secrets.NEXORA_RELEASE_WEBHOOK_SECRET }}
+          APP_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          if [ -z "$NEXORA_RELEASE_WEBHOOK_SECRET" ]; then
+            echo "NEXORA_RELEASE_WEBHOOK_SECRET is not configured; skipping update push."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --retry 2 --retry-delay 3 \
+            -X POST "https://vureiymqoosubwubhvdu.supabase.co/functions/v1/nexora-push-broadcast" \
+            -H "Content-Type: application/json" \
+            -H "x-nexora-release-secret: $NEXORA_RELEASE_WEBHOOK_SECRET" \
+            --data "{\"version\":\"$APP_VERSION\"}"
+
       - name: Upload signed release APK and AAB
         if: steps.signing.outputs.enabled == 'true'
         uses: actions/upload-artifact@v7
