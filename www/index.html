@@ -1600,12 +1600,17 @@
           `).join('');
     }
 
-    function openOtaUpdateModal(version = 'v2.6.1', title = 'New System & Drama Engine Update', notes = '') {
+    function openOtaUpdateModal(version = 'v2.6.1', title = 'New System & Drama Engine Update', notes = '', downloadUrl = state.pendingOtaUpdate?.downloadUrl || '') {
       closeAllSheets();
+      // Keep the signed APK URL attached to the update when rendering the modal.
+      // Without this, the modal would overwrite the manifest data and the Download
+      // button would incorrectly report that no package is published.
       state.pendingOtaUpdate = {
+        ...(state.pendingOtaUpdate || {}),
         version,
         title,
-        notes: notes || 'Delivers new vertical drama episodes, faster stream buffering, and UI refinements without deleting your APK.'
+        notes: notes || 'Delivers new vertical drama episodes, faster stream buffering, and UI refinements without deleting your APK.',
+        downloadUrl
       };
 
       const verBadge = document.getElementById('ota-version-badge');
