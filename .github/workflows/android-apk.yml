@@ -286,7 +286,7 @@ jobs:
           rm -f release-key.jks
 
       - name: Publish signed APK and AAB as GitHub Release
-        if: steps.signing.outputs.enabled == 'true'
+        if: steps.signing.outputs.enabled == 'true' && github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.value }}
@@ -300,7 +300,7 @@ jobs:
           make_latest: true
 
       - name: Notify Android users about the new app version
-        if: steps.signing.outputs.enabled == 'true'
+        if: steps.signing.outputs.enabled == 'true' && github.event_name != 'pull_request'
         continue-on-error: true
         env:
           NEXORA_RELEASE_WEBHOOK_SECRET: ${{ secrets.NEXORA_RELEASE_WEBHOOK_SECRET }}
