@@ -1957,6 +1957,14 @@
       state.vipPlanLabel = '';
       state.starterPackClaimed = false;
       state.unlockedEpisodes = {};
+      // Social actions are server-owned by Firebase UID; never carry a prior
+      // account's heart/bookmark/comment state into the next signed-in account.
+      state.savedSeries = [];
+      state.likedSeries = {};
+      state.commentsBySeries = {};
+      state.socialLikesCount = {};
+      runtime.socialLoadAt = {};
+      runtime.socialLoadInFlight = {};
       state.walletHistory = [
         { title: 'Welcome Bonus Gift', amount: '+60 Bonus Coins', type: 'credit', time: 'Today' }
       ];
