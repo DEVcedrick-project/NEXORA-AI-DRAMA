@@ -1819,9 +1819,10 @@
         const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
         const result = await NexoraUpdater.downloadAndInstall({ url: target.downloadUrl });
         if (result?.status === 'permission_required') {
+          runtime.updatePermissionPending = true;
           if (progBox) progBox.classList.add('hidden');
           if (btnsBox) btnsBox.classList.remove('hidden');
-          showToast('Allow NEXORA to install updates, then tap Update again.');
+          showToast('Allow NEXORA to install updates. The download will resume automatically when you return.');
           return;
         }
         if (result?.status !== 'downloading') {
@@ -1841,6 +1842,25 @@
         console.error('[NEXORA Updater]', error);
       }
     }
+
+    // Android returns to the WebView after the user grants install permission in Settings.
+    // Resume the selected update automatically instead of making the user press Update again.
+    document.addEventListener('visibilitychange', async () => {
+      if (document.hidden || !runtime.updatePermissionPending) return;
+      try {
+        const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
+        const permission = await NexoraUpdater.checkInstallPermission();
+        if (!permission?.granted) {
+          showToast('NEXORA still needs permission to install APK updates.');
+          return;
+        }
+        runtime.updatePermissionPending = false;
+        await applySafeOtaSystemUpdate();
+      } catch (error) {
+        console.warn('[NEXORA Updater] Could not resume after install permission', error);
+        showToast('Return to NEXORA and tap Update Now to retry.');
+      }
+    });
 
     function recordContinueWatchingProgress(seriesId, epNum, progressPct) {
       if (!seriesId) return;
