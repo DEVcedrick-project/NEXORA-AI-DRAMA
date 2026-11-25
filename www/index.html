@@ -1759,8 +1759,21 @@
             : 'Downloading securely…';
           if (result.status === 'completed') {
             if (progressFill) progressFill.style.width = '100%';
-            if (progressLabel) progressLabel.textContent = 'Download complete. Opening Android installer…';
-            if (progressPct) progressPct.textContent = 'Approve the Android install prompt to finish updating';
+            if (progressLabel) progressLabel.textContent = 'Download complete. Opening installer inside NEXORA…';
+            if (progressPct) progressPct.textContent = 'Launching Android package installer';
+            try {
+              const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
+              const installResult = await NexoraUpdater.installDownloadedApk({ downloadId: Number(downloadId) });
+              if (progressLabel) progressLabel.textContent = installResult?.status === 'installer_already_opened'
+                ? 'Android installer is ready. Complete the update prompt.'
+                : 'Android installer opened. Confirm Install to replace NEXORA.';
+              if (progressPct) progressPct.textContent = 'Your existing app data is retained when the signature matches.';
+            } catch (installError) {
+              console.error('[NEXORA Updater] Could not launch installer', installError);
+              if (progressLabel) progressLabel.textContent = 'Download finished, but Android installer did not open.';
+              if (progressPct) progressPct.textContent = installError?.message || 'Please retry the installer.';
+              if (document.getElementById('ota-action-buttons')) document.getElementById('ota-action-buttons').classList.remove('hidden');
+            }
             return;
           }
           if (result.status === 'failed') {
