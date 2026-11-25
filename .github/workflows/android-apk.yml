@@ -182,6 +182,18 @@ jobs:
           html_text, count = re.subn(r"const APP_CURRENT_VERSION = [^;]+;", f"const APP_CURRENT_VERSION = 'v{version}';", html_text, count=1)
           if count != 1:
               raise SystemExit("Could not inject current app version into updater")
+          html_text, profile_count = re.subn(
+              r'(id="profile-app-version"[^>]*>)[^<]*(</strong>)',
+              rf'\g<1>v{version}\g<2>', html_text, count=1
+          )
+          if profile_count != 1:
+              raise SystemExit("Could not inject profile app version")
+          html_text, badge_count = re.subn(
+              r'(id="ota-version-badge"[^>]*>)[^<]*(</span>)',
+              rf'\g<1>v{version} → v{version}\g<2>', html_text, count=1
+          )
+          if badge_count != 1:
+              raise SystemExit("Could not inject OTA version badge")
           html.write_text(html_text)
           major, minor, patch = (int(part) for part in version.split("."))
           version_code = major * 1000000 + minor * 1000 + patch
