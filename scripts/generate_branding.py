@@ -9,11 +9,19 @@ ROOT = Path(__file__).resolve().parents[1]
 MARK = ROOT / "www/assets/nexora-mark.svg"
 SPLASH = ROOT / "resources/branding/nexora-splash.svg"
 ANDROID_RES = ROOT / "android/app/src/main/res"
+PLAY_STORE_ASSETS = ROOT / "resources/play-store"
 
 if not MARK.exists() or not SPLASH.exists():
     raise SystemExit("Branding SVG source files are missing")
 
 ANDROID_RES.mkdir(parents=True, exist_ok=True)
+PLAY_STORE_ASSETS.mkdir(parents=True, exist_ok=True)
+cairosvg.svg2png(
+    url=str(MARK),
+    write_to=str(PLAY_STORE_ASSETS / "icon-512.png"),
+    output_width=512,
+    output_height=512,
+)
 icon_sizes = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 for density, size in icon_sizes.items():
     folder = ANDROID_RES / f"mipmap-{density}"
