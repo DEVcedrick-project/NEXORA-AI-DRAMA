@@ -4551,8 +4551,7 @@
 
       if (isNative) {
         if (!admob || typeof admob.prepareRewardInterstitialAd !== 'function' || typeof admob.showRewardInterstitialAd !== 'function') {
-          runtime.pendingAdTarget = null;
-          runtime.isSheetOpen = false;
+          cancelActiveRewardedAd();
           showToast('Rewarded Interstitial is not available in this APK. Update the AdMob plugin and rebuild.');
           return;
         }
@@ -4655,7 +4654,7 @@
       cleanupAdMobListeners();
       const adSheet = document.getElementById('ad-player-sheet');
       if (adSheet) {
-        adSheet.classList.add('translate-y-full', 'hidden');
+        adSheet.classList.add('translate-y-full', 'hidden', 'pointer-events-none');
         adSheet.setAttribute('aria-hidden', 'true');
       }
       runtime.isSheetOpen = false;
