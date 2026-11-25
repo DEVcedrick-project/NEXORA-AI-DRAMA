@@ -458,7 +458,7 @@
                 <span>🛡️ App Version &amp; Safe OTA Updates</span>
               </p>
               <p class="text-[10px] text-zinc-300 mt-0.5">
-                Current Build: <strong id="profile-app-version" class="font-mono text-white">v2.4.0</strong> • Zero APK reinstall required
+                Current Build: <strong id="profile-app-version" class="font-mono text-white">v2.5.6</strong> • Zero APK reinstall required
               </p>
             </div>
             <button onclick="checkForSystemUpdatesNow()" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-[11px] font-extrabold text-emerald-300 shrink-0 transition">
@@ -2133,61 +2133,8 @@
       clearFirebaseListeners();
       if (!db || !uid) return;
 
-      const unsubSeries = onValue(ref(db, 'series'), (snap) => {
-        const val = snap.val();
-        if (!val || typeof val !== 'object') return;
-        let newlyUploadedTitle = '';
-        let newlyUploadedSeriesId = '';
-        let newlyUploadedEpNum = 1;
-
-        Object.keys(val).forEach(seriesId => {
-          const remoteSeries = val[seriesId];
-          const localTarget = state.seriesCatalog.find(s => s.id === seriesId);
-          if (localTarget && remoteSeries && remoteSeries.episodes) {
-            const prevCount = localTarget.episodes.length;
-            const epEntries = Array.isArray(remoteSeries.episodes)
-              ? remoteSeries.episodes.filter(Boolean)
-              : Object.values(remoteSeries.episodes);
-            if (epEntries.length > 0) {
-              localTarget.episodes = epEntries
-                .map((ep, idx) => ({
-                  num: Number(ep.num) || idx + 1,
-                  title: ep.title || `Episode ${idx + 1}`,
-                  duration: Number(ep.duration) || 60,
-                  isFree: Number(ep.num || idx + 1) <= 3,
-                  coinCost: Number(ep.num || idx + 1) <= 3 ? 0 : 30,
-                  videoUrl: typeof ep.videoUrl === 'string' ? ep.videoUrl.trim() : '',
-                  subtitleUrl: typeof ep.subtitleUrl === 'string' ? ep.subtitleUrl.trim() : '',
-                  subtitleLines: Array.isArray(ep.subtitleLines) && ep.subtitleLines.length > 0
-                    ? ep.subtitleLines
-                    : [`"${localTarget.title} — Episode ${Number(ep.num) || idx + 1}"`]
-                }))
-                .sort((a, b) => Number(a.num) - Number(b.num));
-
-              if (localTarget.episodes.length > prevCount) {
-                const newest = localTarget.episodes[localTarget.episodes.length - 1];
-                newlyUploadedTitle = `${localTarget.title} • Ep ${newest.num}`;
-                newlyUploadedSeriesId = localTarget.id;
-                newlyUploadedEpNum = newest.num;
-              }
-            }
-          }
-        });
-
-        if (newlyUploadedTitle) {
-          pushInAppNotification({
-            type: 'upload',
-            title: `New Upload: ${newlyUploadedTitle}`,
-            body: 'Fresh episode synced live from Studio! Watch now without reinstalling.',
-            seriesId: newlyUploadedSeriesId,
-            epNum: newlyUploadedEpNum
-          }, true);
-        }
-
-        renderVerticalFeed();
-        renderDiscoverView();
-      }, () => {});
-      runtime.fbUnsubs.push(unsubSeries);
+      // Published drama catalog is authoritative in the dedicated NEXORA AI DRAMA Supabase project.
+      // Do not let the legacy Firebase `series` node overwrite Supabase episode URLs or metadata.
 
       const unsubSystemUpdate = onValue(ref(db, 'system/appUpdate'), (snap) => {
         const upd = snap.val();
@@ -2245,7 +2192,7 @@
 
 
     // =========================================================================
-    // 4B. LIVE PUBLISHED AI DRAMA CATALOG (READ-ONLY STUDIO INTEGRATION)
+    // 4B. LIVE PUBLISHED AI DRAMA CATALOG (READ-ONLY DESTINATION PROJECT)
     // This client reads only published rows through the existing public RLS policies.
     // It never writes to NEXORA STUDIO or its database.
     // =========================================================================
@@ -4886,9 +4833,11 @@
       handleResetAppDataClick
     });
 
-    window.addEventListener('error', () => {});
-    window.addEventListener('unhandledrejection', (e) => {
-      try { e.preventDefault(); } catch (_err) {}
+    window.addEventListener('error', (event) => {
+      console.error('[NEXORA] Uncaught application error:', event.error || event.message);
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('[NEXORA] Unhandled promise rejection:', event.reason);
     });
 
     async function bootstrapNexoraApp() {
