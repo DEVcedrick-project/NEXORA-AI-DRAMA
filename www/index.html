@@ -1661,7 +1661,7 @@
           const manifest = await response.json();
           const version = String(manifest.version || '').trim();
           const downloadUrl = String(manifest.downloadUrl || '').trim();
-          if (!/^v?\\d+\\.\\d+\\.\\d+$/.test(version) || !/^https:\/\//i.test(downloadUrl)) {
+          if (!/^v?\d+\.\d+\.\d+$/.test(version) || !/^https:\/\//i.test(downloadUrl)) {
             throw new Error('The update manifest is incomplete or invalid.');
           }
           if (compareAppVersions(version, APP_CURRENT_VERSION) <= 0) {
