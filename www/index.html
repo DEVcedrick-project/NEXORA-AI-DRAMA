@@ -1680,6 +1680,64 @@
       }
     }
 
+    const NEXORA_UPDATE_RESUME_KEY = 'nexora_update_playback_resume_v1';
+
+    function savePlaybackForUpdate() {
+      const active = runtime.activeVideoState || {};
+      const video = active.seriesId ? document.getElementById(`video-${active.seriesId}`) : null;
+      if (!video || !active.hasRealVideo || !active.url) return;
+      const wasPlaying = !video.paused && !video.ended;
+      const currentTime = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      try {
+        localStorage.setItem(NEXORA_UPDATE_RESUME_KEY, JSON.stringify({
+          seriesId: active.seriesId,
+          epNum: Number(active.epNum) || 1,
+          url: active.url,
+          currentTime,
+          wasPlaying,
+          savedAt: Date.now()
+        }));
+      } catch (error) {
+        console.warn('[NEXORA Update] Could not save playback position', error);
+      }
+      // Flush the existing Continue Watching state before Android may replace the APK.
+      if (currentTime > 0 && video.duration > 0) {
+        recordContinueWatchingProgress(active.seriesId, active.epNum, (currentTime / video.duration) * 100);
+      }
+      try { video.pause(); } catch (_error) {}
+      document.querySelectorAll('video[id^="video-"]').forEach(item => {
+        if (item !== video) { try { item.pause(); } catch (_error) {} }
+      });
+      saveAppState();
+    }
+
+    function restorePlaybackAfterUpdate(videoEl, seriesId, epNum, streamUrl) {
+      let saved;
+      try {
+        saved = JSON.parse(localStorage.getItem(NEXORA_UPDATE_RESUME_KEY) || 'null');
+      } catch (_error) {
+        saved = null;
+      }
+      if (!saved || Date.now() - Number(saved.savedAt || 0) > 24 * 60 * 60 * 1000) {
+        try { localStorage.removeItem(NEXORA_UPDATE_RESUME_KEY); } catch (_error) {}
+        return true;
+      }
+      if (saved.seriesId !== seriesId || Number(saved.epNum) !== Number(epNum) || saved.url !== streamUrl) return true;
+      if (videoEl.readyState < 1) return false;
+      const targetTime = Math.max(0, Number(saved.currentTime) || 0);
+      if (targetTime > 0 && (!Number.isFinite(videoEl.duration) || targetTime < videoEl.duration - 1)) {
+        try { videoEl.currentTime = targetTime; } catch (_error) {}
+      }
+      try { localStorage.removeItem(NEXORA_UPDATE_RESUME_KEY); } catch (_error) {}
+      if (!saved.wasPlaying) {
+        runtime.isPaused = true;
+        try { videoEl.pause(); } catch (_error) {}
+        return false;
+      }
+      runtime.isPaused = false;
+      return true;
+    }
+
     async function applySafeOtaSystemUpdate() {
       const target = state.pendingOtaUpdate;
       if (!target?.downloadUrl || !/^https:\/\//i.test(target.downloadUrl)) {
@@ -1699,6 +1757,9 @@
         progressFill.classList.remove('animate-pulse');
       }
       if (progressPct) progressPct.textContent = 'Connecting to Android updater';
+
+      // Freeze playback and persist the exact episode/time before the APK installer can restart the app.
+      savePlaybackForUpdate();
 
       try {
         if (!window.Capacitor?.isNativePlatform?.()) {
@@ -3337,6 +3398,10 @@
       videoEl.onloadedmetadata = () => {
         if (state.activeSeriesId !== series.id) return;
         videoEl.playbackRate = runtime.playbackSpeed;
+        // If an APK update restarted the app, seek back before playback resumes.
+        if (restorePlaybackAfterUpdate(videoEl, series.id, ep.num, streamUrl)) {
+          if (runtime.isPaused === false && state.activeMainTab === 'foryou' && !runtime.isSheetOpen) videoEl.play().catch(() => {});
+        }
         const timeEl = document.getElementById(`timecode-${series.id}`);
         if (timeEl) timeEl.textContent = `00:00 / ${formatTimecode(videoEl.duration)}`;
       };
@@ -3396,6 +3461,7 @@
 
       const startPlayback = () => {
         if (runtime.isPaused || runtime.isSheetOpen || state.activeMainTab !== 'foryou') return;
+        if (!restorePlaybackAfterUpdate(videoEl, series.id, ep.num, streamUrl)) return;
         videoEl.play().catch(() => {
           runtime.isMuted = true;
           videoEl.muted = true;
