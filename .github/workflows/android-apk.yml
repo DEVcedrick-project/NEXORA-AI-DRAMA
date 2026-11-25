@@ -72,6 +72,24 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Enforce Google Play target API 36
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          gradle = Path("android/variables.gradle")
+          if not gradle.exists():
+              raise SystemExit("Capacitor Android variables.gradle not found")
+          text = gradle.read_text()
+          for key in ("compileSdkVersion", "targetSdkVersion"):
+              pattern = rf"({key}\\s*=\\s*)\\d+"
+              text, count = re.subn(pattern, rf"\\g<1>36", text, count=1)
+              if count != 1:
+                  raise SystemExit(f"Could not enforce {key}=36")
+          gradle.write_text(text)
+          print("Android compileSdkVersion and targetSdkVersion set to 36")
+          PY
+
       - name: Set Android version from package.json
         id: version
         run: |
