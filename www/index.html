@@ -3571,7 +3571,7 @@
                 </button>
               </div>
 
-              <button id="like-button-${series.id}" onclick="toggleLikeSeries('${series.id}')" class="flex flex-col items-center gap-0.5">
+              <button id="like-button-${series.id}" type="button" aria-pressed="${isLiked ? 'true' : 'false'}" aria-label="${isLiked ? 'Unlike' : 'Like'} ${escapeHtml(series.title)}. Your like is private." title="Your like is private" onclick="toggleLikeSeries('${series.id}')" class="flex flex-col items-center gap-0.5">
                 <div id="like-icon-${series.id}" class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-xl transition active:scale-125">
                   ${isLiked ? '❤️' : '🤍'}
                 </div>
@@ -3755,6 +3755,11 @@
       const isLiked = Boolean(state.likedSeries[seriesId]);
       const icon = document.getElementById(`like-icon-${seriesId}`);
       const count = document.getElementById(`like-count-${seriesId}`);
+      const button = document.getElementById(`like-button-${seriesId}`);
+      if (button) {
+        button.setAttribute('aria-pressed', isLiked ? 'true' : 'false');
+        button.setAttribute('aria-label', `${isLiked ? 'Unlike' : 'Like'} ${series.title}. Your like is private.`);
+      }
       if (icon) icon.textContent = isLiked ? '❤️' : '🤍';
       if (count) count.textContent = formatNumberCompact(series.likes + (isLiked ? 1 : 0));
     }
