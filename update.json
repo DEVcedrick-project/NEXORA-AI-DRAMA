@@ -1,6 +1,6 @@
 {
-  "version": "2.5.1",
+  "version": "2.5.6",
   "title": "NEXORA AI DRAMA",
-  "notes": "Update infrastructure prepared. A signed update will be published after permanent Android signing is configured.",
-  "downloadUrl": ""
+  "notes": "Version 2.5.6: reliable update discovery, published signed APK delivery, and maintenance improvements.",
+  "downloadUrl": "https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/latest/download/NEXORA-AI-DRAMA-release.apk"
 }
