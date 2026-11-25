@@ -19,7 +19,7 @@ if provider_name not in xml:
     provider = '''
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="\${applicationId}.nexora-updater.fileprovider"
+            android:authorities="${applicationId}.nexora-updater.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
