@@ -2299,11 +2299,15 @@
       const unsubSystemUpdate = onValue(ref(db, 'system/appUpdate'), (snap) => {
         const upd = snap.val();
         if (!upd || typeof upd !== 'object' || !upd.version) return;
-        if (upd.version !== state.appVersion) {
+        // Ignore Firebase notices for the installed version or any older release.
+        // Normalize v-prefixes and compare numeric components to avoid repeat-update loops.
+        if (compareAppVersions(upd.version, APP_CURRENT_VERSION) > 0) {
+          const normalizedUpdateVersion = String(upd.version).startsWith('v') ? String(upd.version) : `v${upd.version}`;
           state.pendingOtaUpdate = {
-            version: upd.version,
-            title: upd.title || `NEXORA ${upd.version} Live Update`,
-            notes: upd.notes || 'Safe OTA patch ready. No APK delete required.'
+            version: normalizedUpdateVersion,
+            title: upd.title || `NEXORA ${normalizedUpdateVersion} Live Update`,
+            notes: upd.notes || 'Safe OTA patch ready. No APK delete required.',
+            downloadUrl: upd.downloadUrl || ''
           };
           pushInAppNotification({
             id: `ota_${upd.version}`,
