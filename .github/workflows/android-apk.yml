@@ -27,6 +27,10 @@ on:
       - 'scripts/**'
       - '.github/workflows/android-apk.yml'
 
+concurrency:
+  group: nexora-ai-drama-android-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
