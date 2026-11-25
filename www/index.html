@@ -198,9 +198,9 @@
           </span>
         </button>
 
-        <button onclick="openAuthModal('login')" id="header-auth-pill" title="Sign In or Create Email Account" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-zinc-900/90 hover:bg-zinc-800 border border-white/15 text-[10px] font-extrabold text-zinc-200 transition">
+        <button onclick="switchMainTab('profile')" id="header-auth-pill" title="Open Profile and Settings" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-zinc-900/90 hover:bg-zinc-800 border border-white/15 text-[10px] font-extrabold text-zinc-200 transition">
           <span id="header-auth-icon">👤</span>
-          <span id="header-auth-label" class="max-w-[54px] truncate">Sign In</span>
+          <span id="header-auth-label" class="max-w-[72px] truncate">Profile</span>
         </button>
 
         <button onclick="jumpToStoreSection('vip')" id="header-vip-badge" class="hidden px-2 py-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-[10px] font-black tracking-wider shadow">
@@ -1072,6 +1072,7 @@
       savedSeries: [],
       likedSeries: {},
       commentsBySeries: {},
+      socialLikesCount: {},
       walletHistory: [
         { title: 'Welcome Bonus Gift', amount: '+60 Bonus Coins', type: 'credit', time: 'Today' }
       ],
@@ -1159,7 +1160,9 @@
       splashTimer: null,
       activeLiveNotif: null,
       liveNotifTimer: null,
-      lastContinueSaveMs: 0
+      lastContinueSaveMs: 0,
+      socialLoadAt: {},
+      socialLoadInFlight: {}
     };
 
     // =========================================================================
@@ -3699,6 +3702,7 @@
         const isSaved = state.savedSeries.includes(series.id);
         const isLiked = Boolean(state.likedSeries[series.id]);
         const commentCount = (state.commentsBySeries[series.id] || []).length;
+        const socialLikeCount = Number(state.socialLikesCount[series.id] ?? series.likes) || 0;
 
         return `
           <div id="feed-slide-${series.id}" data-series-id="${series.id}" class="snap-slide relative w-full h-full overflow-hidden select-none" style="background: linear-gradient(155deg, ${series.accentA} 0%, #110f1d 52%, ${series.accentB} 100%);">
@@ -3763,11 +3767,11 @@
                 </button>
               </div>
 
-              <button id="like-button-${series.id}" type="button" aria-pressed="${isLiked ? 'true' : 'false'}" aria-label="${isLiked ? 'Unlike' : 'Like'} ${escapeHtml(series.title)}. Your like is private." title="Your like is private" onclick="toggleLikeSeries('${series.id}')" class="flex flex-col items-center gap-0.5">
+              <button id="like-button-${series.id}" type="button" aria-pressed="${isLiked ? 'true' : 'false'}" aria-label="${isLiked ? 'Unlike' : 'Like'} ${escapeHtml(series.title)}. Public heart count." title="Hearts are visible to everyone" onclick="toggleLikeSeries('${series.id}')" class="flex flex-col items-center gap-0.5">
                 <div id="like-icon-${series.id}" class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-xl transition active:scale-125">
                   ${isLiked ? '❤️' : '🤍'}
                 </div>
-                <span id="like-count-${series.id}" class="text-[10px] font-bold text-white drop-shadow">${formatNumberCompact(series.likes + (isLiked ? 1 : 0))}</span>
+                <span id="like-count-${series.id}" class="text-[10px] font-bold text-white drop-shadow">${formatNumberCompact(socialLikeCount)}</span>
               </button>
 
               <button onclick="openEpisodeDrawer('${series.id}')" class="flex flex-col items-center gap-0.5">
@@ -3781,14 +3785,14 @@
                 <div class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white">
                   <i data-lucide="message-circle" class="w-5 h-5"></i>
                 </div>
-                <span class="text-[10px] font-bold text-white drop-shadow">${commentCount}</span>
+                <span id="comment-count-${series.id}" class="text-[10px] font-bold text-white drop-shadow">${commentCount}</span>
               </button>
 
               <button onclick="toggleSaveSeries('${series.id}')" class="flex flex-col items-center gap-0.5">
-                <div class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center ${isSaved ? 'text-amber-400' : 'text-white'}">
+                <div id="save-icon-${series.id}" class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center ${isSaved ? 'text-amber-400' : 'text-white'}">
                   <i data-lucide="bookmark" class="w-5 h-5 ${isSaved ? 'fill-amber-400' : ''}"></i>
                 </div>
-                <span class="text-[10px] font-bold text-white drop-shadow">${isSaved ? 'Saved' : 'Save'}</span>
+                <span id="save-label-${series.id}" class="text-[10px] font-bold text-white drop-shadow">${isSaved ? 'Saved' : 'Save'}</span>
               </button>
 
               <button onclick="shareSeriesLink('${series.id}')" class="flex flex-col items-center gap-0.5">
@@ -3836,6 +3840,53 @@
       safeCreateIcons();
       setupFeedIntersectionObserver();
       mountActiveEpisodeMedia(state.activeSeriesId);
+      state.seriesCatalog.forEach(series => loadNexoraSocial(series.id));
+    }
+
+    async function callNexoraSocial(action, seriesId, extra = {}) {
+      const user = runtime.fbAuth?.currentUser;
+      if (!user || user.isAnonymous) throw new Error('Sign in to use shared hearts, comments and saved posts.');
+      const cfg = NEXORA_DEFAULT_CONFIG.studioCatalog;
+      const token = await user.getIdToken();
+      const response = await fetch(`${cfg.url}/functions/v1/nexora-social`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': cfg.publishableKey, 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action, seriesId, displayName: user.displayName || state.user.name, ...extra })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Social action failed.');
+      return result;
+    }
+
+    function applyNexoraSocialSnapshot(result) {
+      const id = result?.seriesId;
+      if (!id) return;
+      state.socialLikesCount[id] = Number(result.likesCount) || 0;
+      state.likedSeries[id] = Boolean(result.liked);
+      state.savedSeries = result.saved ? [...new Set([...state.savedSeries, id])] : state.savedSeries.filter(x => x !== id);
+      state.commentsBySeries[id] = Array.isArray(result.comments) ? result.comments : [];
+      runtime.socialLoadAt[id] = Date.now();
+      updateSeriesLikeUI(id);
+      const count = document.getElementById(`comment-count-${id}`);
+      if (count) count.textContent = String(state.commentsBySeries[id].length);
+      const icon = document.getElementById(`save-icon-${id}`);
+      const label = document.getElementById(`save-label-${id}`);
+      const saved = state.savedSeries.includes(id);
+      if (icon) { icon.classList.toggle('text-amber-400', saved); icon.classList.toggle('text-white', !saved); icon.querySelector('i')?.classList.toggle('fill-amber-400', saved); }
+      if (label) label.textContent = saved ? 'Saved' : 'Save';
+      if (state.activeMainTab === 'mylist') renderMyListView();
+      const drawer = document.getElementById('comment-sheet');
+      if (drawer && !drawer.classList.contains('translate-y-full') && state.activeSeriesId === id) renderSocialComments(id);
+    }
+
+    async function loadNexoraSocial(id, force = false) {
+      if (!id || (!force && Date.now() - (runtime.socialLoadAt[id] || 0) < 30000)) return;
+      if (runtime.socialLoadInFlight[id]) return runtime.socialLoadInFlight[id];
+      const task = callNexoraSocial('read', id).then(applyNexoraSocialSnapshot)
+        .catch(error => console.warn('[NEXORA social] Sync failed:', error))
+        .finally(() => { delete runtime.socialLoadInFlight[id]; });
+      runtime.socialLoadInFlight[id] = task;
+      return task;
     }
 
     function setupFeedIntersectionObserver() {
@@ -3953,29 +4004,20 @@
         button.setAttribute('aria-label', `${isLiked ? 'Unlike' : 'Like'} ${series.title}. Your like is private.`);
       }
       if (icon) icon.textContent = isLiked ? '❤️' : '🤍';
-      if (count) count.textContent = formatNumberCompact(series.likes + (isLiked ? 1 : 0));
+      if (count) count.textContent = formatNumberCompact(Number(state.socialLikesCount[seriesId] ?? series.likes) || 0);
     }
 
-    function toggleLikeSeries(seriesId) {
-      state.likedSeries[seriesId] = !state.likedSeries[seriesId];
-      saveAppState();
-      // Update only the heart and count. Re-rendering the feed destroys the
-      // active video element and resets playback to the beginning.
-      updateSeriesLikeUI(seriesId);
+    async function toggleLikeSeries(seriesId) {
+      try { applyNexoraSocialSnapshot(await callNexoraSocial('like', seriesId)); }
+      catch (error) { showToast(error.message || 'Could not update heart.'); if (!runtime.fbAuth?.currentUser || runtime.fbAuth.currentUser.isAnonymous) openAuthModal('login'); }
     }
 
-    function toggleSaveSeries(seriesId) {
-      const idx = state.savedSeries.indexOf(seriesId);
-      if (idx >= 0) {
-        state.savedSeries.splice(idx, 1);
-        showToast('Removed from My List');
-      } else {
-        state.savedSeries.push(seriesId);
-        showToast('Saved to My List');
-      }
-      saveAppState();
-      renderVerticalFeed();
-      if (state.activeMainTab === 'mylist') renderMyListView();
+    async function toggleSaveSeries(seriesId) {
+      try {
+        const result = await callNexoraSocial('save', seriesId);
+        applyNexoraSocialSnapshot(result);
+        showToast(result.saved ? 'Saved to My List' : 'Removed from My List');
+      } catch (error) { showToast(error.message || 'Could not save post.'); if (!runtime.fbAuth?.currentUser || runtime.fbAuth.currentUser.isAnonymous) openAuthModal('login'); }
     }
 
     function shareSeriesLink(seriesId) {
@@ -4146,59 +4188,49 @@
       });
     }
 
+    function renderSocialComments(seriesId) {
+      const series = getSeriesById(seriesId);
+      if (!series) return;
+      const comments = state.commentsBySeries[seriesId] || [];
+      const header = document.getElementById('comment-drawer-header');
+      if (header) header.textContent = `${series.title} Comments (${comments.length})`;
+      const listEl = document.getElementById('comment-list-container');
+      if (listEl) listEl.innerHTML = comments.length === 0
+        ? '<p class="text-xs text-zinc-500 text-center py-6">No comments yet. Be the first to react!</p>'
+        : comments.map(c => `<div class="p-3 rounded-2xl bg-black/50 border border-zinc-800/90 space-y-1"><div class="flex items-center justify-between"><span class="text-[11px] font-extrabold text-amber-300">@${escapeHtml(c.user || 'NEXORA Viewer')}</span><span class="text-[10px] text-zinc-500">${escapeHtml(c.time || '')}</span></div><p class="text-xs text-zinc-200 leading-snug">${escapeHtml(c.text || '')}</p></div>`).join('');
+    }
+
     function openCommentDrawer(seriesId) {
       const series = getSeriesById(seriesId);
       if (!series) return;
       state.activeSeriesId = seriesId;
       closeAllSheets();
-
-      const comments = state.commentsBySeries[seriesId] || [];
-      document.getElementById('comment-drawer-header').textContent = `${series.title} Comments (${comments.length})`;
-
-      const listEl = document.getElementById('comment-list-container');
-      if (listEl) {
-        listEl.innerHTML = comments.length === 0
-          ? `<p class="text-xs text-zinc-500 text-center py-6">No comments yet. Be the first to react!</p>`
-          : comments.map(c => `
-              <div class="p-3 rounded-2xl bg-black/50 border border-zinc-800/90 space-y-1">
-                <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-extrabold text-amber-300">@${escapeHtml(c.user)}</span>
-                  <span class="text-[10px] text-zinc-500">${escapeHtml(c.time)}</span>
-                </div>
-                <p class="text-xs text-zinc-200 leading-snug">${escapeHtml(c.text)}</p>
-              </div>
-            `).join('');
-      }
-
+      renderSocialComments(seriesId);
       runtime.isSheetOpen = true;
       document.getElementById('sheet-backdrop')?.classList.remove('hidden');
       document.getElementById('comment-sheet')?.classList.remove('translate-y-full');
+      loadNexoraSocial(seriesId, true);
     }
 
-    function submitNewComment(event) {
+    async function submitNewComment(event) {
       event.preventDefault();
       const input = document.getElementById('comment-input-box');
-      const text = (input?.value || '').trim();
-      if (!text) return;
-
+      const comment = (input?.value || '').trim();
+      if (!comment) return;
       const seriesId = state.activeSeriesId;
-      if (!state.commentsBySeries[seriesId]) {
-        state.commentsBySeries[seriesId] = [];
+      try {
+        const result = await callNexoraSocial('comment', seriesId, { comment });
+        applyNexoraSocialSnapshot(result);
+        if (!state.missions.commentClaimed) {
+          state.missions.commentClaimed = true;
+          creditCoins(15, 'bonus', 'Mission: First Episode Comment');
+        }
+        input.value = '';
+        renderSocialComments(seriesId);
+      } catch (error) {
+        showToast(error.message || 'Could not post comment. Please sign in.');
+        if (!runtime.fbAuth?.currentUser || runtime.fbAuth.currentUser.isAnonymous) openAuthModal('login');
       }
-      state.commentsBySeries[seriesId].unshift({
-        user: state.user.name.toLowerCase().replace(/\s+/g, '_') || 'viewer',
-        text,
-        time: 'Just now'
-      });
-
-      if (!state.missions.commentClaimed) {
-        state.missions.commentClaimed = true;
-        creditCoins(15, 'bonus', 'Mission: First Episode Comment');
-      }
-
-      input.value = '';
-      saveAppState();
-      openCommentDrawer(seriesId);
     }
 
     // =========================================================================
@@ -4390,7 +4422,7 @@
       const authIcon = document.getElementById('header-auth-icon');
       const authLabel = document.getElementById('header-auth-label');
       if (authIcon) authIcon.textContent = signedIn ? '✓' : '👤';
-      if (authLabel) authLabel.textContent = signedIn ? (registeredName || 'Account') : 'Sign In';
+      if (authLabel) authLabel.textContent = signedIn ? (registeredName || 'Account') : 'Profile';
     }
 
     function renderProfileView() {
