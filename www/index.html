@@ -3852,7 +3852,7 @@
 
     async function callNexoraSocial(action, seriesId, extra = {}) {
       const user = runtime.fbAuth?.currentUser;
-      if (!user || user.isAnonymous) throw new Error('Sign in to use shared hearts, comments and saved posts.');
+      if (!user || (user.isAnonymous && action !== 'read')) throw new Error('Sign in to like, comment or save posts.');
       const cfg = NEXORA_DEFAULT_CONFIG.studioCatalog;
       const token = await user.getIdToken();
       const response = await fetch(`${cfg.url}/functions/v1/nexora-social`, {
