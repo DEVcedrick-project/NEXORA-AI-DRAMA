@@ -1137,6 +1137,7 @@
       pendingAdTarget: null,
       adAttemptId: 0,
       adRewardClaimed: false,
+      adInFlight: false,
       admobListeners: [],
       rafId: null,
       lastFrameTime: 0,
@@ -4695,6 +4696,10 @@
         showToast('Daily rewarded ad limit reached (5/5). Come back tomorrow!');
         return;
       }
+      if (runtime.adInFlight) {
+        showToast('A rewarded ad is already in progress.');
+        return;
+      }
 
       closeAllSheets();
       runtime.pendingAdTarget = unlockTarget;
@@ -4702,6 +4707,7 @@
       const adAttemptId = (runtime.adAttemptId || 0) + 1;
       runtime.adAttemptId = adAttemptId;
       runtime.adRewardClaimed = false;
+      runtime.adInFlight = true;
 
       const admob = getCapacitorAdMobPlugin();
       const isNative = Boolean(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
@@ -4728,6 +4734,7 @@
             });
             state.admob.initialized = true;
           }
+          if (runtime.adAttemptId !== adAttemptId) return;
 
           const platform = typeof window.Capacitor.getPlatform === 'function'
             ? window.Capacitor.getPlatform()
@@ -4751,11 +4758,13 @@
               }
             });
             const failHandle = await admob.addListener('onRewardedInterstitialAdFailedToLoad', (error) => {
+              if (runtime.adAttemptId !== adAttemptId) return;
               cancelActiveRewardedAd();
               showToast('No ad is available right now. Please try again later.');
               console.warn('AdMob rewarded interstitial failed to load:', error);
             });
             const showFailHandle = await admob.addListener('onRewardedInterstitialAdFailedToShow', (error) => {
+              if (runtime.adAttemptId !== adAttemptId) return;
               cancelActiveRewardedAd();
               showToast('No ad is available right now. Please try again later.');
               console.warn('AdMob rewarded interstitial failed to show:', error);
@@ -4763,18 +4772,21 @@
             runtime.admobListeners.push(rewardHandle, dismissHandle, failHandle, showFailHandle);
           }
 
+          if (runtime.adAttemptId !== adAttemptId) return;
           showToast('Loading Google rewarded interstitial...');
           const loadedAd = await admob.prepareRewardInterstitialAd({ adId, isTesting: false });
+          if (runtime.adAttemptId !== adAttemptId) return;
           const rewardResult = await admob.showRewardInterstitialAd({
             adId: loadedAd && loadedAd.adUnitId ? loadedAd.adUnitId : adId
           });
 
           // The plugin resolves this promise only when the user earns the reward.
-          if (rewardResult && Number(rewardResult.amount) > 0) {
+          if (runtime.adAttemptId === adAttemptId && rewardResult && Number(rewardResult.amount) > 0) {
             grantNativeRewardOnce();
           }
           return;
         } catch (nativeAdError) {
+          if (runtime.adAttemptId !== adAttemptId) return;
           cleanupAdMobListeners();
           cancelActiveRewardedAd();
           showToast('No ad is available right now. No coins were added. Please try again later.');
@@ -4792,6 +4804,7 @@
       // Invalidate pending native callbacks before removing listeners.
       runtime.adAttemptId = (runtime.adAttemptId || 0) + 1;
       runtime.adRewardClaimed = false;
+      runtime.adInFlight = false;
       cleanupAdMobListeners();
       runtime.pendingAdTarget = null;
       runtime.isSheetOpen = false;
@@ -4804,6 +4817,7 @@
       // Invalidate this attempt immediately: duplicate reward/dismiss events
       // can no longer grant coins or unlock an episode a second time.
       runtime.adAttemptId += 1;
+      runtime.adInFlight = false;
       cleanupAdMobListeners();
       const target = runtime.pendingAdTarget;
       runtime.pendingAdTarget = null;
