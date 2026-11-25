@@ -301,19 +301,26 @@ jobs:
 
       - name: Notify Android users about the new app version
         if: steps.signing.outputs.enabled == 'true'
+        continue-on-error: true
         env:
           NEXORA_RELEASE_WEBHOOK_SECRET: ${{ secrets.NEXORA_RELEASE_WEBHOOK_SECRET }}
           APP_VERSION: ${{ steps.version.outputs.value }}
         run: |
           if [ -z "$NEXORA_RELEASE_WEBHOOK_SECRET" ]; then
-            echo "NEXORA_RELEASE_WEBHOOK_SECRET is not configured; skipping update push."
+            echo "::warning::APK/AAB release succeeded, but NEXORA_RELEASE_WEBHOOK_SECRET is missing; update notification was skipped."
             exit 0
           fi
-          curl --fail-with-body --silent --show-error --retry 2 --retry-delay 3 \
+          HTTP_STATUS="$(curl --silent --show-error --retry 2 --retry-delay 3 \
+            -o /tmp/nexora-push-response.json -w "%{http_code}" \
             -X POST "https://vureiymqoosubwubhvdu.supabase.co/functions/v1/nexora-push-broadcast" \
             -H "Content-Type: application/json" \
             -H "x-nexora-release-secret: $NEXORA_RELEASE_WEBHOOK_SECRET" \
-            --data "{\"version\":\"$APP_VERSION\"}"
+            --data "{\"version\":\"$APP_VERSION\"}")"
+          cat /tmp/nexora-push-response.json
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::warning::APK/AAB release succeeded, but update notification failed with HTTP $HTTP_STATUS. Match the GitHub and Supabase NEXORA_RELEASE_WEBHOOK_SECRET values, then retry the notification."
+            exit 1
+          fi
 
       - name: Upload signed release APK and AAB
         if: steps.signing.outputs.enabled == 'true'
