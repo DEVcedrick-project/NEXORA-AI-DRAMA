@@ -171,24 +171,47 @@ jobs:
           "$BUILD_TOOLS/apksigner" verify --verbose "$SIGNED"
           rm -f release-key.jks "$ALIGNED"
 
-      - name: Publish signed APK as GitHub Release
+      - name: Build and sign release AAB
+        if: steps.signing.outputs.enabled == 'true'
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ./gradlew --no-daemon bundleRelease
+          UNSIGNED="app/build/outputs/bundle/release/app-release.aab"
+          SIGNED="app/build/outputs/bundle/release/NEXORA-AI-DRAMA-release.aab"
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore release-key.jks \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -keypass "$ANDROID_KEY_PASSWORD" \
+            -signedjar "$SIGNED" "$UNSIGNED" "$ANDROID_KEY_ALIAS"
+          jarsigner -verify -verbose -certs "$SIGNED"
+          test -s "$SIGNED"
+
+      - name: Publish signed APK and AAB as GitHub Release
         if: steps.signing.outputs.enabled == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.value }}
           name: NEXORA AI DRAMA v${{ steps.version.outputs.value }}
           target_commitish: ${{ github.sha }}
-          files: android/app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk
+          files: |
+            android/app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk
+            android/app/build/outputs/bundle/release/NEXORA-AI-DRAMA-release.aab
           overwrite_files: true
           generate_release_notes: false
           make_latest: true
 
-      - name: Upload signed release APK
+      - name: Upload signed release APK and AAB
         if: steps.signing.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: NEXORA-AI-DRAMA-release-APK
-          path: android/app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk
+          name: NEXORA-AI-DRAMA-Play-Store-Bundle
+          path: |
+            android/app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk
+            android/app/build/outputs/bundle/release/NEXORA-AI-DRAMA-release.aab
           if-no-files-found: error
           retention-days: 30
 
