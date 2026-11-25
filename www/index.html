@@ -1738,6 +1738,43 @@
       return true;
     }
 
+    let otaProgressPollTimer = null;
+    async function monitorNativeUpdateDownload(downloadId) {
+      if (otaProgressPollTimer) clearTimeout(otaProgressPollTimer);
+      const progressLabel = document.getElementById('ota-progress-label');
+      const progressFill = document.getElementById('ota-progress-fill');
+      const progressPct = document.getElementById('ota-progress-pct');
+      const poll = async () => {
+        try {
+          const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
+          const result = await NexoraUpdater.getDownloadStatus({ downloadId });
+          const percent = Math.max(0, Math.min(100, Number(result.progress) || 0));
+          if (progressFill) progressFill.style.width = percent + '%';
+          if (progressPct) progressPct.textContent = result.totalBytes > 0
+            ? Math.round(result.downloadedBytes / 1048576 * 10) / 10 + ' MB / ' + Math.round(result.totalBytes / 1048576 * 10) / 10 + ' MB'
+            : 'Downloading securely…';
+          if (result.status === 'completed') {
+            if (progressFill) progressFill.style.width = '100%';
+            if (progressLabel) progressLabel.textContent = 'Download complete. Opening Android installer…';
+            if (progressPct) progressPct.textContent = 'Approve the Android install prompt to finish updating';
+            return;
+          }
+          if (result.status === 'failed') {
+            if (progressLabel) progressLabel.textContent = 'Download failed. Please try Update Now again.';
+            if (progressPct) progressPct.textContent = 'Android download error ' + (result.reason || 'unknown');
+            if (document.getElementById('ota-action-buttons')) document.getElementById('ota-action-buttons').classList.remove('hidden');
+            return;
+          }
+          if (progressLabel) progressLabel.textContent = result.status === 'paused' ? 'Download paused by Android…' : 'Downloading update securely…';
+          otaProgressPollTimer = setTimeout(poll, 800);
+        } catch (error) {
+          console.warn('[NEXORA Updater] Progress check failed', error);
+          otaProgressPollTimer = setTimeout(poll, 1800);
+        }
+      };
+      await poll();
+    }
+
     async function applySafeOtaSystemUpdate() {
       const target = state.pendingOtaUpdate;
       if (!target?.downloadUrl || !/^https:\/\//i.test(target.downloadUrl)) {
@@ -1777,8 +1814,9 @@
         savePlaybackForUpdate();
         if (progressLabel) progressLabel.textContent = 'Downloading update securely…';
         if (progressFill) progressFill.style.width = '35%';
-        if (progressPct) progressPct.textContent = 'Download continues in Android notifications';
-        showToast('NEXORA update download started. Keep notifications enabled.');
+        if (progressPct) progressPct.textContent = 'Starting in-app progress tracking…';
+        monitorNativeUpdateDownload(Number(result.downloadId));
+        showToast('NEXORA update download started.');
       } catch (error) {
         if (progBox) progBox.classList.add('hidden');
         if (btnsBox) btnsBox.classList.remove('hidden');
