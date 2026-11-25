@@ -2305,8 +2305,7 @@
         state.supabase.connected = true;
 
         if (pullRemote) {
-          void reportNexoraAuthEvent('login');
-      await pullWalletAndUnlocksFromSupabase();
+          await pullWalletAndUnlocksFromSupabase();
         }
 
         updateFirebaseSyncBadges();
@@ -4293,6 +4292,8 @@
         try {
           const res = await signInWithEmailAndPassword(runtime.fbAuth, email, password);
           const u = res.user;
+          // Report only after Firebase confirms a successful interactive email login.
+          void reportNexoraAuthEvent('login');
           state.firebase.authUid = u.uid;
           state.user.uid = u.uid;
           state.user.email = u.email || email;
