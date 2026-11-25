@@ -22,6 +22,15 @@ public class NexoraUpdaterPlugin extends Plugin {
     private static final String INSTALL_LAUNCHED = "install_launched";
 
     @PluginMethod
+    public void checkInstallPermission(PluginCall call) {
+        boolean granted = Build.VERSION.SDK_INT < 26
+                || getContext().getPackageManager().canRequestPackageInstalls();
+        JSObject result = new JSObject();
+        result.put("granted", granted);
+        call.resolve(result);
+    }
+
+    @PluginMethod
     public void downloadAndInstall(PluginCall call) {
         String rawUrl = call.getString("url", "").trim();
         Uri uri = Uri.parse(rawUrl);
