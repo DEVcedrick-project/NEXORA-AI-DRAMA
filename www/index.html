@@ -3891,7 +3891,9 @@
       if (runtime.socialLoadInFlight[id]) return runtime.socialLoadInFlight[id];
       const task = callNexoraSocial('read', id).then(applyNexoraSocialSnapshot)
         .catch(error => console.warn('[NEXORA social] Sync failed:', error))
-        .finally(() => { delete runtime.socialLoadInFlight[id]; });
+        .finally(() => {
+          if (runtime.socialLoadInFlight[id] === task) delete runtime.socialLoadInFlight[id];
+        });
       runtime.socialLoadInFlight[id] = task;
       return task;
     }
