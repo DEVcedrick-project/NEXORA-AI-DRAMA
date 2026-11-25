@@ -1929,6 +1929,95 @@
       }, 2400);
     }
 
+
+    // Native Android push notifications (FCM). The native plugin is bundled by
+    // Capacitor during CI; this guarded dynamic import keeps the web build usable.
+    async function initNativePushNotifications() {
+      try {
+        if (!window.Capacitor?.isNativePlatform?.()) return false;
+        const { PushNotifications } = await import("https://esm.sh/@capacitor/push-notifications@8.0.0");
+        const permission = await PushNotifications.checkPermissions();
+        let receive = permission.receive;
+        if (receive !== "granted") {
+          const requested = await PushNotifications.requestPermissions();
+          receive = requested.receive;
+        }
+        if (receive !== "granted") {
+          console.info("[NEXORA Push] Notification permission not granted.");
+          return false;
+        }
+
+        try {
+          await PushNotifications.createChannel({
+            id: "nexora_updates",
+            name: "NEXORA Updates",
+            description: "New drama episodes and important app updates",
+            importance: 5,
+            visibility: 1,
+            sound: "default",
+            vibration: true
+          });
+        } catch (channelError) {
+          console.warn("[NEXORA Push] Channel setup:", channelError);
+        }
+
+        await PushNotifications.addListener("registration", async (token) => {
+          try {
+            let installId = localStorage.getItem("nexora_push_install_id");
+            if (!installId) {
+              installId = crypto.randomUUID();
+              localStorage.setItem("nexora_push_install_id", installId);
+            }
+            const endpoint = NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register";
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
+              },
+              body: JSON.stringify({
+                token: token.value,
+                app_version: APP_CURRENT_VERSION,
+                install_id: installId
+              })
+            });
+            if (!response.ok) throw new Error("Token registration returned HTTP " + response.status);
+            console.info("[NEXORA Push] Device registered for notifications.");
+          } catch (error) {
+            console.error("[NEXORA Push] Device registration failed:", error);
+          }
+        });
+
+        await PushNotifications.addListener("registrationError", (error) => {
+          console.error("[NEXORA Push] FCM registration error:", error);
+        });
+
+        await PushNotifications.addListener("pushNotificationReceived", (notification) => {
+          const data = notification?.data || {};
+          if (data.type === "new_episode") {
+            showToast(notification?.title || "A new episode is available!");
+          } else if (data.type === "app_update") {
+            showToast("A new NEXORA AI DRAMA update is available.");
+          }
+          window.dispatchEvent(new CustomEvent("nexora:push-received", { detail: notification }));
+        });
+
+        await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+          window.dispatchEvent(new CustomEvent("nexora:push-opened", { detail: action }));
+          const data = action?.notification?.data || {};
+          if (data.type === "app_update") {
+            checkForSystemUpdatesNow(true);
+          }
+        });
+
+        await PushNotifications.register();
+        return true;
+      } catch (error) {
+        console.warn("[NEXORA Push] Native push setup unavailable:", error);
+        return false;
+      }
+    }
+
     // =========================================================================
     // 4. FIREBASE RTDB, SUPABASE & CAPACITOR ADMOB BRIDGE
     // =========================================================================
@@ -4839,7 +4928,8 @@
       const startupTasks = [
         Promise.resolve().then(() => initFirebaseRealtimeSync(null)),
         Promise.resolve().then(() => initSupabaseClient(null, true)),
-        Promise.resolve().then(() => initPublishedDramaCatalog())
+        Promise.resolve().then(() => initPublishedDramaCatalog()),
+        Promise.resolve().then(() => initNativePushNotifications())
       ];
       const startupReady = Promise.allSettled(startupTasks);
       let startupLimitTimer;
