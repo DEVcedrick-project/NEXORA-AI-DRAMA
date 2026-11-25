@@ -1,6 +1,6 @@
 {
   "version": "2.6.12",
   "title": "NEXORA AI DRAMA v2.6.12",
-  "notes": "Fixes rewarded-ad episode unlock validation so an episode unlocks only after a valid AdMob reward is earned.",
+  "notes": "Includes the native in-app updater, stability improvements, and the latest NEXORA experience.",
   "downloadUrl": "https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v2.6.12/NEXORA-AI-DRAMA-release.apk"
 }
