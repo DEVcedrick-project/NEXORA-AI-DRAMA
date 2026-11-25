@@ -82,14 +82,14 @@ jobs:
           from pathlib import Path
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           xml = manifest.read_text()
-          match = re.search(r"<application\\b[^>]*", xml)
+          match = re.search(r"<application\b[^>]*", xml)
           if not match:
               raise SystemExit("Android application manifest element not found")
           tag = match.group(0)
           for key in ("allowBackup", "usesCleartextTraffic"):
               attr = f'android:{key}="false"'
-              if re.search(rf"android:{key}\\s*=", tag):
-                  tag = re.sub(rf'android:{key}\\s*=\\s*"[^"]*"', attr, tag, count=1)
+              if re.search(rf"android:{key}\s*=", tag):
+                  tag = re.sub(rf'android:{key}\s*=\s*"[^"]*"', attr, tag, count=1)
               else:
                   tag += " " + attr
           xml = xml[:match.start()] + tag + xml[match.end():]
