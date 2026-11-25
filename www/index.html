@@ -729,35 +729,6 @@
       </button>
     </div>
 
-    <!-- SHEET 5: REWARDED VIDEO AD PLAYER OVERLAY (BROWSER FALLBACK) -->
-    <div id="ad-player-sheet" class="hidden translate-y-full transition-transform duration-300 absolute inset-0 z-[60] bg-black flex flex-col justify-between p-5" aria-hidden="true">
-      <div class="flex items-center justify-between">
-        <span class="px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-700 text-[10px] font-mono font-bold text-amber-300">
-          SPONSORED AD • <span id="ad-countdown-text">5s</span>
-        </span>
-        <button onclick="cancelActiveRewardedAd()" class="px-3 py-1 rounded-full bg-zinc-900 text-[11px] font-bold text-zinc-400 hover:text-white">
-          Close
-        </button>
-      </div>
-
-      <div class="my-auto text-center space-y-3 px-4">
-        <div class="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-br from-amber-500 to-[#ff2e63] flex items-center justify-center text-3xl shadow-xl">
-          🎬
-        </div>
-        <h3 class="text-lg font-black text-white">NEXORA AI Studio Pro</h3>
-        <p class="text-xs text-zinc-400 leading-relaxed">
-          Create cinematic 9:16 vertical micro-dramas in minutes. Stay until the timer finishes to earn <strong class="text-amber-300">+5 Bonus Coins</strong>!
-        </p>
-        <div class="w-full h-2 rounded-full bg-zinc-800 overflow-hidden max-w-xs mx-auto">
-          <div id="ad-progress-bar" class="h-full bg-amber-400 transition-all duration-200" style="width: 0%"></div>
-        </div>
-      </div>
-
-      <button id="ad-claim-finish-btn" disabled onclick="completeRewardedAdClaim()" class="w-full py-3 rounded-2xl bg-zinc-800 text-zinc-500 font-black text-xs transition">
-        Reward Unlocks in 5s...
-      </button>
-    </div>
-
     <!-- SHEET 6: AUTH MODAL -->
     <div id="auth-sheet" class="translate-y-full transition-transform duration-300 absolute bottom-0 inset-x-0 z-50 bg-[#12121a] border-t border-zinc-800 rounded-t-3xl p-5 max-h-[90%] overflow-y-auto no-scrollbar space-y-4">
       <div class="w-10 h-1 bg-zinc-700 rounded-full mx-auto"></div>
@@ -1164,7 +1135,8 @@
       activeCheckout: null,
       checkoutMethod: 'GCash',
       pendingAdTarget: null,
-      adTimerInterval: null,
+      adAttemptId: 0,
+      adRewardClaimed: false,
       admobListeners: [],
       rafId: null,
       lastFrameTime: 0,
@@ -4718,47 +4690,6 @@
       runtime.admobListeners = [];
     }
 
-    function openBrowserFallbackRewardedAdModal() {
-      const sheet = document.getElementById('ad-player-sheet');
-      const countText = document.getElementById('ad-countdown-text');
-      const bar = document.getElementById('ad-progress-bar');
-      const claimBtn = document.getElementById('ad-claim-finish-btn');
-
-      if (!sheet) return;
-      sheet.classList.remove('hidden', 'translate-y-full', 'pointer-events-none');
-      sheet.setAttribute('aria-hidden', 'false');
-
-      let remaining = 5;
-      if (countText) countText.textContent = `${remaining}s`;
-      if (bar) bar.style.width = '0%';
-      if (claimBtn) {
-        claimBtn.disabled = true;
-        claimBtn.textContent = `Reward Unlocks in ${remaining}s...`;
-        claimBtn.className = 'w-full py-3 rounded-2xl bg-zinc-800 text-zinc-500 font-black text-xs transition';
-      }
-
-      if (runtime.adTimerInterval) clearInterval(runtime.adTimerInterval);
-      runtime.adTimerInterval = setInterval(() => {
-        remaining -= 1;
-        const pct = Math.min(100, ((5 - remaining) / 5) * 100);
-        if (bar) bar.style.width = `${pct}%`;
-
-        if (remaining > 0) {
-          if (countText) countText.textContent = `${remaining}s`;
-          if (claimBtn) claimBtn.textContent = `Reward Unlocks in ${remaining}s...`;
-        } else {
-          clearInterval(runtime.adTimerInterval);
-          runtime.adTimerInterval = null;
-          if (countText) countText.textContent = 'DONE';
-          if (claimBtn) {
-            claimBtn.disabled = false;
-            claimBtn.textContent = 'Claim +5 Bonus Coins Now!';
-            claimBtn.className = 'w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black text-xs shadow-lg transition';
-          }
-        }
-      }, 1000);
-    }
-
     async function triggerRewardedAd(unlockTarget = null) {
       if (state.adsWatchedToday >= state.maxAdsPerDay) {
         showToast('Daily rewarded ad limit reached (5/5). Come back tomorrow!');
@@ -4768,6 +4699,9 @@
       closeAllSheets();
       runtime.pendingAdTarget = unlockTarget;
       runtime.isSheetOpen = true;
+      const adAttemptId = (runtime.adAttemptId || 0) + 1;
+      runtime.adAttemptId = adAttemptId;
+      runtime.adRewardClaimed = false;
 
       const admob = getCapacitorAdMobPlugin();
       const isNative = Boolean(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
@@ -4779,11 +4713,11 @@
           return;
         }
 
-        let rewardGranted = false;
         const grantNativeRewardOnce = () => {
-          if (rewardGranted) return;
-          rewardGranted = true;
-          completeRewardedAdClaim();
+          // Ignore delayed/duplicate callbacks from an earlier ad attempt.
+          if (runtime.adAttemptId !== adAttemptId || runtime.adRewardClaimed) return;
+          runtime.adRewardClaimed = true;
+          completeRewardedAdClaim(adAttemptId);
         };
 
         try {
@@ -4811,7 +4745,7 @@
             const rewardHandle = await admob.addListener('onRewardedInterstitialAdReward', grantNativeRewardOnce);
             const dismissHandle = await admob.addListener('onRewardedInterstitialAdDismissed', () => {
               cleanupAdMobListeners();
-              if (!rewardGranted) {
+              if (runtime.adAttemptId === adAttemptId && !runtime.adRewardClaimed) {
                 cancelActiveRewardedAd();
                 showToast('Ad closed before earning the reward — nothing was added.');
               }
@@ -4855,37 +4789,28 @@
     }
 
     function cancelActiveRewardedAd() {
-      if (runtime.adTimerInterval) {
-        clearInterval(runtime.adTimerInterval);
-        runtime.adTimerInterval = null;
-      }
+      // Invalidate pending native callbacks before removing listeners.
+      runtime.adAttemptId = (runtime.adAttemptId || 0) + 1;
+      runtime.adRewardClaimed = false;
       cleanupAdMobListeners();
       runtime.pendingAdTarget = null;
       runtime.isSheetOpen = false;
-      const adSheet = document.getElementById('ad-player-sheet');
-      if (adSheet) {
-        adSheet.classList.add('translate-y-full', 'hidden', 'pointer-events-none');
-        adSheet.setAttribute('aria-hidden', 'true');
-      }
     }
 
-    function completeRewardedAdClaim() {
-      if (runtime.adTimerInterval) {
-        clearInterval(runtime.adTimerInterval);
-        runtime.adTimerInterval = null;
-      }
+    function completeRewardedAdClaim(expectedAttemptId = runtime.adAttemptId) {
+      // A reward callback is valid only for the current, not-yet-claimed ad.
+      if (expectedAttemptId !== runtime.adAttemptId || !runtime.adRewardClaimed) return;
+
+      // Invalidate this attempt immediately: duplicate reward/dismiss events
+      // can no longer grant coins or unlock an episode a second time.
+      runtime.adAttemptId += 1;
       cleanupAdMobListeners();
-      const adSheet = document.getElementById('ad-player-sheet');
-      if (adSheet) {
-        adSheet.classList.add('translate-y-full', 'hidden', 'pointer-events-none');
-        adSheet.setAttribute('aria-hidden', 'true');
-      }
+      const target = runtime.pendingAdTarget;
+      runtime.pendingAdTarget = null;
       runtime.isSheetOpen = false;
 
       state.adsWatchedToday = Math.min(state.maxAdsPerDay, state.adsWatchedToday + 1);
 
-      const target = runtime.pendingAdTarget;
-      runtime.pendingAdTarget = null;
       if (target && target.seriesId && target.epNum) {
         // An episode-unlock ad grants the episode directly; it must not charge coins.
         unlockEpisodeWithRewardedAd(target.seriesId, target.epNum);
