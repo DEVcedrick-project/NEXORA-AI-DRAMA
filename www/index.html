@@ -911,43 +911,46 @@
     <!-- ===================================================================== -->
     <!-- SHEET 10: SAFE IN-PLACE OTA SYSTEM UPDATE MODAL (NO APK DELETE)       -->
     <!-- ===================================================================== -->
-    <div id="ota-update-modal" class="hidden absolute inset-0 z-[80] bg-black/85 backdrop-blur-md flex items-center justify-center p-5">
-      <div class="w-full max-w-[350px] rounded-3xl bg-[#13131d] border border-amber-400/45 p-5 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between">
-          <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[9px] font-black uppercase tracking-wider text-emerald-300">
-            OFFICIAL APP UPDATE
-          </span>
-          <span id="ota-version-badge" class="text-[10px] font-mono font-bold text-amber-300">v2.4.0 → v2.5.0</span>
+    <div id="ota-update-modal" class="hidden absolute inset-0 z-[80] bg-[#05050b]/90 backdrop-blur-xl flex items-center justify-center p-5">
+      <div class="relative w-full max-w-[350px] overflow-hidden rounded-[2rem] bg-gradient-to-b from-[#19182a] to-[#0c0c14] border border-violet-400/35 p-6 shadow-2xl text-center space-y-5">
+        <div class="absolute -top-20 -right-16 w-48 h-48 rounded-full bg-violet-500/20 blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-16 w-48 h-48 rounded-full bg-fuchsia-500/10 blur-3xl pointer-events-none"></div>
+
+        <div class="relative flex items-center justify-between">
+          <span class="px-3 py-1 rounded-full bg-violet-400/10 border border-violet-300/25 text-[9px] font-black uppercase tracking-[0.2em] text-violet-200">NEXORA • OFFICIAL</span>
+          <span id="ota-version-badge" class="text-[10px] font-mono font-bold text-violet-200">v2.6.2 → v2.6.3</span>
         </div>
 
-        <div class="space-y-1">
-          <h3 id="ota-update-title" class="text-base font-black text-white">New System &amp; Drama Engine Update</h3>
-          <p id="ota-update-notes" class="hidden" aria-hidden="true"></p>
-        </div>
-
-        <!-- Progress Bar (shown during in-place update) -->
-        <div id="ota-progress-box" class="hidden space-y-1.5">
-          <div class="flex items-center justify-between text-[10px] font-mono">
-            <span id="ota-progress-label" class="text-amber-300">Applying live patch...</span>
-            <span id="ota-progress-pct" class="text-white font-bold">0%</span>
+        <div class="relative flex flex-col items-center gap-3 py-2">
+          <div class="w-20 h-20 rounded-[1.7rem] bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 p-[1px] shadow-[0_0_45px_rgba(168,85,247,0.25)]">
+            <div class="w-full h-full rounded-[1.65rem] bg-[#11101d] flex items-center justify-center">
+              <span class="text-4xl font-black italic tracking-tighter bg-gradient-to-br from-white via-violet-200 to-fuchsia-300 bg-clip-text text-transparent">N</span>
+            </div>
           </div>
-          <div class="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
-            <div id="ota-progress-fill" class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-[#ff2e63] transition-all duration-150" style="width: 0%"></div>
+          <div class="space-y-1">
+            <h3 id="ota-update-title" class="text-xl font-black tracking-tight text-white">A better drama experience awaits</h3>
+            <p class="text-xs leading-relaxed text-zinc-400">Fresh improvements are on the way. Sit back while NEXORA gets ready.</p>
           </div>
         </div>
 
-        <div id="ota-action-buttons" class="grid grid-cols-2 gap-2 pt-1">
-          <button onclick="closeOtaUpdateModal()" class="py-2.5 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs transition">
-            Remind Later
-          </button>
-          <button onclick="applySafeOtaSystemUpdate()" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black text-xs shadow-lg active:scale-95 transition">
-            Update Now
-          </button>
+        <div id="ota-progress-box" class="hidden relative space-y-3 rounded-2xl bg-white/[0.04] border border-white/10 p-4">
+          <div class="flex items-center justify-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-violet-300 animate-pulse"></span>
+            <span id="ota-progress-label" class="text-xs font-semibold text-violet-100">Preparing your update…</span>
+          </div>
+          <div class="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div id="ota-progress-fill" class="h-full rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-rose-400 transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <div id="ota-progress-pct" class="text-[10px] font-mono font-bold text-zinc-400">Please wait</div>
         </div>
+
+        <div id="ota-action-buttons" class="relative grid grid-cols-2 gap-2 pt-1">
+          <button onclick="closeOtaUpdateModal()" class="py-3 px-3 rounded-xl bg-white/[0.06] border border-white/10 text-zinc-300 font-bold text-xs transition">Later</button>
+          <button onclick="applySafeOtaSystemUpdate()" class="py-3 px-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-black text-xs shadow-lg shadow-violet-950/40 active:scale-95 transition">Update Now</button>
+        </div>
+        <p class="relative text-[9px] text-zinc-600 tracking-wide">MADE FOR YOUR NEXT GREAT STORY</p>
       </div>
-    </div>
-
-  </div>
+    </div>  </div>
 
   <!-- ======================================================================= -->
   <!-- APPLICATION LOGIC, OTA SYSTEM & FIREBASE + SUPABASE + ADMOB ENGINE      -->
@@ -1573,7 +1576,7 @@
       const btnsBox = document.getElementById('ota-action-buttons');
 
       if (verBadge) verBadge.textContent = `${state.appVersion} → ${version}`;
-      if (titleEl) titleEl.textContent = title;
+      if (titleEl) titleEl.textContent = 'A better drama experience awaits';
       if (notesEl) notesEl.textContent = state.pendingOtaUpdate.notes;
       if (coinsEl) coinsEl.textContent = String(getTotalCoins());
       if (progBox) progBox.classList.add('hidden');
@@ -1673,12 +1676,12 @@
       const progressPct = document.getElementById('ota-progress-pct');
       if (progBox) progBox.classList.remove('hidden');
       if (btnsBox) btnsBox.classList.add('hidden');
-      if (progressLabel) progressLabel.textContent = 'Opening Android installer…';
+      if (progressLabel) progressLabel.textContent = 'Opening the Android installer…';
       if (progressFill) {
         progressFill.style.width = '100%';
         progressFill.classList.add('animate-pulse');
       }
-      if (progressPct) progressPct.textContent = 'Ready';
+      if (progressPct) progressPct.textContent = 'Your update is ready';
       // Android owns APK download/install progress and the final confirmation dialog.
       // This opens the signed APK as an in-place update; never uninstall the existing app.
       window.open(target.downloadUrl, '_system');
