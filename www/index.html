@@ -1927,13 +1927,16 @@
     }
 
     function syncCurrentSessionToLocalAccountVault() {
-      if (!state.user.email || state.user.isGuest) return;
-      const emailKey = state.user.email.trim().toLowerCase();
+      // Firebase UID is the stable account key. Email can change and must not
+      // cause a member's wallet, VIP or unlocks to appear under another account.
+      if (!state.user.uid || !state.user.email || state.user.isGuest) return;
+      const accountKey = `uid:${state.user.uid}`;
       const vault = readLocalAccountVault();
-      vault[emailKey] = {
-        ...(vault[emailKey] || {}),
+      vault[accountKey] = {
+        ...(vault[accountKey] || {}),
         profileName: state.user.name,
         uid: state.user.uid,
+        email: state.user.email.trim().toLowerCase(),
         snapshot: buildSerializableStateSnapshot(),
         savedAt: Date.now()
       };
@@ -1956,11 +1959,18 @@
       ];
     }
 
-    function restoreLocalAccountWallet(email) {
+    function restoreLocalAccountWallet(uid, email) {
+      const vault = readLocalAccountVault();
+      const uidKey = uid ? `uid:${String(uid)}` : '';
       const emailKey = String(email || '').trim().toLowerCase();
-      if (!emailKey) return false;
-      const saved = readLocalAccountVault()[emailKey]?.snapshot;
+      // Prefer the stable Firebase UID. Read the old email-keyed snapshot only
+      // as a one-time compatibility fallback for accounts saved by older builds.
+      const saved = (uidKey && vault[uidKey]?.snapshot) || (emailKey && vault[emailKey]?.snapshot);
       if (!saved || typeof saved !== 'object') return false;
+      if (uidKey && !vault[uidKey]) {
+        vault[uidKey] = { uid: String(uid), email: emailKey, snapshot: saved, savedAt: Date.now() };
+        writeLocalAccountVault(vault);
+      }
       state.purchasedCoins = Math.max(0, Math.floor(Number(saved.purchasedCoins) || 0));
       state.bonusCoins = Math.max(0, Math.floor(Number(saved.bonusCoins) || 0));
       const exp = Number(saved.vipExpiresAt) || 0;
@@ -2918,6 +2928,20 @@
     // =========================================================================
     function getTotalCoins() {
       return (Number(state.purchasedCoins) || 0) + (Number(state.bonusCoins) || 0);
+    }
+
+    function refreshVipEntitlementState() {
+      const expiry = Number(state.vipExpiresAt) || 0;
+      if (!state.isVip || !expiry || expiry > Date.now()) return false;
+      // Keep the expiry timestamp for account history, but remove active VIP
+      // access immediately. Episodes unlocked separately with coins/ads remain.
+      state.isVip = false;
+      state.vipPlanLabel = '';
+      saveAppState();
+      syncWalletUI();
+      renderVerticalFeed();
+      showToast('Your VIP pass has expired. Renew VIP to watch Episodes 4 and beyond.');
+      return true;
     }
 
     function isEpisodeUnlocked(series, ep) {
@@ -4677,7 +4701,7 @@
           // local fallback before reading its UID-scoped cloud records.
           saveAppState();
           resetAccountWalletState();
-          restoreLocalAccountWallet(u.email || email);
+          restoreLocalAccountWallet(u.uid, u.email || email);
           state.firebase.authUid = u.uid;
           state.user.uid = u.uid;
           state.user.email = u.email || email;
@@ -4748,19 +4772,35 @@
     }
 
     async function handleSignOutAccount() {
-      // Persist the member's own snapshot before leaving it. The guest session
-      // gets a clean wallet and cannot see or spend the member's coins/VIP.
+      const previousUid = state.firebase.authUid || state.user.uid;
+      // Flush this account's last known snapshot before changing Firebase UID.
       saveAppState();
+      if (runtime.fbAuth && runtime.fbDb && previousUid && state.firebase.connected) {
+        try {
+          await update(ref(runtime.fbDb, `users/${previousUid}`), {
+            wallet: { purchasedCoins: state.purchasedCoins, bonusCoins: state.bonusCoins },
+            vipStatus: {
+              isVip: Boolean(state.isVip) && (!state.vipExpiresAt || state.vipExpiresAt > Date.now()),
+              vipExpiresAt: Number(state.vipExpiresAt) || 0,
+              planLabel: state.isVip ? state.vipPlanLabel : ''
+            },
+            unlockedEpisodes: state.unlockedEpisodes
+          });
+        } catch (flushError) {
+          console.warn('[NEXORA] Account snapshot saved locally; cloud flush failed:', flushError);
+        }
+      }
+
       clearFirebaseListeners();
       if (runtime.fbAuth) {
         try {
           await signOut(runtime.fbAuth);
           resetAccountWalletState();
-          // Clear the previous identity before attaching guest listeners; their
-          // first snapshot can arrive immediately and must not save into the
-          // member's local account vault.
           state.user.email = '';
           state.user.isGuest = true;
+          state.user.name = 'NEXORA Viewer';
+          state.firebase.authUid = '';
+          state.firebase.connected = false;
           const guest = await signInAnonymously(runtime.fbAuth);
           if (guest.user) {
             state.firebase.authUid = guest.user.uid;
@@ -4769,18 +4809,22 @@
           }
         } catch (signOutError) {
           console.warn('[NEXORA] Sign-out did not complete:', signOutError);
-          showToast('Could not safely switch to Guest mode. Please try again.');
+          showToast('Could not safely switch accounts. Please try again.');
           return;
         }
       } else {
         resetAccountWalletState();
         state.user.email = '';
         state.user.isGuest = true;
+        state.user.name = 'NEXORA Viewer';
       }
       saveAppState();
       syncWalletUI();
       updateAuthStatusUI();
-      showToast('Signed out to Guest mode.');
+      showToast('Account saved. Sign in or create another account.');
+      // Bring up the account chooser immediately; the user can log in to any
+      // existing account or create another without reinstalling the app.
+      openAuthModal('login');
     }
 
     function cycleUserAvatar() {
@@ -5148,6 +5192,15 @@
       ];
       void Promise.allSettled(startupTasks).then(() => {
         if (!runtime.splashDismissed) setStartupStatus('Ready. Enjoy the story.');
+      });
+
+      // Refresh expiring VIP access while the app remains open. The expiry
+      // timestamp is also checked by isEpisodeUnlocked on every access attempt.
+      if (!runtime.vipExpiryTimer) {
+        runtime.vipExpiryTimer = setInterval(refreshVipEntitlementState, 15000);
+      }
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) refreshVipEntitlementState();
       });
 
       // Keep the branded intro short; slow or offline services cannot delay entry.
