@@ -10,6 +10,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'capacitor.config.json'
+      - 'google-services.json'
       - 'supabase/**'
       - 'resources/**'
       - 'scripts/**'
@@ -22,6 +23,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'capacitor.config.json'
+      - 'google-services.json'
       - 'supabase/**'
       - 'resources/**'
       - 'scripts/**'
@@ -75,6 +77,53 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+      - name: Configure NEXORA AI DRAMA Firebase Android app
+        run: |
+          test -s google-services.json
+          python - <<'PY'
+          import json, re, shutil
+          from pathlib import Path
+
+          config = json.loads(Path("google-services.json").read_text())
+          package = "com.devcedrick.nexoraaidrama"
+          matches = [
+              client for client in config.get("client", [])
+              if client.get("client_info", {}).get("android_client_info", {}).get("package_name") == package
+          ]
+          if len(matches) != 1:
+              raise SystemExit(f"Expected exactly one Firebase Android registration for {package}; found {len(matches)}")
+          if config.get("project_info", {}).get("project_id") != "nexora-ai-drama":
+              raise SystemExit("Firebase project mismatch; refusing to build")
+
+          shutil.copy2("google-services.json", "android/app/google-services.json")
+
+          root_gradle = Path("android/build.gradle")
+          root_text = root_gradle.read_text()
+          if "com.google.gms:google-services" not in root_text:
+              match = re.search(r"dependencies\\s*\\{", root_text)
+              if not match:
+                  raise SystemExit("Could not find Android root Gradle dependencies block for Google Services plugin")
+              insert_at = match.end()
+              root_text = root_text[:insert_at] + "\\n        classpath 'com.google.gms:google-services:4.4.4'" + root_text[insert_at:]
+              root_gradle.write_text(root_text)
+
+          app_gradle = Path("android/app/build.gradle")
+          app_text = app_gradle.read_text()
+          if "com.google.gms.google-services" not in app_text:
+              plugin_match = re.search(r"apply plugin:\\s*['\\\"]com\\.android\\.application['\\\"]", app_text)
+              if plugin_match:
+                  insert_at = plugin_match.end()
+                  app_text = app_text[:insert_at] + "\\napply plugin: 'com.google.gms.google-services'" + app_text[insert_at:]
+              else:
+                  plugins_match = re.search(r"plugins\\s*\\{", app_text)
+                  if not plugins_match:
+                      raise SystemExit("Could not find Android app plugin declaration")
+                  insert_at = plugins_match.end()
+                  app_text = app_text[:insert_at] + "\\n    id 'com.google.gms.google-services'" + app_text[insert_at:]
+              app_gradle.write_text(app_text)
+
+          print(f"Configured Firebase project {config['project_info']['project_id']} for {package}")
+          PY
       - name: Harden Android app data and network settings
         run: |
           python - <<'PY'
