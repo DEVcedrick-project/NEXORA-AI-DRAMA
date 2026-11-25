@@ -58,7 +58,7 @@ public final class NexoraUpdateDownloadReceiver extends BroadcastReceiver {
             Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                     ? new Notification.Builder(context, channelId)
                     : new Notification.Builder(context);
-            builder.setSmallIcon(context.getApplicationInfo().icon)
+            builder.setSmallIcon(android.R.drawable.stat_sys_download_done)
                     .setContentTitle("NEXORA update is ready")
                     .setContentText("Tap here to install the latest version.")
                     .setContentIntent(pendingInstall)
