@@ -74,4 +74,47 @@ public class NexoraUpdaterPlugin extends Plugin {
             call.reject("Could not start the Android update download.", error);
         }
     }
+    @PluginMethod
+    public void getDownloadStatus(PluginCall call) {
+        long downloadId = call.getLong("downloadId", -1L);
+        SharedPreferences prefs = getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (downloadId <= 0 || downloadId != prefs.getLong(DOWNLOAD_ID, -2L)) {
+            call.reject("Unknown NEXORA update download.");
+            return;
+        }
+        DownloadManager manager = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
+        if (manager == null) {
+            call.reject("Android download service is unavailable.");
+            return;
+        }
+        DownloadManager.Query query = new DownloadManager.Query().setFilterById(downloadId);
+        try (android.database.Cursor cursor = manager.query(query)) {
+            if (cursor == null || !cursor.moveToFirst()) {
+                call.reject("NEXORA update download was not found.");
+                return;
+            }
+            int status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+            long downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+            long total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+            int progress = total > 0 ? (int) Math.min(100L, downloaded * 100L / total) : 0;
+            String state;
+            if (status == DownloadManager.STATUS_SUCCESSFUL) state = "completed";
+            else if (status == DownloadManager.STATUS_FAILED) state = "failed";
+            else if (status == DownloadManager.STATUS_PAUSED) state = "paused";
+            else state = "downloading";
+            JSObject result = new JSObject();
+            result.put("status", state);
+            result.put("progress", progress);
+            result.put("downloadedBytes", downloaded);
+            result.put("totalBytes", total);
+            if (status == DownloadManager.STATUS_FAILED) {
+                int reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON));
+                result.put("reason", reason);
+            }
+            call.resolve(result);
+        } catch (Exception error) {
+            call.reject("Could not read NEXORA update download progress.", error);
+        }
+    }
+
 }
