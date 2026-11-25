@@ -19,6 +19,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class NexoraUpdaterPlugin extends Plugin {
     private static final String PREFS = "nexora_native_updater";
     private static final String DOWNLOAD_ID = "download_id";
+    private static final String INSTALL_LAUNCHED = "install_launched";
 
     @PluginMethod
     public void downloadAndInstall(PluginCall call) {
@@ -65,7 +66,7 @@ public class NexoraUpdaterPlugin extends Plugin {
                     "NEXORA-AI-DRAMA-update.apk");
 
             long id = manager.enqueue(request);
-            prefs.edit().putLong(DOWNLOAD_ID, id).apply();
+            prefs.edit().putLong(DOWNLOAD_ID, id).putBoolean(INSTALL_LAUNCHED, false).apply();
             JSObject result = new JSObject();
             result.put("status", "downloading");
             result.put("downloadId", id);
@@ -74,6 +75,57 @@ public class NexoraUpdaterPlugin extends Plugin {
             call.reject("Could not start the Android update download.", error);
         }
     }
+
+    @PluginMethod
+    public void installDownloadedApk(PluginCall call) {
+        long downloadId = call.getLong("downloadId", -1L);
+        Context context = getContext();
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (downloadId <= 0 || downloadId != prefs.getLong(DOWNLOAD_ID, -2L)) {
+            call.reject("Unknown NEXORA update download.");
+            return;
+        }
+        if (prefs.getBoolean(INSTALL_LAUNCHED, false)) {
+            JSObject already = new JSObject();
+            already.put("status", "installer_already_opened");
+            call.resolve(already);
+            return;
+        }
+        DownloadManager manager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+        if (manager == null) {
+            call.reject("Android download service is unavailable.");
+            return;
+        }
+        DownloadManager.Query query = new DownloadManager.Query().setFilterById(downloadId);
+        try (android.database.Cursor cursor = manager.query(query)) {
+            if (cursor == null || !cursor.moveToFirst()
+                    || cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) != DownloadManager.STATUS_SUCCESSFUL) {
+                call.reject("The NEXORA APK download is not complete yet.");
+                return;
+            }
+            Uri apkUri = manager.getUriForDownloadedFile(downloadId);
+            if (apkUri == null) {
+                call.reject("Android could not locate the downloaded NEXORA APK.");
+                return;
+            }
+            prefs.edit().putBoolean(INSTALL_LAUNCHED, true).commit();
+            try {
+                Intent install = new Intent(Intent.ACTION_VIEW);
+                install.setDataAndType(apkUri, "application/vnd.android.package-archive");
+                install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                context.startActivity(install);
+                JSObject result = new JSObject();
+                result.put("status", "installer_opened");
+                call.resolve(result);
+            } catch (Exception launchError) {
+                prefs.edit().putBoolean(INSTALL_LAUNCHED, false).commit();
+                throw launchError;
+            }
+        } catch (Exception error) {
+            call.reject("Could not open the Android installer for the NEXORA update.", error);
+        }
+    }
+
     @PluginMethod
     public void getDownloadStatus(PluginCall call) {
         long downloadId = call.getLong("downloadId", -1L);
