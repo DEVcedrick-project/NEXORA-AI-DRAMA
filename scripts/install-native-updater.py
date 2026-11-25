@@ -38,8 +38,8 @@ if "NexoraUpdaterPlugin" not in text:
         raise SystemExit("Unexpected Capacitor MainActivity template: BridgeActivity import not found")
     text = text.replace("import com.getcapacitor.BridgeActivity;",
                         "import com.getcapacitor.BridgeActivity;\nimport com.devcedrick.nexoraaidrama.NexoraUpdaterPlugin;")
-    text = re.sub(r"extends BridgeActivity\\s*\\{",
-                  "extends BridgeActivity {\\n    @Override\\n    public void onCreate(android.os.Bundle savedInstanceState) {\\n        registerPlugin(NexoraUpdaterPlugin.class);\\n        super.onCreate(savedInstanceState);\\n    }",
+    text = re.sub(r"extends BridgeActivity\s*\{",
+                  "extends BridgeActivity {\n    @Override\n    public void onCreate(android.os.Bundle savedInstanceState) {\n        registerPlugin(NexoraUpdaterPlugin.class);\n        super.onCreate(savedInstanceState);\n    }",
                   text, count=1)
     if "registerPlugin(NexoraUpdaterPlugin.class)" not in text:
         raise SystemExit("Could not register native NEXORA updater plugin")
