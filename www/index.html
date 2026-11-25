@@ -1918,9 +1918,6 @@
         vipPlanLabel: String(state.vipPlanLabel || ''),
         starterPackClaimed: Boolean(state.starterPackClaimed),
         unlockedEpisodes: state.unlockedEpisodes,
-        savedSeries: state.savedSeries,
-        likedSeries: state.likedSeries,
-        commentsBySeries: state.commentsBySeries,
         walletHistory: state.walletHistory.slice(0, 25),
         wte: state.wte,
         dailyCheckIn: state.dailyCheckIn,
@@ -2047,11 +2044,12 @@
         if (parsed.unlockedEpisodes && typeof parsed.unlockedEpisodes === 'object') {
           state.unlockedEpisodes = parsed.unlockedEpisodes;
         }
-        if (Array.isArray(parsed.savedSeries)) state.savedSeries = parsed.savedSeries;
-        if (parsed.likedSeries && typeof parsed.likedSeries === 'object') state.likedSeries = parsed.likedSeries;
-        if (parsed.commentsBySeries && typeof parsed.commentsBySeries === 'object') {
-          state.commentsBySeries = { ...state.commentsBySeries, ...parsed.commentsBySeries };
-        }
+        // Shared social state is always hydrated from the authenticated backend,
+        // never from a previous account's device-local snapshot.
+        state.savedSeries = [];
+        state.likedSeries = {};
+        state.commentsBySeries = {};
+        state.socialLikesCount = {};
         if (Array.isArray(parsed.walletHistory) && parsed.walletHistory.length > 0) {
           state.walletHistory = parsed.walletHistory.slice(0, 25);
         }
