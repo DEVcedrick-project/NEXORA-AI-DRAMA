@@ -13,7 +13,7 @@ for permission in (
     "android.permission.POST_NOTIFICATIONS",
 ):
     if permission not in xml:
-        xml = xml.replace("<application", f'    <uses-permission android:name="{permission}" />\\n    <application', 1)
+        xml = xml.replace("<application", f'    <uses-permission android:name="{permission}" />\n    <application', 1)
 
 receiver_name = "com.devcedrick.nexoraaidrama.NexoraUpdateDownloadReceiver"
 if receiver_name not in xml:
