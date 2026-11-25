@@ -765,7 +765,7 @@
     </div>
 
     <!-- SHEET 5: REWARDED VIDEO AD PLAYER OVERLAY (BROWSER FALLBACK) -->
-    <div id="ad-player-sheet" class="translate-y-full transition-transform duration-300 absolute inset-0 z-[60] bg-black flex flex-col justify-between p-5">
+    <div id="ad-player-sheet" class="hidden translate-y-full transition-transform duration-300 absolute inset-0 z-[60] bg-black flex flex-col justify-between p-5" aria-hidden="true">
       <div class="flex items-center justify-between">
         <span class="px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-700 text-[10px] font-mono font-bold text-amber-300">
           SPONSORED AD • <span id="ad-countdown-text">5s</span>
@@ -4494,6 +4494,8 @@
       const claimBtn = document.getElementById('ad-claim-finish-btn');
 
       if (!sheet) return;
+      sheet.classList.remove('hidden');
+      sheet.setAttribute('aria-hidden', 'false');
       sheet.classList.remove('translate-y-full');
 
       let remaining = 5;
@@ -4643,7 +4645,11 @@
       cleanupAdMobListeners();
       runtime.pendingAdTarget = null;
       runtime.isSheetOpen = false;
-      document.getElementById('ad-player-sheet')?.classList.add('translate-y-full');
+      const adSheet = document.getElementById('ad-player-sheet');
+      if (adSheet) {
+        adSheet.classList.add('translate-y-full', 'hidden');
+        adSheet.setAttribute('aria-hidden', 'true');
+      }
     }
 
     function completeRewardedAdClaim() {
@@ -4652,7 +4658,11 @@
         runtime.adTimerInterval = null;
       }
       cleanupAdMobListeners();
-      document.getElementById('ad-player-sheet')?.classList.add('translate-y-full');
+      const adSheet = document.getElementById('ad-player-sheet');
+      if (adSheet) {
+        adSheet.classList.add('translate-y-full', 'hidden');
+        adSheet.setAttribute('aria-hidden', 'true');
+      }
       runtime.isSheetOpen = false;
 
       state.adsWatchedToday = Math.min(state.maxAdsPerDay, state.adsWatchedToday + 1);
