@@ -31,9 +31,9 @@ The workflow creates a debug APK for testing. It creates a signed release APK on
 ## User registration and sign-in status
 
 - The app includes Create Account, Sign In and password-reset screens using Firebase Authentication.
-- The repository does not contain a Firebase Web API key or Android Firebase configuration, so real account registration is not ready until the owner supplies the Firebase project configuration and enables Email/Password sign-in.
-- When Firebase is not configured, signup, sign-in and password reset show a clear unavailable message instead of pretending to create an online account.
-- The app no longer falls back to storing user passwords in localStorage. Do not distribute the app as having working online registration until Firebase is configured and tested on a device.
+- Firebase web configuration for the NEXORA AI DRAMA Firebase project is present in the app source. Firebase web API keys are client configuration, not service-account secrets; production security depends on correctly configured Firebase Authentication providers and Realtime Database rules.
+- Verify Email/Password sign-in is enabled in Firebase Authentication and test account creation, sign-in, password reset, session persistence, and user-scoped Realtime Database access on a real Android device before release.
+- The app does not use localStorage as a password vault. It does persist app state and local account snapshots in localStorage; review this storage behavior and provide account/data deletion before production release.
 
 ## Configuration and production safety
 
