@@ -156,37 +156,6 @@
     <div id="toast-banner" class="pointer-events-none fixed sm:absolute top-14 left-1/2 -translate-x-1/2 z-[75] w-[90%] max-w-[350px] flex flex-col items-center gap-1.5"></div>
 
     <!-- ===================================================================== -->
-    <!-- LIVE ON-SCREEN POP-UP NOTIFICATION BANNER (NEW UPLOAD / OTA UPDATE)   -->
-    <!-- ===================================================================== -->
-    <div id="live-notif-popup" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-[70] w-[93%] max-w-[376px] rounded-2xl bg-[#13121e]/95 backdrop-blur-xl border border-amber-400/50 shadow-[0_14px_40px_rgba(0,0,0,0.85)] p-3.5 animate-live-popup">
-      <div class="flex items-start gap-3">
-        <div id="live-notif-icon" class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-[#ff2e63] to-violet-600 flex items-center justify-center text-lg shrink-0 shadow-md">
-          🎬
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center justify-between gap-1.5">
-            <span id="live-notif-tag" class="px-2 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-[9px] font-black uppercase tracking-wider text-amber-300">
-              NEW EPISODE UPLOAD
-            </span>
-            <button onclick="dismissLiveNotifPopup()" class="text-zinc-400 hover:text-white p-0.5 text-xs leading-none" title="Dismiss">✕</button>
-          </div>
-          <h4 id="live-notif-title" class="text-xs font-black text-white mt-1 truncate">New drama published</h4>
-          <p id="live-notif-body" class="text-[11px] text-zinc-300 leading-snug mt-0.5 line-clamp-2">
-            New cliffhanger episode uploaded! Watch now or continue where you left off.
-          </p>
-          <div class="flex items-center gap-2 mt-2.5">
-            <button id="live-notif-primary-btn" onclick="handleLiveNotifPrimaryAction()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#ff2e63] to-violet-600 text-white font-black text-[11px] shadow active:scale-95 transition">
-              Watch Now ▶
-            </button>
-            <button onclick="dismissLiveNotifPopup()" class="px-2.5 py-1.5 rounded-xl bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 font-bold text-[10px] transition">
-              Later
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===================================================================== -->
     <!-- TOP HEADER BAR                                                        -->
     <!-- ===================================================================== -->
     <header class="relative z-30 px-3 pt-2.5 pb-2 bg-gradient-to-b from-black/95 via-black/80 to-transparent flex items-center justify-between gap-1.5 shrink-0">
@@ -1459,9 +1428,7 @@
       saveAppState();
       syncNotificationBadge();
 
-      if (showPopup) {
-        showLiveNotifPopup(item);
-      }
+      // Notifications are delivered through Android's system notification shade, never an in-app popup.
     }
 
     function showLiveNotifPopup(item) {
@@ -1992,12 +1959,46 @@
           console.error("[NEXORA Push] FCM registration error:", error);
         });
 
-        await PushNotifications.addListener("pushNotificationReceived", (notification) => {
+        // Foreground FCM messages must still appear in Android's notification shade.
+        // Background FCM notification payloads are displayed by Android automatically.
+        const { LocalNotifications } = await import("https://esm.sh/@capacitor/local-notifications@8.0.0");
+        const localPermission = await LocalNotifications.checkPermissions();
+        if (localPermission.display !== "granted") {
+          await LocalNotifications.requestPermissions();
+        }
+        const channels = [
+          { id: "nexora_updates", name: "App Updates", description: "Important NEXORA app updates" },
+          { id: "nexora_content", name: "New Content", description: "New episodes and movies" },
+          { id: "nexora_reminders", name: "Continue Watching", description: "Reminders for unfinished content" }
+        ];
+        for (const channel of channels) {
+          try {
+            await LocalNotifications.createChannel({
+              ...channel, importance: 5, visibility: 1, sound: "default", vibration: true
+            });
+          } catch (channelError) {
+            console.warn("[NEXORA Push] Local notification channel:", channelError);
+          }
+        }
+
+        await PushNotifications.addListener("pushNotificationReceived", async (notification) => {
           const data = notification?.data || {};
-          if (data.type === "new_episode") {
-            showToast(notification?.title || "A new episode is available!");
-          } else if (data.type === "app_update") {
-            showToast("A new NEXORA AI DRAMA update is available.");
+          const type = String(data.type || "new_content");
+          const channelId = type === "app_update" ? "nexora_updates"
+            : type === "continue_watching" ? "nexora_reminders" : "nexora_content";
+          try {
+            await LocalNotifications.schedule({
+              notifications: [{
+                id: Math.floor(Date.now() % 2147483647),
+                title: notification?.title || "NEXORA AI DRAMA",
+                body: notification?.body || "There's something new waiting for you.",
+                channelId,
+                schedule: { at: new Date(Date.now() + 1000) },
+                extra: data
+              }]
+            });
+          } catch (localError) {
+            console.error("[NEXORA Push] Could not show Android notification:", localError);
           }
           window.dispatchEvent(new CustomEvent("nexora:push-received", { detail: notification }));
         });
