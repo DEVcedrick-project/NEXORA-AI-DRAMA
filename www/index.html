@@ -2305,7 +2305,8 @@
         state.supabase.connected = true;
 
         if (pullRemote) {
-          await pullWalletAndUnlocksFromSupabase();
+          void reportNexoraAuthEvent('login');
+      await pullWalletAndUnlocksFromSupabase();
         }
 
         updateFirebaseSyncBadges();
@@ -4155,6 +4156,28 @@
       return Boolean(initialized && runtime.fbAuth);
     }
 
+    async function reportNexoraAuthEvent(eventType) {
+      try {
+        const user = runtime.fbAuth?.currentUser;
+        if (!user || user.isAnonymous) return;
+        const idToken = await user.getIdToken();
+        const response = await fetch('https://gbpjixlubrmgzqflbkwz.supabase.co/functions/v1/nexora-auth-event-report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'sb_publishable_aTvIirLiL64wiEFekuF-YQ_4TXy-Zty',
+            'Authorization': 'Bearer ' + idToken,
+          },
+          body: JSON.stringify({ event_type: eventType }),
+        });
+        if (!response.ok) throw new Error('Report request failed (' + response.status + ')');
+        const result = await response.json();
+        if (!result.email_configured) console.info('[NEXORA] Activity saved to Studio; email delivery still needs owner email and mail-provider setup.');
+      } catch (reportError) {
+        console.warn('[NEXORA] Could not send account activity report:', reportError);
+      }
+    }
+
     function getFriendlyFirebaseAuthError(err, action = 'account') {
       const code = String(err?.code || '');
       const messages = {
@@ -4243,6 +4266,7 @@
         return;
       }
 
+      void reportNexoraAuthEvent('account_created');
       saveAppState();
       syncWalletUI();
       updateAuthStatusUI();
