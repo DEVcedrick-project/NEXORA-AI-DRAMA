@@ -1680,7 +1680,7 @@
       }
     }
 
-    function applySafeOtaSystemUpdate() {
+    async function applySafeOtaSystemUpdate() {
       const target = state.pendingOtaUpdate;
       if (!target?.downloadUrl || !/^https:\/\//i.test(target.downloadUrl)) {
         showToast('The update package is not published yet.');
@@ -1693,15 +1693,38 @@
       const progressPct = document.getElementById('ota-progress-pct');
       if (progBox) progBox.classList.remove('hidden');
       if (btnsBox) btnsBox.classList.add('hidden');
-      if (progressLabel) progressLabel.textContent = 'Opening the Android installer…';
+      if (progressLabel) progressLabel.textContent = 'Preparing secure in-app download…';
       if (progressFill) {
-        progressFill.style.width = '100%';
-        progressFill.classList.add('animate-pulse');
+        progressFill.style.width = '12%';
+        progressFill.classList.remove('animate-pulse');
       }
-      if (progressPct) progressPct.textContent = 'Your update is ready';
-      // Android owns APK download/install progress and the final confirmation dialog.
-      // This opens the signed APK as an in-place update; never uninstall the existing app.
-      window.open(target.downloadUrl, '_system');
+      if (progressPct) progressPct.textContent = 'Connecting to Android updater';
+
+      try {
+        if (!window.Capacitor?.isNativePlatform?.()) {
+          throw new Error('Install the latest NEXORA AI DRAMA APK to enable in-app updates.');
+        }
+        const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
+        const result = await NexoraUpdater.downloadAndInstall({ url: target.downloadUrl });
+        if (result?.status === 'permission_required') {
+          if (progBox) progBox.classList.add('hidden');
+          if (btnsBox) btnsBox.classList.remove('hidden');
+          showToast('Allow NEXORA to install updates, then tap Update again.');
+          return;
+        }
+        if (result?.status !== 'downloading') {
+          throw new Error('Android did not start the update download.');
+        }
+        if (progressLabel) progressLabel.textContent = 'Downloading update securely…';
+        if (progressFill) progressFill.style.width = '35%';
+        if (progressPct) progressPct.textContent = 'Download continues in Android notifications';
+        showToast('NEXORA update download started. Keep notifications enabled.');
+      } catch (error) {
+        if (progBox) progBox.classList.add('hidden');
+        if (btnsBox) btnsBox.classList.remove('hidden');
+        showToast(error?.message || 'Could not start the in-app update. Please try again.');
+        console.error('[NEXORA Updater]', error);
+      }
     }
 
     function recordContinueWatchingProgress(seriesId, epNum, progressPct) {
