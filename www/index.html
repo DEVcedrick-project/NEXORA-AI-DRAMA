@@ -887,99 +887,7 @@
       </form>
     </div>
 
-    <!-- SHEET 7: FIREBASE RTDB, SUPABASE, ADMOB & ADMIN SIMULATOR -->
-    <div id="firebase-config-sheet" class="translate-y-full transition-transform duration-300 absolute bottom-0 inset-x-0 z-50 bg-[#12121a] border-t border-zinc-800 rounded-t-3xl p-5 max-h-[88%] overflow-y-auto no-scrollbar space-y-4">
-      <div class="w-10 h-1 bg-zinc-700 rounded-full mx-auto"></div>
-      <div class="flex items-start justify-between">
-        <div>
-          <span class="text-[10px] font-extrabold uppercase tracking-wider text-violet-400">Firebase • Supabase • AdMob • OTA</span>
-          <h3 class="text-base font-black text-white mt-0.5">Cloud Services &amp; App Settings</h3>
-        </div>
-        <button onclick="closeAllSheets()" class="p-1.5 rounded-full bg-zinc-800 text-zinc-300">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      </div>
-
-      <!-- Demo admin simulator and sample stream tester removed: publishing is handled by NEXORA STUDIO. -->
-
-      <!-- Firebase RTDB Credentials Form -->
-      <form onsubmit="handleSaveFirebaseConfig(event)" class="space-y-2.5">
-        <p class="text-xs font-extrabold text-white">Connect Firebase Authentication &amp; Realtime Database</p>
-        <p class="text-[10px] leading-relaxed text-amber-200">Enable Email/Password sign-in in Firebase Console → Authentication → Sign-in method. Use the Web API key from this same Firebase project.</p>
-        <div>
-          <label class="block text-[10px] font-bold text-zinc-400 mb-1">Firebase Web API Key</label>
-          <input id="fb-apikey-input" type="text" placeholder="Firebase Web API key is loaded from app configuration" class="w-full bg-black/70 border border-zinc-800 focus:border-violet-500 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
-        </div>
-        <div>
-          <label class="block text-[10px] font-bold text-zinc-400 mb-1">Realtime Database URL</label>
-          <input id="fb-dburl-input" type="url" value="https://nexora-ai-drama-default-rtdb.asia-southeast1.firebasedatabase.app" class="w-full bg-black/70 border border-zinc-800 focus:border-violet-500 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
-        </div>
-        <div class="flex gap-2 pt-1">
-          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-xs transition">
-            Connect Firebase
-          </button>
-          <button type="button" onclick="pushLocalStateToFirebaseNow()" class="px-3 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs border border-zinc-700">
-            Push → Cloud
-          </button>
-        </div>
-      </form>
-
-      <!-- Configurable Supabase Client Form -->
-      <form onsubmit="handleSaveSupabaseConfig(event)" class="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-950/30 to-black border border-emerald-500/35 space-y-2.5">
-        <div class="flex items-center justify-between">
-          <p class="text-xs font-extrabold text-emerald-300">🗄️ Configurable Supabase Client</p>
-          <span id="supabase-status-badge" class="text-[9px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">OFFLINE</span>
-        </div>
-        <div>
-          <label class="block text-[10px] font-bold text-zinc-400 mb-1">Supabase Project URL</label>
-          <input id="sb-url-input" type="url" placeholder="https://your-project-ref.supabase.co" class="w-full bg-black/70 border border-zinc-800 focus:border-emerald-400 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
-        </div>
-        <div>
-          <label class="block text-[10px] font-bold text-zinc-400 mb-1">Supabase Publishable / Anon Key</label>
-          <input id="sb-key-input" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." class="w-full bg-black/70 border border-zinc-800 focus:border-emerald-400 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
-        </div>
-        <div class="flex gap-2 pt-1">
-          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-black font-black text-xs transition">
-            Connect Supabase
-          </button>
-          <button type="button" onclick="syncStateToSupabaseNow(true)" class="px-3 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-emerald-300 font-bold text-xs border border-emerald-500/30">
-            Sync Wallet &amp; Unlocks
-          </button>
-        </div>
-      </form>
-
-      <!-- Configurable Capacitor AdMob Bridge Form -->
-      <form onsubmit="handleSaveAdmobConfig(event)" class="p-3.5 rounded-2xl bg-gradient-to-br from-amber-950/30 to-black border border-amber-500/35 space-y-2.5">
-        <div class="flex items-center justify-between">
-          <p class="text-xs font-extrabold text-amber-300">📱 Capacitor AdMob Rewarded Interstitial Bridge</p>
-          <span id="admob-bridge-status-badge" class="text-[9px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">WEB FALLBACK</span>
-        </div>
-        <div>
-          <label class="block text-[10px] font-bold text-zinc-400 mb-1">Android Rewarded Interstitial Ad Unit ID</label>
-          <input id="admob-android-input" type="text" placeholder="ca-app-pub-3940256099942544/5224354917" class="w-full bg-black/70 border border-zinc-800 focus:border-amber-400 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
-        </div>
-        <div>
-          <label class="block text-[10px] font-bold text-zinc-400 mb-1">iOS Rewarded Ad Unit ID</label>
-          <input id="admob-ios-input" type="text" placeholder="ca-app-pub-3940256099942544/1712485313" class="w-full bg-black/70 border border-zinc-800 focus:border-amber-400 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none" />
-        </div>
-        <div class="flex gap-2 pt-1">
-          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs transition">
-            Save AdMob Units
-          </button>
-          <button type="button" onclick="triggerRewardedAd(null)" class="px-3 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold text-xs border border-amber-500/30">
-            Test Ad
-          </button>
-        </div>
-      </form>
-
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-zinc-300">Live Sync Inspector</span>
-          <span class="text-[10px] text-zinc-500 font-mono">Firebase + Supabase + AdMob</span>
-        </div>
-        <pre id="rtdb-schema-inspector" class="p-3 rounded-2xl bg-black border border-zinc-800 text-[10px] font-mono text-emerald-300 overflow-x-auto leading-relaxed"></pre>
-      </div>
-    </div>
+    <!-- Internal cloud configuration UI removed from the public app. -->
 
     <!-- SHEET 8: APK APP ICON & NATIVE SPLASH SCREEN STUDIO -->
     <div id="apk-assets-sheet" class="translate-y-full transition-transform duration-300 absolute bottom-0 inset-x-0 z-50 bg-[#12121a] border-t border-zinc-800 rounded-t-3xl p-5 max-h-[90%] overflow-y-auto no-scrollbar space-y-4">
@@ -2641,28 +2549,6 @@
         if (label) label.textContent = 'Local';
         if (desc) desc.textContent = 'Firebase RTDB • Supabase • AdMob Bridge';
       }
-    }
-
-    function openFirebaseConfigModal() {
-      closeAllSheets();
-      document.getElementById('fb-apikey-input').value = state.firebase.apiKey || '';
-      document.getElementById('fb-dburl-input').value = state.firebase.dbUrl || NEXORA_DEFAULT_CONFIG.firebase.databaseURL;
-      document.getElementById('sb-url-input').value = state.supabase.url || '';
-      document.getElementById('sb-key-input').value = state.supabase.anonKey || '';
-      document.getElementById('admob-android-input').value = state.admob.androidRewardedId || '';
-      document.getElementById('admob-ios-input').value = state.admob.iosRewardedId || '';
-
-      const activeSeries = getSeriesById(state.activeSeriesId);
-      const activeEpNum = state.activeEpisodeBySeries[activeSeries.id] || 1;
-      const activeEp = activeSeries.episodes.find(e => e.num === activeEpNum) || activeSeries.episodes[0];
-      const streamInput = document.getElementById('test-stream-url-input');
-      const targetLabel = document.getElementById('stream-tester-target-label');
-      if (streamInput) streamInput.value = activeEp?.videoUrl || '';
-      if (targetLabel) targetLabel.textContent = `${activeSeries.title.slice(0, 14)}… Ep ${activeEpNum}`;
-      renderRtdbSchemaInspector();
-      runtime.isSheetOpen = true;
-      document.getElementById('sheet-backdrop')?.classList.remove('hidden');
-      document.getElementById('firebase-config-sheet')?.classList.remove('translate-y-full');
     }
 
     async function handleSaveFirebaseConfig(event) {
