@@ -1825,14 +1825,14 @@
           showToast('Allow NEXORA to install updates. The download will resume automatically when you return.');
           return;
         }
-        if (result?.status !== 'downloading') {
+        if (!['downloading', 'completed'].includes(result?.status)) {
           throw new Error('Android did not start the update download.');
         }
         // Pause only after Android confirms the download started (not while requesting install permission).
         savePlaybackForUpdate();
-        if (progressLabel) progressLabel.textContent = 'Downloading update securely…';
-        if (progressFill) progressFill.style.width = '35%';
-        if (progressPct) progressPct.textContent = 'Starting in-app progress tracking…';
+        if (progressLabel) progressLabel.textContent = result.status === 'completed' ? 'Verified update already downloaded. Preparing installer…' : 'Downloading update securely…';
+        if (progressFill) progressFill.style.width = result.status === 'completed' ? '100%' : '0%';
+        if (progressPct) progressPct.textContent = result.status === 'completed' ? 'APK ready on this device' : 'Starting in-app progress tracking…';
         monitorNativeUpdateDownload(Number(result.downloadId));
         showToast('NEXORA update download started.');
       } catch (error) {
