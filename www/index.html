@@ -455,7 +455,7 @@
                 <span>🛡️ App Version &amp; Safe OTA Updates</span>
               </p>
               <p class="text-[10px] text-zinc-300 mt-0.5">
-                Current Build: <strong id="profile-app-version" class="font-mono text-white">v2.5.9</strong> • Zero APK reinstall required
+                Installed Version: <strong id="profile-app-version" class="font-mono text-white">v2.6.1</strong> • In-place update (keep app data)
               </p>
             </div>
             <button onclick="checkForSystemUpdatesNow()" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-[11px] font-extrabold text-emerald-300 shrink-0 transition">
@@ -1084,9 +1084,9 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.5.9';
+    const APP_CURRENT_VERSION = 'v2.6.1';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
-    const APP_UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+    const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
     const STORAGE_KEY = 'nexora_ai_drama_cloud_v6';
     const FB_CONFIG_STORAGE_KEY = 'nexora_firebase_rtdb_config_v1';
     const SB_CONFIG_STORAGE_KEY = 'nexora_supabase_config_v1';
@@ -1633,7 +1633,7 @@
           `).join('');
     }
 
-    function openOtaUpdateModal(version = 'v2.5.0', title = 'New System & Drama Engine Update', notes = '') {
+    function openOtaUpdateModal(version = 'v2.6.1', title = 'New System & Drama Engine Update', notes = '') {
       closeAllSheets();
       state.pendingOtaUpdate = {
         version,
@@ -1705,10 +1705,22 @@
         showToast('The update package is not published yet.');
         return;
       }
-      // Android's package installer performs the in-place update. It will preserve app data
-      // only when the APK uses the same application ID and signing certificate.
-      window.open(target.downloadUrl, '_blank', 'noopener');
-      showToast('Opening the signed NEXORA update package. Follow the Android installer prompt.');
+      const progBox = document.getElementById('ota-progress-box');
+      const btnsBox = document.getElementById('ota-action-buttons');
+      const progressLabel = document.getElementById('ota-progress-label');
+      const progressFill = document.getElementById('ota-progress-fill');
+      const progressPct = document.getElementById('ota-progress-percent');
+      if (progBox) progBox.classList.remove('hidden');
+      if (btnsBox) btnsBox.classList.add('hidden');
+      if (progressLabel) progressLabel.textContent = 'Opening Android installer…';
+      if (progressFill) {
+        progressFill.style.width = '100%';
+        progressFill.classList.add('animate-pulse');
+      }
+      if (progressPct) progressPct.textContent = 'Ready';
+      // Android owns APK download/install progress and the final confirmation dialog.
+      // This opens the signed APK as an in-place update; never uninstall the existing app.
+      window.location.href = target.downloadUrl;
     }
 
     function recordContinueWatchingProgress(seriesId, epNum, progressPct) {
