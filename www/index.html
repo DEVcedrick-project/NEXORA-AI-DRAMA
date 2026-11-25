@@ -922,25 +922,7 @@
 
         <div class="space-y-1">
           <h3 id="ota-update-title" class="text-base font-black text-white">New System &amp; Drama Engine Update</h3>
-          <p id="ota-update-notes" class="text-xs text-zinc-300 leading-relaxed">
-            Adds faster HLS drama streaming, new cliffhanger episodes, and smoother Watch-to-Earn sync.
-          </p>
-        </div>
-
-        <!-- Data Preservation Checklist -->
-        <div class="p-3 rounded-2xl bg-black/60 border border-zinc-800 space-y-1.5 text-[11px]">
-          <div class="flex items-center gap-2 text-emerald-300 font-bold">
-            <span>✓</span>
-            <span>Install over the existing app when signing matches</span>
-          </div>
-          <div class="flex items-center gap-2 text-emerald-300 font-bold">
-            <span>✓</span>
-            <span>All Coins (<span id="ota-preserve-coins" class="font-mono">60</span>) &amp; VIP status preserved</span>
-          </div>
-          <div class="flex items-center gap-2 text-emerald-300 font-bold">
-            <span>✓</span>
-            <span>Continue Watching &amp; Unlocked Episodes kept safe</span>
-          </div>
+          <p id="ota-update-notes" class="hidden" aria-hidden="true"></p>
         </div>
 
         <!-- Progress Bar (shown during in-place update) -->
@@ -959,7 +941,7 @@
             Remind Later
           </button>
           <button onclick="applySafeOtaSystemUpdate()" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black text-xs shadow-lg active:scale-95 transition">
-            Download Update
+            Update Now
           </button>
         </div>
       </div>
