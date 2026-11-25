@@ -1,12 +1,12 @@
 {
   "name": "nexora-ai-drama",
-  "version": "2.6.7",
+  "version": "2.6.8",
   "private": true,
   "description": "NEXORA AI DRAMA — Vertical Micro-Drama Streaming App with Firebase, Supabase & Capacitor AdMob",
   "scripts": {
     "cap:sync": "npm run build:native-plugins && npx cap sync android",
     "cap:open": "npx cap open android",
-    "build:native-plugins": "node scripts/build-native-plugins.mjs"
+    "build-native-plugins": "node scripts/build-native-plugins.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
