@@ -39,20 +39,20 @@ The workflow creates a debug APK for testing. It creates a signed release APK on
 
 Configure Firebase, Supabase and AdMob values in the app's configuration section before production use. Never put Firebase service-account credentials, Supabase service-role keys, private signing keys or other secrets in this public repository.
 
-The included `supabase/schema.sql` contains permissive development policies for anonymous clients. Do **not** apply those policies to a production project without replacing them with authenticated, user-scoped access policies and server-side validation of wallet/reward transactions.
+The included `supabase/schema.sql` is a default-deny baseline for legacy wallet and unlocked-episode tables. It enables and forces RLS, revokes direct client access, and intentionally creates no anonymous or authenticated write policies. Wallet and entitlement changes must go through a trusted server that verifies Firebase identity and reward/payment events. The live AI DRAMA project currently keeps these tables inaccessible to direct clients; do not weaken those policies to make client-side wallet sync appear to work.
 
 ## Live NEXORA STUDIO drama catalog
 
-The viewer app reads its published catalog directly from the existing NEXORA STUDIO Supabase project:
+The viewer app reads its published catalog from the dedicated NEXORA AI DRAMA Supabase destination project (`vureiymqoosubwubhvdu`), not directly from the NEXORA STUDIO database:
 
 - `public.ai_dramas` — only dramas with `status = 'published'` are visible.
 - `public.ai_drama_episodes` — only episodes with `status = 'published'` and a valid `video_url` are playable.
 - Cover and episode thumbnail URLs are used as posters; episode video URLs are played as MP4 or HLS streams.
-- The app refreshes the catalog at launch, when the app returns to the foreground, and every 60 seconds while open.
+- The app refreshes the destination catalog at launch, when the app returns to the foreground, and every 60 seconds while open.
 - Draft, pending, rejected, archived, and unpublished episodes are never included in the public viewer catalog.
-- The app uses the project's public publishable key and the existing anonymous SELECT/RLS policies. It does not write to the Studio database.
+- The app uses the destination project's publishable key and read-only anonymous SELECT/RLS policies. It does not write to the NEXORA STUDIO database.
 
-NEXORA STUDIO remains a separate project and was not modified for this integration. When the Studio owner publishes a drama and its episodes, they appear in the viewer app automatically without an APK rebuild or reinstall.
+NEXORA STUDIO remains the private source/editor project. The `studio-content-sync` Edge Function is intended to copy only AI DRAMA catalog records and their media objects into the destination project after an authorized Studio-owner sync event. The full Studio database is not migrated. A catalog row pointing to a Studio Storage URL is not proof that its media has been copied; the migration is complete only when the corresponding object exists in the destination bucket and the destination URL plays successfully.
 
 ## App update checks
 
