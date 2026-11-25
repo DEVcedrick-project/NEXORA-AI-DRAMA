@@ -15,8 +15,9 @@ for permission in (
         xml = xml.replace("<application", f'    <uses-permission android:name="{permission}" />\n    <application', 1)
 
 provider_name = "androidx.core.content.FileProvider"
-if provider_name not in xml:
-    provider = '''
+provider_authority = "nexora-updater.fileprovider"
+if provider_authority not in xml:
+    provider = """
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.nexora-updater.fileprovider"
@@ -26,9 +27,11 @@ if provider_name not in xml:
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/nexora_updater_file_paths" />
         </provider>
-'''
+"""
+    if "</application>" not in xml:
+        raise SystemExit("Android manifest has no application closing tag")
     xml = xml.replace("</application>", provider + "    </application>", 1)
-if provider_name not in xml or "nexora-updater.fileprovider" not in xml:
+if provider_name not in xml or provider_authority not in xml:
     raise SystemExit("Could not register the private APK FileProvider")
 manifest.write_text(xml)
 
