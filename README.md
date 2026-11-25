@@ -24,7 +24,7 @@ The workflow creates a debug APK for testing. It creates a signed release APK on
 ## App identity
 
 - App name: NEXORA AI DRAMA
-- Application ID: `com.nexora.aidrama`
+- Application ID: `com.devcedrick.nexoraaidrama`
 - Web app directory: `www`
 - Android packaging: Capacitor 8
 
