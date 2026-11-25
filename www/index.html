@@ -1162,7 +1162,8 @@
       liveNotifTimer: null,
       lastContinueSaveMs: 0,
       socialLoadAt: {},
-      socialLoadInFlight: {}
+      socialLoadInFlight: {},
+      socialRefreshTimer: null
     };
 
     // =========================================================================
@@ -3866,7 +3867,7 @@
 
     function applyNexoraSocialSnapshot(result) {
       const id = result?.seriesId;
-      if (!id) return;
+      if (!id || (result.viewerId && runtime.fbAuth?.currentUser?.uid !== result.viewerId)) return;
       state.socialLikesCount[id] = Number(result.likesCount) || 0;
       state.likedSeries[id] = Boolean(result.liked);
       state.savedSeries = result.saved ? [...new Set([...state.savedSeries, id])] : state.savedSeries.filter(x => x !== id);
@@ -4429,6 +4430,11 @@
       const authLabel = document.getElementById('header-auth-label');
       if (authIcon) authIcon.textContent = signedIn ? '✓' : '👤';
       if (authLabel) authLabel.textContent = signedIn ? (registeredName || 'Account') : 'Profile';
+      if (!runtime.socialRefreshTimer) {
+        runtime.socialRefreshTimer = setInterval(() => {
+          if (!document.hidden && state.activeSeriesId) loadNexoraSocial(state.activeSeriesId, true);
+        }, 20000);
+      }
     }
 
     function renderProfileView() {
@@ -4785,6 +4791,7 @@
       saveAppState();
       syncWalletUI();
       updateAuthStatusUI();
+      state.seriesCatalog.forEach(series => loadNexoraSocial(series.id, true));
       closeAllSheets();
       showToast(`👋 Welcome back${state.user.name ? `, ${state.user.name}` : ''}!`);
     }
