@@ -59,7 +59,7 @@ public class NexoraUpdaterPlugin extends Plugin {
             request.setTitle("NEXORA AI DRAMA update");
             request.setDescription("Downloading the official signed update package");
             request.setMimeType("application/vnd.android.package-archive");
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE);
             request.setAllowedOverMetered(true);
             request.setAllowedOverRoaming(false);
             request.setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS,
@@ -114,6 +114,8 @@ public class NexoraUpdaterPlugin extends Plugin {
                 install.setDataAndType(apkUri, "application/vnd.android.package-archive");
                 install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 context.startActivity(install);
+                android.app.NotificationManager notifications = (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                if (notifications != null) notifications.cancel(26010);
                 JSObject result = new JSObject();
                 result.put("status", "installer_opened");
                 call.resolve(result);
