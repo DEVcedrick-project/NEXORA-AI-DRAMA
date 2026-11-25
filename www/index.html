@@ -2813,9 +2813,12 @@
           sheet.classList.add('translate-y-full');
           sheet.setAttribute('aria-hidden', 'true');
           if (id === 'episode-sheet') {
-            // The episode drawer must be fully removed from the visual and
-            // touch layers before a selected locked episode renders its lock UI.
+            // Use an explicit display state as well as utility classes. This
+            // prevents the drawer's flex layout/transition from surviving a
+            // selection and intercepting taps above the locked-episode screen.
             sheet.classList.add('hidden', 'pointer-events-none');
+            sheet.style.display = 'none';
+            sheet.setAttribute('inert', '');
           }
         }
       });
@@ -3717,7 +3720,7 @@
           const unlocked = isEpisodeUnlocked(series, ep);
           const isCurrent = ep.num === activeEpNum;
           return `
-            <button onclick="selectEpisodeFromDrawer('${series.id}', ${ep.num})" class="p-2.5 rounded-2xl border text-left transition ${
+            <button onclick="selectEpisodeFromDrawer('${series.id}', ${ep.num}, event)" class="p-2.5 rounded-2xl border text-left transition ${
               isCurrent
                 ? 'bg-[#ff2e63]/20 border-[#ff2e63] text-white'
                 : unlocked
@@ -3738,27 +3741,55 @@
       document.getElementById('sheet-backdrop')?.classList.remove('hidden');
       const episodeSheet = document.getElementById('episode-sheet');
       if (episodeSheet) {
+        episodeSheet.style.display = 'flex';
+        episodeSheet.removeAttribute('inert');
         episodeSheet.classList.remove('hidden', 'translate-y-full', 'pointer-events-none');
         episodeSheet.setAttribute('aria-hidden', 'false');
       }
     }
 
-    function selectEpisodeFromDrawer(seriesId, epNum) {
+    function selectEpisodeFromDrawer(seriesId, epNum, event) {
+      // Stop the grid-button click from bubbling into the sheet/backdrop.
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+
       const series = getSeriesById(seriesId);
       if (!series) return;
-      const ep = series.episodes.find(e => e.num === epNum);
+      const ep = series.episodes.find(e => Number(e.num) === Number(epNum));
       if (!ep) return;
 
+      // Commit the selected episode before rebuilding the feed so the lock
+      // state is rendered from the new episode, not the previously active one.
       state.activeSeriesId = seriesId;
-      state.activeEpisodeBySeries[seriesId] = epNum;
-      recordContinueWatchingProgress(seriesId, epNum, 8);
+      state.activeEpisodeBySeries[seriesId] = Number(ep.num);
       saveAppState();
-      closeAllSheets();
-      switchMainTab('foryou');
-      renderVerticalFeed();
 
-      const slide = document.getElementById(`feed-slide-${seriesId}`);
-      if (slide) slide.scrollIntoView({ behavior: 'smooth' });
+      // Synchronously remove every drawer touch layer before replacing feed DOM.
+      closeAllSheets();
+      const episodeSheet = document.getElementById('episode-sheet');
+      if (episodeSheet) {
+        episodeSheet.style.display = 'none';
+        episodeSheet.classList.add('hidden', 'pointer-events-none', 'translate-y-full');
+        episodeSheet.setAttribute('aria-hidden', 'true');
+        episodeSheet.setAttribute('inert', '');
+      }
+
+      // Render first, then switch tabs so media mounting targets the new DOM.
+      renderVerticalFeed();
+      switchMainTab('foryou');
+
+      requestAnimationFrame(() => {
+        const slide = document.getElementById(`feed-slide-${seriesId}`);
+        slide?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // A final guard against stale sheet visibility after the render.
+        const drawer = document.getElementById('episode-sheet');
+        if (drawer) {
+          drawer.style.display = 'none';
+          drawer.classList.add('hidden', 'pointer-events-none');
+          drawer.setAttribute('aria-hidden', 'true');
+          drawer.setAttribute('inert', '');
+        }
+      });
     }
 
     function openCommentDrawer(seriesId) {
