@@ -8,8 +8,12 @@ for name in ("NexoraUpdaterPlugin.java", "NexoraUpdateDownloadReceiver.java"):
 
 manifest = Path("android/app/src/main/AndroidManifest.xml")
 xml = manifest.read_text()
-if "android.permission.REQUEST_INSTALL_PACKAGES" not in xml:
-    xml = xml.replace("<application", '    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <application', 1)
+for permission in (
+    "android.permission.REQUEST_INSTALL_PACKAGES",
+    "android.permission.POST_NOTIFICATIONS",
+):
+    if permission not in xml:
+        xml = xml.replace("<application", f'    <uses-permission android:name="{permission}" />\\n    <application', 1)
 
 receiver_name = "com.devcedrick.nexoraaidrama.NexoraUpdateDownloadReceiver"
 if receiver_name not in xml:
