@@ -1946,7 +1946,7 @@
     async function initNativePushNotifications() {
       try {
         if (!window.Capacitor?.isNativePlatform?.()) return false;
-        const { PushNotifications } = await import("https://esm.sh/@capacitor/push-notifications@8.0.0");
+        const { PushNotifications } = await import("./vendor/nexora-native-plugins.js");
         const permission = await PushNotifications.checkPermissions();
         let receive = permission.receive;
         if (receive !== "granted") {
@@ -2005,7 +2005,7 @@
 
         // Foreground FCM messages must still appear in Android's notification shade.
         // Background FCM notification payloads are displayed by Android automatically.
-        const { LocalNotifications } = await import("https://esm.sh/@capacitor/local-notifications@8.0.0");
+        
         const localPermission = await LocalNotifications.checkPermissions();
         if (localPermission.display !== "granted") {
           await LocalNotifications.requestPermissions();
