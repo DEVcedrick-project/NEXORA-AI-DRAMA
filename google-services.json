@@ -1,0 +1,75 @@
+{
+  "project_info": {
+    "project_number": "201389649043",
+    "firebase_url": "https://nexora-ai-drama-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "nexora-ai-drama",
+    "storage_bucket": "nexora-ai-drama.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:201389649043:android:4dd0433ed5959b5e85f166",
+        "android_client_info": {
+          "package_name": "com.devcedrick.nexoraaidrama"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "201389649043-1aejv6v667eejdt2nmunoddc1ts9fo3d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnd3Zx5jq5aNby5a1N380pujn1LkQRrA0"
+        },
+        {
+          "current_key": "AIzaSyDLw8B6cFV_aVcycIMifYdeRmlk2XGnX_8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "201389649043-1aejv6v667eejdt2nmunoddc1ts9fo3d.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:201389649043:android:9393d9ec1a9dba0b85f166",
+        "android_client_info": {
+          "package_name": "com.nexorastudio.aidrama"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "201389649043-1aejv6v667eejdt2nmunoddc1ts9fo3d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnd3Zx5jq5aNby5a1N380pujn1LkQRrA0"
+        },
+        {
+          "current_key": "AIzaSyDLw8B6cFV_aVcycIMifYdeRmlk2XGnX_8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "201389649043-1aejv6v667eejdt2nmunoddc1ts9fo3d.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
