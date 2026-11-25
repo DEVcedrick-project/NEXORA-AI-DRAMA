@@ -72,7 +72,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Bundle native notification bridges locally
-        run: npm run build:native-plugins
+        run: npm run build-native-plugins
 
       - name: Generate Android project and sync web assets
         run: |
