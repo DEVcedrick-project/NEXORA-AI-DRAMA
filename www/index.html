@@ -5001,7 +5001,7 @@
       });
 
       // Keep the branded intro short; slow or offline services cannot delay entry.
-      runtime.splashTimer = setTimeout(() => dismissSplashScreen(), 600);
+      runtime.splashTimer = setTimeout(() => dismissSplashScreen(), 1800);
 
       // Non-critical checks run after the first screen is interactive.
       window.setTimeout(() => {
