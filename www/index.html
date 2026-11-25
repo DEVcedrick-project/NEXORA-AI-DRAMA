@@ -1946,7 +1946,7 @@
     async function initNativePushNotifications() {
       try {
         if (!window.Capacitor?.isNativePlatform?.()) return false;
-        const { PushNotifications } = await import("./vendor/nexora-native-plugins.js");
+        const { PushNotifications, LocalNotifications } = await import("./vendor/nexora-native-plugins.js");
         const permission = await PushNotifications.checkPermissions();
         let receive = permission.receive;
         if (receive !== "granted") {
