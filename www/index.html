@@ -1758,9 +1758,6 @@
       }
       if (progressPct) progressPct.textContent = 'Connecting to Android updater';
 
-      // Freeze playback and persist the exact episode/time before the APK installer can restart the app.
-      savePlaybackForUpdate();
-
       try {
         if (!window.Capacitor?.isNativePlatform?.()) {
           throw new Error('Install the latest NEXORA AI DRAMA APK to enable in-app updates.');
@@ -1776,6 +1773,8 @@
         if (result?.status !== 'downloading') {
           throw new Error('Android did not start the update download.');
         }
+        // Pause only after Android confirms the download started (not while requesting install permission).
+        savePlaybackForUpdate();
         if (progressLabel) progressLabel.textContent = 'Downloading update securely…';
         if (progressFill) progressFill.style.width = '35%';
         if (progressPct) progressPct.textContent = 'Download continues in Android notifications';
