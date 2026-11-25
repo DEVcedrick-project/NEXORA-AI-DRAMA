@@ -1709,7 +1709,7 @@
       const btnsBox = document.getElementById('ota-action-buttons');
       const progressLabel = document.getElementById('ota-progress-label');
       const progressFill = document.getElementById('ota-progress-fill');
-      const progressPct = document.getElementById('ota-progress-percent');
+      const progressPct = document.getElementById('ota-progress-pct');
       if (progBox) progBox.classList.remove('hidden');
       if (btnsBox) btnsBox.classList.add('hidden');
       if (progressLabel) progressLabel.textContent = 'Opening Android installer…';
@@ -1720,7 +1720,7 @@
       if (progressPct) progressPct.textContent = 'Ready';
       // Android owns APK download/install progress and the final confirmation dialog.
       // This opens the signed APK as an in-place update; never uninstall the existing app.
-      window.location.href = target.downloadUrl;
+      window.open(target.downloadUrl, '_system');
     }
 
     function recordContinueWatchingProgress(seriesId, epNum, progressPct) {
