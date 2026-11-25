@@ -2815,12 +2815,9 @@
         }
       });
 
-      // Fully remove the full-screen rewarded-ad layer whenever overlays close.
-      const adSheet = document.getElementById('ad-player-sheet');
-      if (adSheet) {
-        adSheet.classList.add('translate-y-full', 'hidden');
-        adSheet.setAttribute('aria-hidden', 'true');
-      }
+      // Closing navigation must also cancel pending rewarded-ad UI, timers,
+      // listeners, and unlock targets so no stale layer can intercept touches.
+      cancelActiveRewardedAd();
     }
 
     function redrawActiveCanvasNow() {
@@ -4505,9 +4502,8 @@
       const claimBtn = document.getElementById('ad-claim-finish-btn');
 
       if (!sheet) return;
-      sheet.classList.remove('hidden');
+      sheet.classList.remove('hidden', 'translate-y-full', 'pointer-events-none');
       sheet.setAttribute('aria-hidden', 'false');
-      sheet.classList.remove('translate-y-full');
 
       let remaining = 5;
       if (countText) countText.textContent = `${remaining}s`;
@@ -4594,32 +4590,17 @@
             const dismissHandle = await admob.addListener('onRewardedInterstitialAdDismissed', () => {
               cleanupAdMobListeners();
               if (!rewardGranted) {
-                runtime.pendingAdTarget = null;
-                runtime.isSheetOpen = false;
+                cancelActiveRewardedAd();
                 showToast('Ad closed before earning the reward — nothing was added.');
               }
             });
             const failHandle = await admob.addListener('onRewardedInterstitialAdFailedToLoad', (error) => {
-              cleanupAdMobListeners();
-              runtime.pendingAdTarget = null;
-              runtime.isSheetOpen = false;
-              const failedAdSheet = document.getElementById('ad-player-sheet');
-              if (failedAdSheet) {
-                failedAdSheet.classList.add('translate-y-full', 'hidden');
-                failedAdSheet.setAttribute('aria-hidden', 'true');
-              }
+              cancelActiveRewardedAd();
               showToast('No ad is available right now. Please try again later.');
               console.warn('AdMob rewarded interstitial failed to load:', error);
             });
             const showFailHandle = await admob.addListener('onRewardedInterstitialAdFailedToShow', (error) => {
-              cleanupAdMobListeners();
-              runtime.pendingAdTarget = null;
-              runtime.isSheetOpen = false;
-              const failedAdSheet = document.getElementById('ad-player-sheet');
-          if (failedAdSheet) {
-            failedAdSheet.classList.add('translate-y-full', 'hidden');
-            failedAdSheet.setAttribute('aria-hidden', 'true');
-          }
+              cancelActiveRewardedAd();
               showToast('No ad is available right now. Please try again later.');
               console.warn('AdMob rewarded interstitial failed to show:', error);
             });
@@ -4639,9 +4620,7 @@
           return;
         } catch (nativeAdError) {
           cleanupAdMobListeners();
-          runtime.pendingAdTarget = null;
-          runtime.isSheetOpen = false;
-          document.getElementById('ad-player-sheet')?.classList.add('translate-y-full');
+          cancelActiveRewardedAd();
           showToast('No ad is available right now. No coins were added. Please try again later.');
           console.warn('AdMob rewarded interstitial flow failed:', nativeAdError);
           return;
@@ -4649,10 +4628,7 @@
       }
 
       // No fake ad or simulated reward is shown in browser previews.
-      runtime.pendingAdTarget = null;
-      runtime.isSheetOpen = false;
-      const adSheet = document.getElementById('ad-player-sheet');
-      if (adSheet) adSheet.classList.add('translate-y-full');
+      cancelActiveRewardedAd();
       showToast('Rewarded interstitial ads are available in the installed Android/iOS app only.');
     }
 
@@ -4666,7 +4642,7 @@
       runtime.isSheetOpen = false;
       const adSheet = document.getElementById('ad-player-sheet');
       if (adSheet) {
-        adSheet.classList.add('translate-y-full', 'hidden');
+        adSheet.classList.add('translate-y-full', 'hidden', 'pointer-events-none');
         adSheet.setAttribute('aria-hidden', 'true');
       }
     }
