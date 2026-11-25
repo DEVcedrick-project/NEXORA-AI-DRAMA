@@ -4725,6 +4725,7 @@
       document.getElementById('signup-confirm-input').value = '';
       closeAllSheets();
       showToast(`✓ Account created for ${email}!`);
+      resumePendingCheckout();
     }
 
     async function handleEmailLogIn(event) {
@@ -4796,6 +4797,7 @@
       state.seriesCatalog.forEach(series => loadNexoraSocial(series.id, true));
       closeAllSheets();
       showToast(`👋 Welcome back${state.user.name ? `, ${state.user.name}` : ''}!`);
+      resumePendingCheckout();
     }
 
     async function handlePasswordResetRequest(event) {
@@ -4944,8 +4946,17 @@
     }
 
     function openCheckoutModal(sku, title, phpAmount, coinsGranted, vipDays) {
+      const item = { sku, title, phpAmount, coinsGranted, vipDays };
+      // Purchases must belong to a permanent Firebase account, never an anonymous
+      // guest session. Keep the exact selection while the user authenticates.
+      if (!runtime.fbAuth?.currentUser || runtime.fbAuth.currentUser.isAnonymous) {
+        runtime.pendingCheckout = item;
+        openAuthModal('signup');
+        setAuthFeedback('Create an account or log in before payment. Your selected package will be waiting here after authentication.', 'info');
+        return;
+      }
       closeAllSheets();
-      runtime.activeCheckout = { sku, title, phpAmount, coinsGranted, vipDays };
+      runtime.activeCheckout = item;
       document.getElementById('checkout-item-title').textContent = title;
       document.getElementById('checkout-item-price').textContent = `₱${phpAmount}`;
       selectCheckoutMethod(runtime.checkoutMethod || 'GCash');
@@ -4953,6 +4964,13 @@
       runtime.isSheetOpen = true;
       document.getElementById('sheet-backdrop')?.classList.remove('hidden');
       document.getElementById('checkout-sheet')?.classList.remove('translate-y-full');
+    }
+
+    function resumePendingCheckout() {
+      const item = runtime.pendingCheckout;
+      if (!item || !runtime.fbAuth?.currentUser || runtime.fbAuth.currentUser.isAnonymous) return;
+      runtime.pendingCheckout = null;
+      openCheckoutModal(item.sku, item.title, item.phpAmount, item.coinsGranted, item.vipDays);
     }
 
     function selectCheckoutMethod(method) {
