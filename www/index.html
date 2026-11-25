@@ -4795,22 +4795,31 @@
       if (runtime.fbAuth) {
         try {
           await signOut(runtime.fbAuth);
-          resetAccountWalletState();
-          state.user.email = '';
-          state.user.isGuest = true;
-          state.user.name = 'NEXORA Viewer';
-          state.firebase.authUid = '';
-          state.firebase.connected = false;
+        } catch (signOutError) {
+          console.warn('[NEXORA] Sign-out did not complete:', signOutError);
+          showToast('Could not sign out. Please try again.');
+          return;
+        }
+
+        resetAccountWalletState();
+        state.user.email = '';
+        state.user.isGuest = true;
+        state.user.name = 'NEXORA Viewer';
+        state.firebase.authUid = '';
+        state.firebase.connected = false;
+
+        // Anonymous sign-in is optional. If Firebase has that provider disabled,
+        // keep the user signed out and still show the email login/create-account
+        // screen rather than trapping them in a failed switch-account action.
+        try {
           const guest = await signInAnonymously(runtime.fbAuth);
           if (guest.user) {
             state.firebase.authUid = guest.user.uid;
             state.user.uid = guest.user.uid;
             attachRealtimeListeners(runtime.fbDb, guest.user.uid);
           }
-        } catch (signOutError) {
-          console.warn('[NEXORA] Sign-out did not complete:', signOutError);
-          showToast('Could not safely switch accounts. Please try again.');
-          return;
+        } catch (guestError) {
+          console.warn('[NEXORA] Guest session unavailable; email account switching remains available:', guestError);
         }
       } else {
         resetAccountWalletState();
