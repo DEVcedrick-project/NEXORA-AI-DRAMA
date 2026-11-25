@@ -2812,6 +2812,11 @@
         if (sheet) {
           sheet.classList.add('translate-y-full');
           sheet.setAttribute('aria-hidden', 'true');
+          if (id === 'episode-sheet') {
+            // The episode drawer must be fully removed from the visual and
+            // touch layers before a selected locked episode renders its lock UI.
+            sheet.classList.add('hidden', 'pointer-events-none');
+          }
         }
       });
 
@@ -3730,7 +3735,11 @@
 
       runtime.isSheetOpen = true;
       document.getElementById('sheet-backdrop')?.classList.remove('hidden');
-      document.getElementById('episode-sheet')?.classList.remove('translate-y-full');
+      const episodeSheet = document.getElementById('episode-sheet');
+      if (episodeSheet) {
+        episodeSheet.classList.remove('hidden', 'translate-y-full', 'pointer-events-none');
+        episodeSheet.setAttribute('aria-hidden', 'false');
+      }
     }
 
     function selectEpisodeFromDrawer(seriesId, epNum) {
