@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'www/**'
+      - 'update.json'
       - 'package.json'
       - 'package-lock.json'
       - 'capacitor.config.json'
@@ -17,6 +18,7 @@ on:
     branches: [main]
     paths:
       - 'www/**'
+      - 'update.json'
       - 'package.json'
       - 'package-lock.json'
       - 'capacitor.config.json'
@@ -26,7 +28,7 @@ on:
       - '.github/workflows/android-apk.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-android-apk:
@@ -71,6 +73,7 @@ jobs:
           npx cap sync android
 
       - name: Set Android version from package.json
+        id: version
         run: |
           python - <<'PY'
           import json, re
@@ -87,6 +90,8 @@ jobs:
           if count != 1:
               raise SystemExit("Could not set Android versionName")
           gradle.write_text(text)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f"value={version}\n")
           print(f"Android version: {version} ({version_code})")
           PY
 
@@ -165,6 +170,18 @@ jobs:
           "$BUILD_TOOLS/apksigner" sign --ks release-key.jks --ks-key-alias "$ANDROID_KEY_ALIAS" --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD --out "$SIGNED" "$ALIGNED"
           "$BUILD_TOOLS/apksigner" verify --verbose "$SIGNED"
           rm -f release-key.jks "$ALIGNED"
+
+      - name: Publish signed APK as GitHub Release
+        if: steps.signing.outputs.enabled == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: NEXORA AI DRAMA v${{ steps.version.outputs.value }}
+          target_commitish: ${{ github.sha }}
+          files: android/app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk
+          overwrite_files: true
+          generate_release_notes: false
+          make_latest: true
 
       - name: Upload signed release APK
         if: steps.signing.outputs.enabled == 'true'
