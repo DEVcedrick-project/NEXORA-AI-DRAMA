@@ -220,10 +220,7 @@
           </div>
         </div>
 
-        <button onclick="openFirebaseConfigModal()" id="header-sync-pill" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-[9px] font-bold text-amber-300 transition shrink-0">
-          <span id="header-sync-dot" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-          <span id="header-sync-label" class="hidden"></span>
-        </button>
+
       </div>
 
       <!-- Right: Notification Bell + Auth Button + VIP Badge + Coin Balance -->
@@ -466,25 +463,10 @@
             </button>
           </div>
           <div class="grid grid-cols-2 gap-2 pt-1 border-t border-white/10">
-            <button onclick="openApkAssetsModal()" class="py-2 px-2.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/35 text-[10px] font-extrabold text-amber-300 transition flex items-center justify-center gap-1">
-              <span>🎨 APK Icon &amp; Splash</span>
-            </button>
-            <button onclick="openNotificationDrawer()" class="py-2 px-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-[10px] font-extrabold text-zinc-200 transition flex items-center justify-center gap-1">
+<button onclick="openNotificationDrawer()" class="py-2 px-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-[10px] font-extrabold text-zinc-200 transition flex items-center justify-center gap-1">
               <span>🔔 Update &amp; Upload Log</span>
             </button>
           </div>
-        </div>
-
-        <div class="p-3 rounded-2xl bg-[#13131c] border border-zinc-800 flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <p class="text-xs font-extrabold text-white flex items-center gap-1.5">
-              <span>⚡ Firebase, Supabase &amp; AdMob</span>
-            </p>
-            <p id="profile-sync-desc" class="text-[10px] text-zinc-400 truncate mt-0.5">Firebase RTDB • Supabase • AdMob Bridge</p>
-          </div>
-          <button onclick="openFirebaseConfigModal()" class="px-3 py-1.5 rounded-xl bg-violet-600/25 hover:bg-violet-600/35 border border-violet-500/40 text-[11px] font-extrabold text-violet-300 shrink-0 transition">
-            Open Console
-          </button>
         </div>
 
         <div class="p-4 rounded-3xl bg-gradient-to-br from-[#191624] via-[#13131c] to-[#0e0e14] border border-amber-500/30 space-y-3">
@@ -620,7 +602,7 @@
         <div class="p-4 rounded-3xl bg-[#13131c] border border-zinc-800 space-y-2.5">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-black uppercase tracking-wider text-zinc-400">Wallet Activity Log</h3>
-            <button onclick="handleResetAppDataClick()" class="text-[10px] font-bold text-rose-400 hover:underline">Reset App Data</button>
+            
           </div>
           <div id="wallet-history-list" class="divide-y divide-zinc-800/80 max-h-44 overflow-y-auto no-scrollbar"></div>
         </div>
@@ -1148,6 +1130,8 @@
     import { initializeApp, getApps, deleteApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import {
       getAuth,
+      browserLocalPersistence,
+      setPersistence,
       signInAnonymously,
       signInWithCustomToken,
       createUserWithEmailAndPassword,
@@ -2063,7 +2047,21 @@
         runtime.fbApp = app;
         runtime.fbAuth = auth;
 
+        // Keep registered users signed in across app closes and Android restarts.
+        // Wait for Firebase to restore its persisted session before creating a guest.
+        try {
+          await setPersistence(auth, browserLocalPersistence);
+        } catch (persistenceError) {
+          console.warn('[NEXORA Firebase] Could not set local auth persistence; keeping SDK default:', persistenceError);
+        }
+        try {
+          await auth.authStateReady();
+        } catch (authRestoreError) {
+          console.warn('[NEXORA Firebase] Auth session restore check failed:', authRestoreError);
+        }
+
         // Email/password auth must not depend on anonymous sign-in or database rules.
+        // A saved email account is restored above and must never be replaced by a guest.
         if (!auth.currentUser) {
           try {
             if (window.__initial_auth_token) await signInWithCustomToken(auth, window.__initial_auth_token);
