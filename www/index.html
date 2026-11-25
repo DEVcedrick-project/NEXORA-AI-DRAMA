@@ -4649,6 +4649,11 @@
         try {
           await signOut(runtime.fbAuth);
           resetAccountWalletState();
+          // Clear the previous identity before attaching guest listeners; their
+          // first snapshot can arrive immediately and must not save into the
+          // member's local account vault.
+          state.user.email = '';
+          state.user.isGuest = true;
           const guest = await signInAnonymously(runtime.fbAuth);
           if (guest.user) {
             state.firebase.authUid = guest.user.uid;
@@ -4662,9 +4667,9 @@
         }
       } else {
         resetAccountWalletState();
+        state.user.email = '';
+        state.user.isGuest = true;
       }
-      state.user.email = '';
-      state.user.isGuest = true;
       saveAppState();
       syncWalletUI();
       updateAuthStatusUI();
