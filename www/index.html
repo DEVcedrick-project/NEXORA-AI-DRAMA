@@ -2047,12 +2047,26 @@
           window.dispatchEvent(new CustomEvent("nexora:push-received", { detail: notification }));
         });
 
-        await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
-          window.dispatchEvent(new CustomEvent("nexora:push-opened", { detail: action }));
-          const data = action?.notification?.data || {};
+        const handleNotificationOpen = (data = {}) => {
+          window.dispatchEvent(new CustomEvent("nexora:push-opened", {
+            detail: { notification: { data } }
+          }));
           if (data.type === "app_update") {
             checkForSystemUpdatesNow(true);
+            return;
           }
+          if (["new_episode", "new_content", "continue_watching"].includes(data.type)) {
+            // Bring viewers back to the drama feed when they tap a content alert.
+            switchMainTab("foryou");
+          }
+        };
+
+        await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+          handleNotificationOpen(action?.notification?.data || {});
+        });
+
+        await LocalNotifications.addListener("localNotificationActionPerformed", (action) => {
+          handleNotificationOpen(action?.notification?.extra || action?.notification?.data || {});
         });
 
         await PushNotifications.register();
