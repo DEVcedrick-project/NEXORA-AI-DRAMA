@@ -4751,8 +4751,9 @@
           if (typeof admob.addListener === 'function') {
             const rewardHandle = await admob.addListener('onRewardedInterstitialAdReward', grantNativeRewardOnce);
             const dismissHandle = await admob.addListener('onRewardedInterstitialAdDismissed', () => {
-              cleanupAdMobListeners();
-              if (runtime.adAttemptId === adAttemptId && !runtime.adRewardClaimed) {
+              // An old dismissal event must never remove listeners for a newer ad.
+              if (runtime.adAttemptId !== adAttemptId) return;
+              if (!runtime.adRewardClaimed) {
                 cancelActiveRewardedAd();
                 showToast('Ad closed before earning the reward — nothing was added.');
               }
