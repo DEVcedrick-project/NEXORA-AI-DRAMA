@@ -4335,7 +4335,13 @@
           credUser = created.user;
         }
         if (!credUser) throw new Error('Firebase did not return a registered user.');
-        await updateProfile(credUser, { displayName });
+        // Account creation/linking is authoritative. A profile-name update is optional:
+        // do not report registration as failed after Firebase has already created the account.
+        try {
+          await updateProfile(credUser, { displayName });
+        } catch (profileError) {
+          console.warn('[NEXORA] Account created; display-name update can be retried later:', profileError);
+        }
         state.firebase.authUid = credUser.uid;
         state.user.uid = credUser.uid;
         state.user.name = displayName;
@@ -4353,9 +4359,13 @@
       saveAppState();
       syncWalletUI();
       updateAuthStatusUI();
-      syncStateToSupabaseNow(false);
+      // Wallet persistence is intentionally server-restricted; registration success
+      // must not depend on optional wallet sync being available.
+      void syncStateToSupabaseNow(false);
+      document.getElementById('signup-password-input').value = '';
+      document.getElementById('signup-confirm-input').value = '';
       closeAllSheets();
-      showToast(`✓ Account created & synced for ${email}!`);
+      showToast(`✓ Account created for ${email}!`);
     }
 
     async function handleEmailLogIn(event) {
