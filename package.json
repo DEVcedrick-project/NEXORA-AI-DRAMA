@@ -4,7 +4,7 @@
   "private": true,
   "description": "NEXORA AI DRAMA — Vertical Micro-Drama Streaming App with Firebase, Supabase & Capacitor AdMob",
   "scripts": {
-    "cap:sync": "npx cap sync android",
+    "cap:sync": "npm run build:native-plugins && npx cap sync android",
     "cap:open": "npx cap open android",
     "build:native-plugins": "node scripts/build-native-plugins.mjs"
   },
