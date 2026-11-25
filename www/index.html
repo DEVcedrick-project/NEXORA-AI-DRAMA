@@ -1737,8 +1737,13 @@
         progressPct: Math.max(5, Math.min(100, Number(progressPct) || 5)),
         updatedAt: Date.now()
       };
-      syncContinueWatchingHud();
       const now = Date.now();
+      // The continue-watching label is not time-critical; avoid sorting the
+      // catalog and touching the DOM on every native video timeupdate event.
+      if (!runtime.lastContinueHudMs || now - runtime.lastContinueHudMs >= 2000) {
+        runtime.lastContinueHudMs = now;
+        syncContinueWatchingHud();
+      }
       if (now - runtime.lastContinueSaveMs > 3000) {
         runtime.lastContinueSaveMs = now;
         saveAppState();
@@ -3307,11 +3312,21 @@
       videoEl.ontimeupdate = () => {
         if (state.activeSeriesId !== series.id || !videoEl.duration) return;
         const pct = Math.min(100, (videoEl.currentTime / videoEl.duration) * 100);
-        const scrubber = document.getElementById(`scrubber-fill-${series.id}`);
-        if (scrubber) scrubber.style.width = `${pct}%`;
+        const now = performance.now();
+        // Limit progress-bar style writes to 4 per second while retaining
+        // accurate playback position for persistence and resume.
+        if (!videoEl._nexoraLastProgressPaint || now - videoEl._nexoraLastProgressPaint >= 250) {
+          videoEl._nexoraLastProgressPaint = now;
+          const scrubber = document.getElementById(`scrubber-fill-${series.id}`);
+          if (scrubber) scrubber.style.width = `${pct}%`;
+        }
 
-        const timeEl = document.getElementById(`timecode-${series.id}`);
-        if (timeEl) timeEl.textContent = `${formatTimecode(videoEl.currentTime)} / ${formatTimecode(videoEl.duration)}`;
+        const displayedSecond = Math.floor(videoEl.currentTime);
+        if (videoEl._nexoraLastTimecodeSecond !== displayedSecond) {
+          videoEl._nexoraLastTimecodeSecond = displayedSecond;
+          const timeEl = document.getElementById(`timecode-${series.id}`);
+          if (timeEl) timeEl.textContent = `${formatTimecode(videoEl.currentTime)} / ${formatTimecode(videoEl.duration)}`;
+        }
 
         recordContinueWatchingProgress(series.id, ep.num, pct);
 
