@@ -241,7 +241,17 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug
+          for attempt in 1 2 3; do
+            if ./gradlew --no-daemon --max-workers=2 assembleDebug; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::Debug APK build failed after 3 attempts."
+              exit 1
+            fi
+            echo "Gradle dependency resolution failed; retrying in $((attempt * 30)) seconds..."
+            sleep $((attempt * 30))
+          done
 
       - name: Prepare permanent release signing key
         if: steps.signing.outputs.enabled == 'true'
@@ -258,7 +268,17 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          ./gradlew --no-daemon assembleRelease bundleRelease
+          for attempt in 1 2 3; do
+            if ./gradlew --no-daemon --max-workers=2 assembleRelease bundleRelease; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::Signed APK/AAB build failed after 3 attempts."
+              exit 1
+            fi
+            echo "Gradle dependency resolution failed; retrying in $((attempt * 30)) seconds..."
+            sleep $((attempt * 30))
+          done
           UNSIGNED="app/build/outputs/apk/release/app-release-unsigned.apk"
           ALIGNED="app/build/outputs/apk/release/app-release-aligned.apk"
           SIGNED="app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk"
