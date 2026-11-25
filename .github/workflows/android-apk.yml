@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Check viewer JavaScript syntax
         run: |
@@ -54,12 +54,12 @@ jobs:
           node --check /tmp/nexora-viewer.mjs
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -211,7 +211,7 @@ jobs:
 
       - name: Publish signed APK and AAB as GitHub Release
         if: steps.signing.outputs.enabled == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.value }}
           name: NEXORA AI DRAMA v${{ steps.version.outputs.value }}
@@ -225,7 +225,7 @@ jobs:
 
       - name: Upload signed release APK and AAB
         if: steps.signing.outputs.enabled == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: NEXORA-AI-DRAMA-Play-Store-Bundle
           path: |
@@ -235,7 +235,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Play Store app icon
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: NEXORA-AI-DRAMA-Play-Store-Assets
           path: resources/play-store/icon-512.png
@@ -244,7 +244,7 @@ jobs:
 
       - name: Upload debug APK (testing only)
         if: steps.signing.outputs.enabled != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: NEXORA-AI-DRAMA-debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
