@@ -266,6 +266,25 @@ jobs:
           "$BUILD_TOOLS/apksigner" verify --verbose "$SIGNED"
           rm -f "$ALIGNED"
 
+      - name: Sign release AAB
+        if: steps.signing.outputs.enabled == 'true'
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          UNSIGNED="app/build/outputs/bundle/release/app-release.aab"
+          SIGNED="app/build/outputs/bundle/release/NEXORA-AI-DRAMA-release.aab"
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore release-key.jks \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -keypass "$ANDROID_KEY_PASSWORD" \
+            -signedjar "$SIGNED" "$UNSIGNED" "$ANDROID_KEY_ALIAS"
+          jarsigner -verify -verbose -certs "$SIGNED"
+          test -s "$SIGNED"
+          rm -f release-key.jks
+
       - name: Publish signed APK and AAB as GitHub Release
         if: steps.signing.outputs.enabled == 'true'
         uses: softprops/action-gh-release@v3
