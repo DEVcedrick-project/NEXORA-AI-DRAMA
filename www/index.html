@@ -455,7 +455,7 @@
                 <span>🛡️ App Version &amp; Safe OTA Updates</span>
               </p>
               <p class="text-[10px] text-zinc-300 mt-0.5">
-                Installed Version: <strong id="profile-app-version" class="font-mono text-white">v2.6.1</strong> • In-place update (keep app data)
+                Installed Version: <strong id="profile-app-version" class="font-mono text-white">v2.6.2</strong> • In-place update (keep app data)
               </p>
             </div>
             <button onclick="checkForSystemUpdatesNow()" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-[11px] font-extrabold text-emerald-300 shrink-0 transition">
@@ -1845,9 +1845,9 @@
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== 'object') return;
 
-        if (typeof parsed.appVersion === 'string' && parsed.appVersion.trim()) {
-          state.appVersion = parsed.appVersion.trim();
-        }
+        // The installed APK's bundled version is authoritative. Never restore
+        // an old appVersion value from local storage after an in-place update.
+        state.appVersion = APP_CURRENT_VERSION;
         if (parsed.continueWatching && typeof parsed.continueWatching === 'object') {
           state.continueWatching = parsed.continueWatching;
         }
