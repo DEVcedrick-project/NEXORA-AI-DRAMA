@@ -215,9 +215,12 @@ public class NexoraUpdaterPlugin extends Plugin {
 
     @PluginMethod
     public void getDownloadStatus(PluginCall call) {
-        long id = call.getLong("downloadId", -1L);
+        // There is only one active updater slot. Default to that stable slot when
+        // older Capacitor bridge serializers omit the numeric argument.
+        long id = call.getLong("downloadId", ACTIVE_DOWNLOAD_ID);
         SharedPreferences prefs = getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        if (id != ACTIVE_DOWNLOAD_ID || id != prefs.getLong(DOWNLOAD_ID, -2L)) {
+        long storedId = prefs.getLong(DOWNLOAD_ID, -2L);
+        if (id != ACTIVE_DOWNLOAD_ID || storedId != ACTIVE_DOWNLOAD_ID) {
             call.reject("Unknown NEXORA update download.");
             return;
         }

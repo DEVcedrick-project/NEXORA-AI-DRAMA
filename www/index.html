@@ -1022,7 +1022,7 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.6.23';
+    const APP_CURRENT_VERSION = 'v2.6.24';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
     const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
     let updateCheckInFlight = null;
@@ -1879,7 +1879,13 @@
         if (progressLabel) progressLabel.textContent = result.status === 'completed' ? 'Verified update already downloaded. Preparing installer…' : 'Downloading update securely…';
         if (progressFill) progressFill.style.width = result.status === 'completed' ? '100%' : '0%';
         if (progressPct) progressPct.textContent = result.status === 'completed' ? 'APK ready on this device' : 'Connecting to secure release server…';
-        monitorNativeUpdateDownload(Number(result.downloadId));
+        // The native updater uses one stable download slot. Some Capacitor bridge versions
+        // omit the long downloadId when serializing the plugin result; never pass NaN/-1
+        // into getDownloadStatus or the native plugin will reject every progress poll.
+        const returnedDownloadId = Number(result?.downloadId);
+        const nativeDownloadId = Number.isSafeInteger(returnedDownloadId) && returnedDownloadId > 0
+          ? returnedDownloadId : 1;
+        monitorNativeUpdateDownload(nativeDownloadId);
         showToast('NEXORA update download started.');
       } catch (error) {
         if (progBox) progBox.classList.add('hidden');
