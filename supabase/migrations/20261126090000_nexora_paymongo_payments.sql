@@ -7,6 +7,8 @@ create table if not exists public.nexora_payment_orders (
   title text not null,
   amount_php integer not null check (amount_php > 0),
   coins_granted integer not null default 0 check (coins_granted >= 0),
+  purchased_coins_granted integer not null default 0 check (purchased_coins_granted >= 0),
+  bonus_coins_granted integer not null default 0 check (bonus_coins_granted >= 0),
   coins_kind text not null default 'purchased' check (coins_kind in ('purchased','bonus','none')),
   vip_days integer not null default 0 check (vip_days >= 0),
   payment_method text not null check (payment_method in ('gcash','paymaya','qrph')),
@@ -20,6 +22,9 @@ create table if not exists public.nexora_payment_orders (
   updated_at timestamptz not null default now(),
   paid_at timestamptz
 );
+
+alter table public.nexora_payment_orders add column if not exists purchased_coins_granted integer not null default 0 check (purchased_coins_granted >= 0);
+alter table public.nexora_payment_orders add column if not exists bonus_coins_granted integer not null default 0 check (bonus_coins_granted >= 0);
 
 create index if not exists nexora_payment_orders_user_created_idx
   on public.nexora_payment_orders (user_id, created_at desc);
@@ -112,8 +117,8 @@ begin
     user_id, purchased_coins, bonus_coins, is_vip, vip_expires_at, vip_plan_label, updated_at
   ) values (
     v_order.user_id,
-    case when v_order.coins_kind = 'purchased' then v_order.coins_granted else 0 end,
-    60 + case when v_order.coins_kind = 'bonus' then v_order.coins_granted else 0 end,
+    v_order.purchased_coins_granted,
+    60 + v_order.bonus_coins_granted,
     v_order.vip_days > 0,
     case when v_order.vip_days > 0
       then floor(extract(epoch from (now() + make_interval(days => v_order.vip_days))) * 1000)::bigint
@@ -123,9 +128,9 @@ begin
   )
   on conflict (user_id) do update set
     purchased_coins = public.user_wallets.purchased_coins
-      + case when v_order.coins_kind = 'purchased' then v_order.coins_granted else 0 end,
+      + v_order.purchased_coins_granted,
     bonus_coins = public.user_wallets.bonus_coins
-      + case when v_order.coins_kind = 'bonus' then v_order.coins_granted else 0 end,
+      + v_order.bonus_coins_granted,
     is_vip = case when v_order.vip_days > 0 then true else public.user_wallets.is_vip end,
     vip_expires_at = case when v_order.vip_days > 0 then
       floor(extract(epoch from (
