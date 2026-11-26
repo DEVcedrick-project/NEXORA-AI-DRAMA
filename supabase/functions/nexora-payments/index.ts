@@ -76,17 +76,16 @@ function constantTimeEqual(a: string, b: string) {
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
 }
-async function verifyPayMongoSignature(rawBody: string, header: string, livemode: boolean) {
+async function verifyPayMongoSignature(rawBody: string, header: string) {
   if (!PAYMONGO_WEBHOOK_SECRET) throw new Error("PAYMONGO_WEBHOOK_SECRET_MISSING");
   const parts = Object.fromEntries(header.split(",").map((part) => {
     const index = part.indexOf("=");
     return index > 0 ? [part.slice(0, index).trim(), part.slice(index + 1).trim()] : ["", ""];
   }));
   const timestamp = parts.t;
-  const supplied = livemode ? parts.li : parts.te;
-  if (!timestamp || !supplied || !/^\d+$/.test(timestamp)) return false;
+  if (!timestamp || !/^\d+$/.test(timestamp)) return { valid: false, livemode: false };
   const ageSeconds = Math.abs(Date.now() / 1000 - Number(timestamp));
-  if (ageSeconds > 300) return false;
+  if (ageSeconds > 300) return { valid: false, livemode: false };
   const key = await crypto.subtle.importKey(
     "raw", new TextEncoder().encode(PAYMONGO_WEBHOOK_SECRET),
     { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
@@ -94,7 +93,10 @@ async function verifyPayMongoSignature(rawBody: string, header: string, livemode
   const signature = await crypto.subtle.sign(
     "HMAC", key, new TextEncoder().encode(`${timestamp}.${rawBody}`),
   );
-  return constantTimeEqual(bytesToHex(new Uint8Array(signature)), supplied.toLowerCase());
+  const expected = bytesToHex(new Uint8Array(signature));
+  const testValid = Boolean(parts.te) && constantTimeEqual(expected, String(parts.te).toLowerCase());
+  const liveValid = Boolean(parts.li) && constantTimeEqual(expected, String(parts.li).toLowerCase());
+  return { valid: testValid || liveValid, livemode: liveValid };
 }
 
 async function createCheckout(userId: string, body: Record<string, unknown>) {
@@ -176,6 +178,18 @@ async function createCheckout(userId: string, body: Record<string, unknown>) {
   }
 }
 
+async function getWallet(userId: string) {
+  const db = dbClient();
+  const { data: wallet, error } = await db.from("user_wallets")
+    .select("purchased_coins,bonus_coins,is_vip,vip_expires_at,vip_plan_label")
+    .eq("user_id", userId).maybeSingle();
+  if (error) {
+    console.error("[nexora-payments] wallet lookup failed", error.message);
+    return json(500, { error: "Could not refresh your wallet." });
+  }
+  return json(200, { ok: true, wallet });
+}
+
 async function checkStatus(userId: string, body: Record<string, unknown>) {
   const reference = String(body.reference || "").trim();
   if (!reference || reference.length > 80) return json(400, { error: "A valid payment reference is required." });
@@ -203,13 +217,14 @@ async function handleWebhook(req: Request) {
   if (!PAYMONGO_WEBHOOK_SECRET) return json(503, { error: "Webhook secret is not configured." });
   const rawBody = await req.text();
   const signature = req.headers.get("Paymongo-Signature") || req.headers.get("paymongo-signature") || "";
+  let verified: { valid: boolean; livemode: boolean };
+  try { verified = await verifyPayMongoSignature(rawBody, signature); } catch { return json(401, { error: "Webhook signature could not be verified." }); }
+  if (!verified.valid) return json(401, { error: "Invalid webhook signature." });
   let envelope: Record<string, unknown>;
   try { envelope = JSON.parse(rawBody); } catch { return json(400, { error: "Invalid JSON." }); }
   const event = (envelope.data || {}) as Record<string, unknown>;
   const livemode = Boolean(event.livemode);
-  let valid = false;
-  try { valid = await verifyPayMongoSignature(rawBody, signature, livemode); } catch { return json(401, { error: "Webhook signature could not be verified." }); }
-  if (!valid) return json(401, { error: "Invalid webhook signature." });
+  if (livemode !== verified.livemode) return json(401, { error: "Webhook mode does not match its signature." });
   if (event.type !== "checkout_session.payment.paid") return json(200, { received: true, ignored: true });
 
   const session = (event.data || {}) as Record<string, unknown>;
@@ -276,6 +291,7 @@ Deno.serve(async (req: Request) => {
     const action = String(body.action || "");
     if (action === "create") return await createCheckout(userId, body);
     if (action === "status") return await checkStatus(userId, body);
+    if (action === "wallet") return await getWallet(userId);
     return json(400, { error: "Unsupported payment action." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
