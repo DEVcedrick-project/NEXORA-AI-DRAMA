@@ -70,7 +70,7 @@ gesture_setting = "getBridge().getWebView().getSettings().setMediaPlaybackRequir
 if gesture_setting not in activity_text:
     activity_text = activity_text.replace(
         "super.onCreate(savedInstanceState);",
-        "super.onCreate(savedInstanceState);\\n        // Permit automatic drama audio playback on app launch.\\n        if (getBridge() != null && getBridge().getWebView() != null) {\\n            " + gesture_setting + "\\n        }",
+        "super.onCreate(savedInstanceState);\n        // Permit automatic drama audio playback on app launch.\n        if (getBridge() != null && getBridge().getWebView() != null) {\n            " + gesture_setting + "\n        }",
         1
     )
     if gesture_setting not in activity_text:
