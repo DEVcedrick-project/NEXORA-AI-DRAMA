@@ -2,6 +2,9 @@ package com.devcedrick.nexoraaidrama;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
@@ -21,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -143,6 +147,37 @@ public class NexoraUpdaterPlugin extends Plugin {
         call.resolve(result);
     }
 
+    private static PackageInfo validateUpdateApk(Context context, File apk) throws Exception {
+        PackageManager pm = context.getPackageManager();
+        int flags = Build.VERSION.SDK_INT >= 28
+                ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
+        PackageInfo candidate = pm.getPackageArchiveInfo(apk.getAbsolutePath(), flags);
+        if (candidate == null || !context.getPackageName().equals(candidate.packageName)) {
+            throw new IllegalStateException("The downloaded APK is not the official NEXORA AI DRAMA package.");
+        }
+        PackageInfo installed = pm.getPackageInfo(context.getPackageName(), flags);
+        boolean sameSigner;
+        if (Build.VERSION.SDK_INT >= 28) {
+            sameSigner = candidate.signingInfo != null && installed.signingInfo != null
+                    && Arrays.equals(candidate.signingInfo.getApkContentsSigners(),
+                                     installed.signingInfo.getApkContentsSigners());
+        } else {
+            sameSigner = candidate.signatures != null && installed.signatures != null
+                    && Arrays.equals(candidate.signatures, installed.signatures);
+        }
+        if (!sameSigner) {
+            throw new IllegalStateException("This update was signed with a different key. Installation was blocked to protect your app and data.");
+        }
+        long candidateVersion = Build.VERSION.SDK_INT >= 28
+                ? candidate.getLongVersionCode() : candidate.versionCode;
+        long installedVersion = Build.VERSION.SDK_INT >= 28
+                ? installed.getLongVersionCode() : installed.versionCode;
+        if (candidateVersion <= installedVersion) {
+            throw new IllegalStateException("This APK is not newer than the installed NEXORA version.");
+        }
+        return candidate;
+    }
+
     private void downloadApk(Context context, String rawUrl, File target, File temp, SharedPreferences prefs) {
         HttpURLConnection connection = null;
         try {
@@ -204,19 +239,7 @@ public class NexoraUpdaterPlugin extends Plugin {
                     throw new IllegalStateException("The downloaded file is not a valid APK archive.");
                 }
             }
-            android.content.pm.PackageManager packageManager = context.getPackageManager();
-            android.content.pm.PackageInfo candidate = packageManager.getPackageArchiveInfo(temp.getAbsolutePath(), 0);
-            if (candidate == null || !context.getPackageName().equals(candidate.packageName)) {
-                throw new IllegalStateException("The downloaded APK is not the official NEXORA AI DRAMA package.");
-            }
-            android.content.pm.PackageInfo installed = packageManager.getPackageInfo(context.getPackageName(), 0);
-            long candidateVersion = Build.VERSION.SDK_INT >= 28
-                    ? candidate.getLongVersionCode() : candidate.versionCode;
-            long installedVersion = Build.VERSION.SDK_INT >= 28
-                    ? installed.getLongVersionCode() : installed.versionCode;
-            if (candidateVersion <= installedVersion) {
-                throw new IllegalStateException("This APK is not newer than the installed NEXORA version.");
-            }
+            validateUpdateApk(context, temp);
             if (target.exists() && !target.delete()) throw new IllegalStateException("Could not replace the previous update file.");
             // Both files now live in the same directory/filesystem, so this
             // finalization is an atomic rename on supported Android filesystems.
@@ -287,6 +310,7 @@ public class NexoraUpdaterPlugin extends Plugin {
             return;
         }
         try {
+            validateUpdateApk(context, apk);
             Uri apkUri = FileProvider.getUriForFile(context,
                     context.getPackageName() + ".nexora-updater.fileprovider", apk);
             Intent install = new Intent(Intent.ACTION_INSTALL_PACKAGE);
