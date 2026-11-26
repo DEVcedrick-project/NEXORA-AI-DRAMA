@@ -5140,10 +5140,13 @@
             adId: loadedAd && loadedAd.adUnitId ? loadedAd.adUnitId : adId
           });
 
-          // The SDK promise is an independent reward signal. Validate its full
-          // reward payload just like the Rewarded event; never trust dismissal.
-          if (runtime.adAttemptId === adAttemptId) {
-            grantNativeRewardOnce(rewardResult);
+          // SECURITY: The explicit AdMob Rewarded event above is the only
+          // callback allowed to grant an entitlement. Do not infer a reward from
+          // the show() promise resolving: dismissal and promise timing can vary
+          // across native SDK/plugin versions. The Dismissed listener cancels
+          // this attempt unless the Rewarded event has already been received.
+          if (runtime.adAttemptId === adAttemptId && !runtime.adRewardClaimed) {
+            console.warn('[NEXORA ads] Show promise resolved without a Rewarded event; keeping the attempt unclaimed.');
           }
           return;
         } catch (nativeAdError) {
