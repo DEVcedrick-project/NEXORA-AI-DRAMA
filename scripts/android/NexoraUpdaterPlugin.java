@@ -109,10 +109,27 @@ public class NexoraUpdaterPlugin extends Plugin {
                 call.reject("A different NEXORA update is already downloading. Please wait for it to finish.");
                 return;
             }
-            File target = new File(context.getExternalFilesDir(null), "NEXORA-AI-DRAMA-update.apk");
-            File temp = new File(context.getCacheDir(), "NEXORA-AI-DRAMA-update.apk.part");
-            if (target.exists()) target.delete();
-            if (temp.exists()) temp.delete();
+            File updateDirectory = context.getExternalFilesDir(null);
+            if (updateDirectory == null) {
+                call.reject("Android could not access the private update storage.");
+                return;
+            }
+            if (!updateDirectory.exists() && !updateDirectory.mkdirs()) {
+                call.reject("Android could not create the private update storage.");
+                return;
+            }
+            File target = new File(updateDirectory, "NEXORA-AI-DRAMA-update.apk");
+            // Keep the partial download beside the final APK. File.renameTo() is
+            // not reliable across Android cache/external-files filesystems.
+            File temp = new File(updateDirectory, "NEXORA-AI-DRAMA-update.apk.part");
+            if (target.exists() && !target.delete()) {
+                call.reject("Could not clear the previous update package.");
+                return;
+            }
+            if (temp.exists() && !temp.delete()) {
+                call.reject("Could not clear the incomplete update package.");
+                return;
+            }
             prefs.edit().putLong(DOWNLOAD_ID, ACTIVE_DOWNLOAD_ID)
                     .putString(STATUS, "downloading").putString(DOWNLOAD_URL, rawUrl).putLong(DOWNLOADED, 0)
                     .putLong(TOTAL, 0).putString(APK_PATH, "").putString(ERROR, "")
@@ -174,6 +191,7 @@ public class NexoraUpdaterPlugin extends Plugin {
                     }
                 }
                 output.flush();
+                output.getFD().sync();
                 prefs.edit().putLong(DOWNLOADED, count)
                         .putLong(LAST_ACTIVITY, System.currentTimeMillis()).apply();
                 if (total > 0 && count != total) throw new IllegalStateException("The update download was incomplete.");
@@ -200,6 +218,8 @@ public class NexoraUpdaterPlugin extends Plugin {
                 throw new IllegalStateException("This APK is not newer than the installed NEXORA version.");
             }
             if (target.exists() && !target.delete()) throw new IllegalStateException("Could not replace the previous update file.");
+            // Both files now live in the same directory/filesystem, so this
+            // finalization is an atomic rename on supported Android filesystems.
             if (!temp.renameTo(target)) throw new IllegalStateException("Could not finalize the downloaded update.");
             prefs.edit().putLong(DOWNLOADED, total).putString(APK_PATH, target.getAbsolutePath())
                     .putLong(LAST_ACTIVITY, System.currentTimeMillis())
