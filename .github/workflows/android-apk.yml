@@ -348,7 +348,7 @@ jobs:
           echo "Checking required Android package entries..."
           unzip -Z1 "$APK" | grep -Fx "AndroidManifest.xml"
           unzip -Z1 "$APK" | grep -Fx "resources.arsc"
-          unzip -Z1 "$APK" | grep -E '(^|/)classes[0-9]*\\.dex$'
+          unzip -Z1 "$APK" | grep -E '(^|/)classes[0-9]*\.dex$'
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
           echo "Verifying APK signature..."
           "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
