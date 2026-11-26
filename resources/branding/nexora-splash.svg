@@ -1,20 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#05030b"/><stop offset=".55" stop-color="#10051f"/><stop offset="1" stop-color="#030208"/></linearGradient>
-    <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a020ff"/><stop offset=".55" stop-color="#5010a8"/><stop offset="1" stop-color="#ffbf4a"/></linearGradient>
-    <radialGradient id="halo"><stop stop-color="#7c20dd" stop-opacity=".38"/><stop offset="1" stop-color="#090512" stop-opacity="0"/></radialGradient>
-    <linearGradient id="word" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset=".55" stop-color="#e8dfff"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#fff1a6"/><stop offset=".5" stop-color="#f4b942"/><stop offset="1" stop-color="#fff1a6"/></linearGradient>
-  </defs>
-  <rect width="1080" height="1920" fill="url(#bg)"/>
-  <ellipse cx="540" cy="850" rx="460" ry="470" fill="url(#halo)"/>
-  <path d="M-90 280 C160 80 310 110 505 -80 L620 -80 C430 150 240 300 -90 480Z" fill="url(#ribbon)" opacity=".42"/>
-  <path d="M-40 330 C190 135 330 130 510 -40" fill="none" stroke="url(#gold)" stroke-width="5" opacity=".9"/>
-  <path d="M1120 1470 C870 1680 810 1760 570 1970 L420 1970 C700 1700 880 1560 1120 1340Z" fill="url(#ribbon)" opacity=".38"/>
-  <path d="M1100 1510 C870 1700 790 1790 580 1940" fill="none" stroke="url(#gold)" stroke-width="5" opacity=".85"/>
-  <g opacity=".16" fill="none" stroke="#a855f7" stroke-width="12"><circle cx="880" cy="560" r="130"/><circle cx="880" cy="560" r="65"/><path d="M750 560h260M880 430v260"/></g>
-  <text x="540" y="1170" fill="url(#word)" font-family="DejaVu Sans,Arial,sans-serif" font-size="126" font-weight="900" letter-spacing="12" text-anchor="middle">NEXORA</text>
-  <path d="M265 1240H420M660 1240H815" stroke="url(#gold)" stroke-width="4"/>
-  <text x="540" y="1285" fill="url(#gold)" font-family="DejaVu Sans,Arial,sans-serif" font-size="54" font-weight="800" letter-spacing="16" text-anchor="middle">AI DRAMA</text>
-  <circle cx="540" cy="1385" r="5" fill="#f6c453"/><circle cx="540" cy="1385" r="24" fill="none" stroke="#f6c453" stroke-opacity=".35" stroke-width="2"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#05040a"/><stop offset=".5" stop-color="#10091d"/><stop offset="1" stop-color="#030208"/></linearGradient>
+<radialGradient id="halo"><stop stop-color="#7624d9" stop-opacity=".34"/><stop offset="1" stop-color="#090512" stop-opacity="0"/></radialGradient>
+<linearGradient id="gold"><stop stop-color="#fff0b5"/><stop offset=".5" stop-color="#c58a35"/><stop offset="1" stop-color="#fff0b5"/></linearGradient></defs>
+<rect width="1080" height="1920" fill="url(#bg)"/><ellipse cx="540" cy="820" rx="500" ry="570" fill="url(#halo)"/>
+<path d="M-80 360C170 150 330 100 530 -60M1160 1510C900 1760 760 1860 520 1990" fill="none" stroke="#8b42db" stroke-width="3" opacity=".4"/>
+<circle cx="540" cy="820" r="350" fill="none" stroke="#b77aff" stroke-opacity=".14" stroke-width="2"/><circle cx="540" cy="820" r="375" fill="none" stroke="url(#gold)" stroke-opacity=".18" stroke-width="1"/>
+<text x="540" y="1242" fill="#fff4d6" font-family="DejaVu Sans,Arial,sans-serif" font-size="66" font-weight="800" letter-spacing="13" text-anchor="middle">NEXORA</text>
+<path d="M355 1283H725" stroke="url(#gold)" stroke-width="2"/><text x="540" y="1335" fill="#d6b8ff" font-family="DejaVu Sans,Arial,sans-serif" font-size="27" font-weight="700" letter-spacing="10" text-anchor="middle">AI DRAMA</text>
+<text x="540" y="1465" fill="#8e829f" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" letter-spacing="5" text-anchor="middle">YOUR NEXT STORY STARTS HERE</text><circle cx="540" cy="1525" r="4" fill="#eac477"/></svg>
