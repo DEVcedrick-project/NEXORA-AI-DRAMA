@@ -215,12 +215,12 @@ public class NexoraUpdaterPlugin extends Plugin {
 
     @PluginMethod
     public void getDownloadStatus(PluginCall call) {
-        // There is only one active updater slot. Default to that stable slot when
-        // older Capacitor bridge serializers omit the numeric argument.
-        long id = call.getLong("downloadId", ACTIVE_DOWNLOAD_ID);
+        // Only one native update slot exists. Do not trust a JavaScript numeric
+        // argument here: Capacitor versions can deserialize it as a different
+        // Number subtype and make getLong() return its fallback value.
         SharedPreferences prefs = getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         long storedId = prefs.getLong(DOWNLOAD_ID, -2L);
-        if (id != ACTIVE_DOWNLOAD_ID || storedId != ACTIVE_DOWNLOAD_ID) {
+        if (storedId != ACTIVE_DOWNLOAD_ID) {
             call.reject("Unknown NEXORA update download.");
             return;
         }
@@ -245,10 +245,11 @@ public class NexoraUpdaterPlugin extends Plugin {
 
     @PluginMethod
     public void installDownloadedApk(PluginCall call) {
-        long id = call.getLong("downloadId", -1L);
         Context context = getContext();
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        if (id != ACTIVE_DOWNLOAD_ID || id != prefs.getLong(DOWNLOAD_ID, -2L)
+        // As above, validate the persisted single-download slot rather than a
+        // JS numeric argument, so status and installer handoff use the same ID.
+        if (prefs.getLong(DOWNLOAD_ID, -2L) != ACTIVE_DOWNLOAD_ID
                 || !"completed".equals(prefs.getString(STATUS, ""))) {
             call.reject("The NEXORA APK download is not complete.");
             return;
