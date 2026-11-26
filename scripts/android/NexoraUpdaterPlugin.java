@@ -33,6 +33,8 @@ public class NexoraUpdaterPlugin extends Plugin {
     private static final String TOTAL = "total_bytes";
     private static final String APK_PATH = "apk_path";
     private static final String DOWNLOAD_URL = "download_url";
+    private static final String LAST_ACTIVITY = "last_activity_ms";
+    private static final long STALE_DOWNLOAD_MS = 90L * 1000L;
     private static final String ERROR = "error";
     private static final String INSTALL_LAUNCHED = "install_launched";
     private static final long ACTIVE_DOWNLOAD_ID = 1L;
@@ -80,11 +82,20 @@ public class NexoraUpdaterPlugin extends Plugin {
             String previousUrl = prefs.getString(DOWNLOAD_URL, "");
             boolean sameUpdate = rawUrl.equals(previousUrl);
             if (sameUpdate && "downloading".equals(current)) {
-                JSObject result = new JSObject();
-                result.put("status", current);
-                result.put("downloadId", ACTIVE_DOWNLOAD_ID);
-                call.resolve(result);
-                return;
+                long lastActivity = prefs.getLong(LAST_ACTIVITY, 0L);
+                if (lastActivity > 0L && System.currentTimeMillis() - lastActivity < STALE_DOWNLOAD_MS) {
+                    JSObject result = new JSObject();
+                    result.put("status", current);
+                    result.put("downloadId", ACTIVE_DOWNLOAD_ID);
+                    call.resolve(result);
+                    return;
+                }
+                // Recover a persisted "downloading" state if Android killed the process
+                // or the previous transfer stopped making progress.
+                prefs.edit().putString(STATUS, "failed")
+                        .putString(ERROR, "The previous update download stopped. Tap Update Now to restart it.")
+                        .apply();
+                current = "failed";
             }
             if (sameUpdate && "completed".equals(current)
                     && new File(prefs.getString(APK_PATH, "")).isFile()) {
@@ -105,6 +116,7 @@ public class NexoraUpdaterPlugin extends Plugin {
             prefs.edit().putLong(DOWNLOAD_ID, ACTIVE_DOWNLOAD_ID)
                     .putString(STATUS, "downloading").putString(DOWNLOAD_URL, rawUrl).putLong(DOWNLOADED, 0)
                     .putLong(TOTAL, 0).putString(APK_PATH, "").putString(ERROR, "")
+                    .putLong(LAST_ACTIVITY, System.currentTimeMillis())
                     .putBoolean(INSTALL_LAUNCHED, false).apply();
             EXECUTOR.execute(() -> downloadApk(context, rawUrl, target, temp, prefs));
         }
@@ -125,6 +137,7 @@ public class NexoraUpdaterPlugin extends Plugin {
             connection.setRequestProperty("User-Agent", "NEXORA-AI-DRAMA-Updater");
             connection.setRequestProperty("Accept", "application/vnd.android.package-archive, application/octet-stream");
             int response = connection.getResponseCode();
+            prefs.edit().putLong(LAST_ACTIVITY, System.currentTimeMillis()).apply();
             URL finalUrl = connection.getURL();
             if (response < 200 || response >= 300 || !"https".equalsIgnoreCase(finalUrl.getProtocol())
                     || !("github.com".equalsIgnoreCase(finalUrl.getHost())
@@ -154,13 +167,15 @@ public class NexoraUpdaterPlugin extends Plugin {
                     output.write(buffer, 0, read);
                     long now = System.currentTimeMillis();
                     if (count - lastSavedBytes >= 256L * 1024L || now - lastSavedAt >= 500L) {
-                        prefs.edit().putLong(DOWNLOADED, count).apply();
+                        prefs.edit().putLong(DOWNLOADED, count)
+                                .putLong(LAST_ACTIVITY, now).apply();
                         lastSavedBytes = count;
                         lastSavedAt = now;
                     }
                 }
                 output.flush();
-                prefs.edit().putLong(DOWNLOADED, count).apply();
+                prefs.edit().putLong(DOWNLOADED, count)
+                        .putLong(LAST_ACTIVITY, System.currentTimeMillis()).apply();
                 if (total > 0 && count != total) throw new IllegalStateException("The update download was incomplete.");
                 total = count;
                 prefs.edit().putLong(TOTAL, total).apply();
@@ -187,10 +202,12 @@ public class NexoraUpdaterPlugin extends Plugin {
             if (target.exists() && !target.delete()) throw new IllegalStateException("Could not replace the previous update file.");
             if (!temp.renameTo(target)) throw new IllegalStateException("Could not finalize the downloaded update.");
             prefs.edit().putLong(DOWNLOADED, total).putString(APK_PATH, target.getAbsolutePath())
+                    .putLong(LAST_ACTIVITY, System.currentTimeMillis())
                     .putString(STATUS, "completed").apply();
         } catch (Exception error) {
             temp.delete();
-            prefs.edit().putString(STATUS, "failed").putString(ERROR, error.getMessage() == null ? "Unknown download error" : error.getMessage()).apply();
+            prefs.edit().putLong(LAST_ACTIVITY, System.currentTimeMillis())
+                    .putString(STATUS, "failed").putString(ERROR, error.getMessage() == null ? "Unknown download error" : error.getMessage()).apply();
         } finally {
             if (connection != null) connection.disconnect();
         }

@@ -1022,7 +1022,7 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.6.19';
+    const APP_CURRENT_VERSION = 'v2.6.20';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
     const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
     let updateCheckInFlight = null;
@@ -1774,7 +1774,15 @@
       const progressFill = document.getElementById('ota-progress-fill');
       const progressPct = document.getElementById('ota-progress-pct');
       let consecutivePollFailures = 0;
+      const monitorStartedAt = Date.now();
+      const MAX_MONITOR_DURATION_MS = 8 * 60 * 1000;
       const poll = async () => {
+        if (Date.now() - monitorStartedAt > MAX_MONITOR_DURATION_MS) {
+          if (progressLabel) progressLabel.textContent = 'Update is taking too long. You can safely retry the download.';
+          if (progressPct) progressPct.textContent = 'The updater stopped waiting instead of leaving this screen spinning.';
+          if (document.getElementById('ota-action-buttons')) document.getElementById('ota-action-buttons').classList.remove('hidden');
+          return;
+        }
         try {
           const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
           const result = await NexoraUpdater.getDownloadStatus({ downloadId });

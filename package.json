@@ -1,6 +1,6 @@
 {
   "name": "nexora-ai-drama",
-  "version": "2.6.19",
+  "version": "2.6.20",
   "private": true,
   "description": "NEXORA AI DRAMA — Vertical Micro-Drama Streaming App with Firebase, Supabase & Capacitor AdMob",
   "scripts": {
