@@ -358,6 +358,22 @@ jobs:
           grep -F "com.devcedrick.nexoraaidrama" /tmp/nexora-manifest-tree.txt
           echo "APK archive, signature, package ID and binary manifest checks passed."
 
+      - name: Install signed APK on Android 13 emulator
+        if: steps.signing.outputs.enabled == 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            APK="android/app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk"
+            test -s "$APK"
+            adb install -r "$APK"
+            adb shell monkey -p com.devcedrick.nexoraaidrama 1
+            echo "Android 13 emulator installed and launched the signed production APK."
+
       - name: Sign release AAB
         if: steps.signing.outputs.enabled == 'true'
         working-directory: android
