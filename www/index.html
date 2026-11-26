@@ -4057,24 +4057,59 @@
       const feed = document.getElementById('foryou-feed-container');
       if (!feed) return;
 
-      // Re-rendering the feed must not leave old observers retaining detached slides.
+      // Re-rendering the feed must not leave old observers or delayed activations alive.
+      if (runtime.feedActivationTimer) {
+        clearTimeout(runtime.feedActivationTimer);
+        runtime.feedActivationTimer = null;
+      }
       if (runtime.observer) {
         try { runtime.observer.disconnect(); } catch (observerError) {
           recordRuntimeError('feed-observer-cleanup', observerError);
         }
       }
+
       runtime.observer = new IntersectionObserver((entries) => {
+        let candidate = null;
         entries.forEach(entry => {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-            const newId = entry.target.getAttribute('data-series-id');
-            if (newId && state.activeSeriesId !== newId) {
-              state.activeSeriesId = newId;
-              runtime.isPaused = false;
-              mountActiveEpisodeMedia(newId);
+          if (entry.isIntersecting) {
+            // Start fetching the incoming slide's poster as soon as it enters view.
+            // Do not wait for the browser's lazy-image threshold after the swipe.
+            const poster = entry.target.querySelector('.feed-poster-layer');
+            if (poster && poster.getAttribute('src') && !poster.complete) {
+              poster.loading = 'eager';
+              poster.decode?.().catch(() => {});
             }
           }
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.6
+              && (!candidate || entry.intersectionRatio > candidate.intersectionRatio)) {
+            candidate = entry;
+          }
         });
-      }, { root: feed, threshold: 0.6 });
+
+        if (!candidate) return;
+        const target = candidate.target;
+        const newId = target.getAttribute('data-series-id');
+        if (!newId || state.activeSeriesId === newId) return;
+
+        // Wait until the swipe/snap settles before replacing the active video.
+        // Activating at 60% during finger movement tears down one decoder while
+        // the next slide is still moving, which exposes transient blank frames.
+        if (runtime.feedActivationTimer) clearTimeout(runtime.feedActivationTimer);
+        runtime.feedActivationTimer = setTimeout(() => {
+          runtime.feedActivationTimer = null;
+          if (!feed.isConnected || !target.isConnected) return;
+          const feedRect = feed.getBoundingClientRect();
+          const slideRect = target.getBoundingClientRect();
+          const visibleHeight = Math.max(0,
+            Math.min(slideRect.bottom, feedRect.bottom) - Math.max(slideRect.top, feedRect.top));
+          const settledRatio = visibleHeight / Math.max(1, Math.min(feed.clientHeight, slideRect.height));
+          if (settledRatio < 0.75 || state.activeSeriesId === newId) return;
+
+          state.activeSeriesId = newId;
+          runtime.isPaused = false;
+          mountActiveEpisodeMedia(newId);
+        }, 180);
+      }, { root: feed, threshold: [0, 0.6, 0.75] });
 
       feed.querySelectorAll('.snap-slide').forEach(slide => runtime.observer.observe(slide));
     }
