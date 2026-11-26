@@ -1022,7 +1022,7 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.6.18';
+    const APP_CURRENT_VERSION = 'v2.6.19';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
     const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
     let updateCheckInFlight = null;
@@ -5226,15 +5226,14 @@
           showToast('Loading Google rewarded interstitial...');
           const loadedAd = await admob.prepareRewardInterstitialAd({ adId, isTesting: false });
           if (runtime.adAttemptId !== adAttemptId) return;
-          const rewardResult = await admob.showRewardInterstitialAd({
+          await admob.showRewardInterstitialAd({
             adId: loadedAd && loadedAd.adUnitId ? loadedAd.adUnitId : adId
           });
 
-          // The SDK promise is an independent reward signal. Validate its full
-          // reward payload just like the Rewarded event; never trust dismissal.
-          if (runtime.adAttemptId === adAttemptId) {
-            grantNativeRewardOnce(rewardResult);
-          }
+          // IMPORTANT: the show() promise only reports the presentation flow.
+          // It must never grant an entitlement. Only the explicit
+          // onRewardedInterstitialAdReward event above can unlock an episode
+          // or credit coins. Dismissal/failure remain cancellation-only paths.
           return;
         } catch (nativeAdError) {
           if (runtime.adAttemptId !== adAttemptId) return;
