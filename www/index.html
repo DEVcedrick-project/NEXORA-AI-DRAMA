@@ -1694,7 +1694,7 @@
           const manifest = await response.json();
           const version = String(manifest.version || '').trim();
           const downloadUrl = String(manifest.downloadUrl || '').trim();
-          if (!/^v?\d+\.\d+\.\d+$/.test(version) || !/^https:\/\//i.test(downloadUrl)) {
+          if (!/^v?\d+\.\d+\.\d+$/.test(version) || !/^https:\/\//i.test(downloadUrl) || !/^[a-f0-9]{64}$/i.test(String(manifest.sha256 || ''))) {
             throw new Error('The update manifest is incomplete or invalid.');
           }
           if (compareAppVersions(version, APP_CURRENT_VERSION) <= 0) {
@@ -1708,7 +1708,8 @@
             version: normalizedVersion,
             title: String(manifest.title || 'NEXORA AI DRAMA update').slice(0, 120),
             notes: String(manifest.notes || 'Performance improvements and new features.').slice(0, 1000),
-            downloadUrl
+            downloadUrl,
+            sha256: String(manifest.sha256).toLowerCase()
           };
 
           // Do not reopen the same update every 30 minutes after the user taps
@@ -1897,7 +1898,7 @@
           throw new Error('Install the latest NEXORA AI DRAMA APK to enable in-app updates.');
         }
         const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
-        const result = await NexoraUpdater.downloadAndInstall({ url: target.downloadUrl });
+        const result = await NexoraUpdater.downloadAndInstall({ url: target.downloadUrl, sha256: target.sha256 });
         if (result?.status === 'permission_required') {
           runtime.updatePermissionPending = true;
           if (progBox) progBox.classList.add('hidden');
