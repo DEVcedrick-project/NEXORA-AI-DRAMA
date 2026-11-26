@@ -1773,21 +1773,25 @@
       const progressLabel = document.getElementById('ota-progress-label');
       const progressFill = document.getElementById('ota-progress-fill');
       const progressPct = document.getElementById('ota-progress-pct');
+      let consecutivePollFailures = 0;
       const poll = async () => {
         try {
           const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
           const result = await NexoraUpdater.getDownloadStatus({ downloadId });
+          consecutivePollFailures = 0;
+          const downloaded = Math.max(0, Number(result.downloadedBytes) || 0);
+          const total = Math.max(0, Number(result.totalBytes) || 0);
           const percent = Math.max(0, Math.min(100, Number(result.progress) || 0));
           if (progressFill) progressFill.style.width = percent + '%';
-          if (progressPct) progressPct.textContent = result.totalBytes > 0
-            ? Math.round(result.downloadedBytes / 1048576 * 10) / 10 + ' MB / ' + Math.round(result.totalBytes / 1048576 * 10) / 10 + ' MB'
-            : 'Downloading securely…';
+          if (progressPct) progressPct.textContent = total > 0
+            ? (downloaded / 1048576).toFixed(1) + ' MB / ' + (total / 1048576).toFixed(1) + ' MB'
+            : downloaded > 0 ? (downloaded / 1048576).toFixed(1) + ' MB downloaded'
+            : 'Connected — waiting for APK data…';
           if (result.status === 'completed') {
             if (progressFill) progressFill.style.width = '100%';
             if (progressLabel) progressLabel.textContent = 'Download complete. Opening Android install confirmation…';
             if (progressPct) progressPct.textContent = 'Opening Android secure package installer';
             try {
-              const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
               const installResult = await NexoraUpdater.installDownloadedApk({ downloadId: Number(downloadId) });
               if (progressLabel) progressLabel.textContent = installResult?.status === 'installer_already_opened'
                 ? 'Android installer is ready. Complete the update prompt.'
@@ -1803,14 +1807,23 @@
           }
           if (result.status === 'failed') {
             if (progressLabel) progressLabel.textContent = 'Download failed. Please try Update Now again.';
-            if (progressPct) progressPct.textContent = 'Android download error ' + (result.reason || 'unknown');
+            if (progressPct) progressPct.textContent = 'Android download error: ' + (result.reason || 'unknown');
             if (document.getElementById('ota-action-buttons')) document.getElementById('ota-action-buttons').classList.remove('hidden');
             return;
           }
-          if (progressLabel) progressLabel.textContent = result.status === 'paused' ? 'Download paused by Android…' : 'Downloading update securely…';
-          otaProgressPollTimer = setTimeout(poll, 800);
+          if (progressLabel) progressLabel.textContent = result.status === 'paused'
+            ? 'Download paused…' : downloaded > 0 ? 'Downloading update securely…' : 'Connected to updater — starting APK transfer…';
+          otaProgressPollTimer = setTimeout(poll, 900);
         } catch (error) {
-          console.warn('[NEXORA Updater] Progress check failed', error);
+          consecutivePollFailures += 1;
+          console.warn('[NEXORA Updater] Progress check failed (' + consecutivePollFailures + '/5)', error);
+          if (consecutivePollFailures >= 5) {
+            if (progressLabel) progressLabel.textContent = 'Update tracking failed. Tap Update Now to retry.';
+            if (progressPct) progressPct.textContent = String(error?.message || error || 'Native updater status is unavailable').slice(0, 180);
+            if (document.getElementById('ota-action-buttons')) document.getElementById('ota-action-buttons').classList.remove('hidden');
+            return;
+          }
+          if (progressLabel) progressLabel.textContent = 'Reconnecting to update service…';
           otaProgressPollTimer = setTimeout(poll, 1800);
         }
       };
@@ -1857,7 +1870,7 @@
         savePlaybackForUpdate();
         if (progressLabel) progressLabel.textContent = result.status === 'completed' ? 'Verified update already downloaded. Preparing installer…' : 'Downloading update securely…';
         if (progressFill) progressFill.style.width = result.status === 'completed' ? '100%' : '0%';
-        if (progressPct) progressPct.textContent = result.status === 'completed' ? 'APK ready on this device' : 'Starting in-app progress tracking…';
+        if (progressPct) progressPct.textContent = result.status === 'completed' ? 'APK ready on this device' : 'Connecting to secure release server…';
         monitorNativeUpdateDownload(Number(result.downloadId));
         showToast('NEXORA update download started.');
       } catch (error) {

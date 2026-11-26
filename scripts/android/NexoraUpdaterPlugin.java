@@ -132,11 +132,13 @@ public class NexoraUpdaterPlugin extends Plugin {
                     || finalUrl.getHost().endsWith(".githubusercontent.com"))) {
                 throw new IllegalStateException("The official release server returned an invalid response.");
             }
+            // GitHub/CDN may use chunked transfer and omit Content-Length.
+            // Unknown size is valid; enforce the hard byte limit while streaming.
             long total = connection.getContentLengthLong();
-            if (total <= 0 || total > MAX_APK_BYTES) {
-                throw new IllegalStateException("The update package size is invalid.");
+            if (total > MAX_APK_BYTES) {
+                throw new IllegalStateException("The update package is larger than the allowed limit.");
             }
-            prefs.edit().putLong(TOTAL, total).apply();
+            prefs.edit().putLong(TOTAL, Math.max(0L, total)).apply();
             try (InputStream input = connection.getInputStream();
                  FileOutputStream output = new FileOutputStream(temp)) {
                 byte[] buffer = new byte[64 * 1024];
@@ -146,7 +148,7 @@ public class NexoraUpdaterPlugin extends Plugin {
                 int read;
                 while ((read = input.read(buffer)) != -1) {
                     count += read;
-                    if (count > MAX_APK_BYTES || count > total) {
+                    if (count > MAX_APK_BYTES || (total > 0 && count > total)) {
                         throw new IllegalStateException("The update package exceeded its expected size.");
                     }
                     output.write(buffer, 0, read);
@@ -159,7 +161,9 @@ public class NexoraUpdaterPlugin extends Plugin {
                 }
                 output.flush();
                 prefs.edit().putLong(DOWNLOADED, count).apply();
-                if (count != total) throw new IllegalStateException("The update download was incomplete.");
+                if (total > 0 && count != total) throw new IllegalStateException("The update download was incomplete.");
+                total = count;
+                prefs.edit().putLong(TOTAL, total).apply();
             }
             try (FileInputStream input = new FileInputStream(temp)) {
                 byte[] signature = new byte[4];
