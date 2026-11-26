@@ -25,6 +25,10 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
+import java.security.MessageDigest;
+import java.util.Locale;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -37,6 +41,7 @@ public class NexoraUpdaterPlugin extends Plugin {
     private static final String TOTAL = "total_bytes";
     private static final String APK_PATH = "apk_path";
     private static final String DOWNLOAD_URL = "download_url";
+    private static final String EXPECTED_SHA256 = "expected_sha256";
     private static final String LAST_ACTIVITY = "last_activity_ms";
     private static final long STALE_DOWNLOAD_MS = 90L * 1000L;
     private static final String ERROR = "error";
@@ -58,6 +63,11 @@ public class NexoraUpdaterPlugin extends Plugin {
     @PluginMethod
     public void downloadAndInstall(PluginCall call) {
         String rawUrl = call.getString("url", "").trim();
+        String expectedSha256 = call.getString("sha256", "").trim().toLowerCase(Locale.ROOT);
+        if (!expectedSha256.matches("[a-f0-9]{64}")) {
+            call.reject("The update manifest is missing a valid APK SHA-256 checksum. Please refresh the update information.");
+            return;
+        }
         Uri uri = Uri.parse(rawUrl);
         String path = uri.getPath() == null ? "" : uri.getPath();
         if (!"https".equalsIgnoreCase(uri.getScheme())
@@ -84,7 +94,8 @@ public class NexoraUpdaterPlugin extends Plugin {
             SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             String current = prefs.getString(STATUS, "");
             String previousUrl = prefs.getString(DOWNLOAD_URL, "");
-            boolean sameUpdate = rawUrl.equals(previousUrl);
+            String previousHash = prefs.getString(EXPECTED_SHA256, "");
+            boolean sameUpdate = rawUrl.equals(previousUrl) && expectedSha256.equals(previousHash);
             if (sameUpdate && "downloading".equals(current)) {
                 long lastActivity = prefs.getLong(LAST_ACTIVITY, 0L);
                 if (lastActivity > 0L && System.currentTimeMillis() - lastActivity < STALE_DOWNLOAD_MS) {
@@ -135,11 +146,11 @@ public class NexoraUpdaterPlugin extends Plugin {
                 return;
             }
             prefs.edit().putLong(DOWNLOAD_ID, ACTIVE_DOWNLOAD_ID)
-                    .putString(STATUS, "downloading").putString(DOWNLOAD_URL, rawUrl).putLong(DOWNLOADED, 0)
+                    .putString(STATUS, "downloading").putString(DOWNLOAD_URL, rawUrl).putString(EXPECTED_SHA256, expectedSha256).putLong(DOWNLOADED, 0)
                     .putLong(TOTAL, 0).putString(APK_PATH, "").putString(ERROR, "")
                     .putLong(LAST_ACTIVITY, System.currentTimeMillis())
                     .putBoolean(INSTALL_LAUNCHED, false).apply();
-            EXECUTOR.execute(() -> downloadApk(context, rawUrl, target, temp, prefs));
+            EXECUTOR.execute(() -> downloadApk(context, rawUrl, expectedSha256, target, temp, prefs));
         }
         JSObject result = new JSObject();
         result.put("status", "downloading");
@@ -147,7 +158,37 @@ public class NexoraUpdaterPlugin extends Plugin {
         call.resolve(result);
     }
 
-    private static PackageInfo validateUpdateApk(Context context, File apk) throws Exception {
+    private static String sha256(File file) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        try (InputStream input = new FileInputStream(file)) {
+            byte[] buffer = new byte[64 * 1024]; int read;
+            while ((read = input.read(buffer)) != -1) digest.update(buffer, 0, read);
+        }
+        StringBuilder hex = new StringBuilder(64);
+        for (byte value : digest.digest()) hex.append(String.format(Locale.ROOT, "%02x", value & 0xff));
+        return hex.toString();
+    }
+
+    private static void verifyApkArchive(File apk) throws Exception {
+        boolean hasManifest = false;
+        try (ZipFile zip = new ZipFile(apk)) {
+            java.util.Enumeration<? extends ZipEntry> entries = zip.entries();
+            byte[] buffer = new byte[32 * 1024];
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                if ("AndroidManifest.xml".equals(entry.getName())) hasManifest = true;
+                if (entry.isDirectory()) continue;
+                try (InputStream input = zip.getInputStream(entry)) { while (input.read(buffer) != -1) {} }
+            }
+        }
+        if (!hasManifest) throw new IllegalStateException("The downloaded archive has no Android manifest.");
+    }
+
+    private static PackageInfo validateUpdateApk(Context context, File apk, String expectedSha256) throws Exception {
+        if (apk.length() < 1024L * 1024L) throw new IllegalStateException("The downloaded APK is unexpectedly small and may be incomplete.");
+        if (!expectedSha256.matches("[a-f0-9]{64}") || !expectedSha256.equals(sha256(apk)))
+            throw new IllegalStateException("The downloaded APK checksum does not match the official release. The file was rejected.");
+        verifyApkArchive(apk);
         PackageManager pm = context.getPackageManager();
         int flags = Build.VERSION.SDK_INT >= 28
                 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
@@ -178,7 +219,7 @@ public class NexoraUpdaterPlugin extends Plugin {
         return candidate;
     }
 
-    private void downloadApk(Context context, String rawUrl, File target, File temp, SharedPreferences prefs) {
+    private void downloadApk(Context context, String rawUrl, String expectedSha256, File target, File temp, SharedPreferences prefs) {
         HttpURLConnection connection = null;
         try {
             URL url = new URL(rawUrl);
@@ -239,7 +280,7 @@ public class NexoraUpdaterPlugin extends Plugin {
                     throw new IllegalStateException("The downloaded file is not a valid APK archive.");
                 }
             }
-            validateUpdateApk(context, temp);
+            validateUpdateApk(context, temp, expectedSha256);
             if (target.exists() && !target.delete()) throw new IllegalStateException("Could not replace the previous update file.");
             // Both files now live in the same directory/filesystem, so this
             // finalization is an atomic rename on supported Android filesystems.
@@ -310,7 +351,7 @@ public class NexoraUpdaterPlugin extends Plugin {
             return;
         }
         try {
-            validateUpdateApk(context, apk);
+            validateUpdateApk(context, apk, prefs.getString(EXPECTED_SHA256, ""));
             Uri apkUri = FileProvider.getUriForFile(context,
                     context.getPackageName() + ".nexora-updater.fileprovider", apk);
             Intent install = new Intent(Intent.ACTION_INSTALL_PACKAGE);
