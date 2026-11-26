@@ -44,7 +44,13 @@
     .snap-slide {
       scroll-snap-align: start;
       scroll-snap-stop: always;
+      background-color: #050508;
+      isolation: isolate;
     }
+    /* Keep the poster visible until the incoming video has a decoded frame. */
+    .feed-poster-layer { z-index: 1; background: #050508; backface-visibility: hidden; }
+    .feed-video-layer { z-index: 2; opacity: 0; background: #050508; transition: opacity 140ms ease-out; backface-visibility: hidden; }
+    .feed-video-layer.is-frame-ready { opacity: 1; }
     @keyframes heartPop {
       0% { transform: translate(-50%, -50%) scale(0.3) rotate(-12deg); opacity: 0; }
       35% { transform: translate(-50%, -50%) scale(1.25) rotate(6deg); opacity: 1; }
@@ -3560,6 +3566,9 @@
       runtime.isBuffering = true;
       if (spinnerEl) spinnerEl.classList.remove('hidden');
       videoEl.classList.remove('hidden');
+      videoEl.classList.remove('is-frame-ready');
+      const posterEl = document.getElementById(`poster-${series.id}`);
+      if (posterEl && (ep.posterUrl || series.coverUrl)) posterEl.classList.remove('hidden');
       videoEl.muted = runtime.isMuted;
       videoEl.playbackRate = runtime.playbackSpeed;
 
@@ -3608,10 +3617,19 @@
         spinnerEl?.classList.add('hidden');
       };
 
-      videoEl.oncanplay = () => {
-        if (state.activeSeriesId !== series.id) return;
+      const revealDecodedVideoFrame = () => {
+        if (state.activeSeriesId !== series.id || videoEl.readyState < 2) return;
+        videoEl.classList.add('is-frame-ready');
+        posterEl?.classList.add('hidden');
         runtime.isBuffering = false;
         spinnerEl?.classList.add('hidden');
+      };
+
+      videoEl.onloadeddata = revealDecodedVideoFrame;
+      videoEl.oncanplay = revealDecodedVideoFrame;
+      videoEl.onplaying = () => {
+        if (state.activeSeriesId !== series.id) return;
+        revealDecodedVideoFrame();
       };
 
       videoEl.ontimeupdate = () => {
@@ -3646,6 +3664,8 @@
       };
 
       videoEl.onerror = () => {
+        videoEl.classList.remove('is-frame-ready');
+        posterEl?.classList.remove('hidden');
         const mediaError = videoEl.error;
         recordRuntimeError('video-element', mediaError || 'Stream load error', {
           seriesId: series.id, episode: ep.num, mediaErrorCode: mediaError?.code
@@ -3855,8 +3875,8 @@
               <p class="text-[11px] text-zinc-200/85 mt-2 max-w-[270px] line-clamp-2">${escapeHtml(series.tagline)}</p>
             </div>
 
-            <img id="poster-${series.id}" src="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" alt="${escapeHtml(series.title)} poster" class="absolute inset-0 w-full h-full object-cover ${ep.posterUrl || series.coverUrl ? '' : 'hidden'}" loading="lazy" decoding="async" />
-            <video id="video-${series.id}" poster="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" playsinline preload="auto" crossorigin="anonymous" class="hidden absolute inset-0 w-full h-full object-cover bg-black"></video>
+            <img id="poster-${series.id}" src="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" alt="${escapeHtml(series.title)} poster" class="feed-poster-layer absolute inset-0 w-full h-full object-cover ${ep.posterUrl || series.coverUrl ? '' : 'hidden'}" loading="${idx < 2 ? 'eager' : 'lazy'}" decoding="async" />
+            <video id="video-${series.id}" poster="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" playsinline preload="auto" crossorigin="anonymous" class="hidden feed-video-layer absolute inset-0 w-full h-full object-cover"></video>
 
             <div id="buffer-spinner-${series.id}" class="hidden pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
               <div class="w-10 h-10 rounded-full border-3 border-white/20 border-t-[#ff2e63] animate-spin"></div>
