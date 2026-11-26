@@ -1028,11 +1028,13 @@
       admob: {
         androidRewardedId: "ca-app-pub-4497851143738030/9184937369",
         iosRewardedId: "ca-app-pub-3940256099942544/1712485313",
+        androidInterstitialId: "ca-app-pub-4497851143738030/8898282310",
+        iosInterstitialId: "",
         isTesting: false
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.6.36';
+    const APP_CURRENT_VERSION = 'v2.6.37';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
     const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
     let updateCheckInFlight = null;
@@ -1123,6 +1125,8 @@
         initialized: false,
         androidRewardedId: NEXORA_DEFAULT_CONFIG.admob.androidRewardedId,
         iosRewardedId: NEXORA_DEFAULT_CONFIG.admob.iosRewardedId,
+        androidInterstitialId: NEXORA_DEFAULT_CONFIG.admob.androidInterstitialId,
+        iosInterstitialId: NEXORA_DEFAULT_CONFIG.admob.iosInterstitialId,
         isTesting: NEXORA_DEFAULT_CONFIG.admob.isTesting
       }
     };
@@ -1152,6 +1156,14 @@
       adRewardClaimed: false,
       adInFlight: false,
       admobListeners: [],
+      interstitialListeners: [],
+      interstitialReady: false,
+      interstitialPreparing: false,
+      interstitialInFlight: false,
+      interstitialResolve: null,
+      interstitialTimeout: null,
+      feedSwipeCount: 0,
+      lastSettledFeedSeriesId: '',
       rafId: null,
       lastFrameTime: 0,
       observer: null,
@@ -2883,6 +2895,8 @@
           if (parsed && typeof parsed === 'object') {
             if (parsed.androidRewardedId) state.admob.androidRewardedId = parsed.androidRewardedId;
             if (parsed.iosRewardedId) state.admob.iosRewardedId = parsed.iosRewardedId;
+            if (parsed.androidInterstitialId) state.admob.androidInterstitialId = parsed.androidInterstitialId;
+            if (parsed.iosInterstitialId) state.admob.iosInterstitialId = parsed.iosInterstitialId;
           }
         }
       } catch (_e) {}
@@ -2903,7 +2917,97 @@
         }
       }
 
+      if (state.admob.nativeAvailable) {
+        setupInterstitialAdListeners(admob);
+        void prepareInterstitialAd();
+      }
       updateAdMobStatusBadges();
+    }
+
+    function setupInterstitialAdListeners(admob) {
+      if (runtime.interstitialListeners.length || !admob || typeof admob.addListener !== 'function') return;
+      const add = async (eventName, callback) => {
+        try {
+          const handle = await admob.addListener(eventName, callback);
+          if (handle) runtime.interstitialListeners.push(handle);
+        } catch (error) {
+          console.warn('[NEXORA ads] Could not attach interstitial listener:', eventName, error);
+        }
+      };
+      void add('interstitialAdLoaded', () => { runtime.interstitialReady = true; runtime.interstitialPreparing = false; });
+      void add('interstitialAdFailedToLoad', (error) => {
+        runtime.interstitialReady = false; runtime.interstitialPreparing = false;
+        console.warn('[NEXORA ads] Interstitial failed to load:', error);
+      });
+      void add('interstitialAdDismissed', () => finishInterstitialAd(true));
+      void add('interstitialAdFailedToShow', (error) => {
+        console.warn('[NEXORA ads] Interstitial failed to show:', error); finishInterstitialAd(false);
+      });
+    }
+
+    function isVipEntitled() {
+      return Boolean(state.isVip && (!Number(state.vipExpiresAt) || Number(state.vipExpiresAt) > Date.now()));
+    }
+
+    function getInterstitialAdUnitId() {
+      const platform = typeof window.Capacitor?.getPlatform === 'function' ? window.Capacitor.getPlatform() : 'android';
+      return platform === 'ios' ? state.admob.iosInterstitialId : state.admob.androidInterstitialId;
+    }
+
+    async function prepareInterstitialAd() {
+      const admob = getCapacitorAdMobPlugin();
+      const native = Boolean(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+      const adId = getInterstitialAdUnitId();
+      if (!native || !admob || !state.admob.initialized || !adId || isVipEntitled()
+        || runtime.interstitialPreparing || runtime.interstitialReady || runtime.interstitialInFlight
+        || typeof admob.prepareInterstitial !== 'function') return false;
+      runtime.interstitialPreparing = true;
+      try {
+        await admob.prepareInterstitial({ adId, isTesting: Boolean(state.admob.isTesting) });
+        runtime.interstitialReady = true; runtime.interstitialPreparing = false; return true;
+      } catch (error) {
+        runtime.interstitialReady = false; runtime.interstitialPreparing = false;
+        console.warn('[NEXORA ads] Interstitial preload failed:', error); return false;
+      }
+    }
+
+    function finishInterstitialAd(shown) {
+      if (!runtime.interstitialInFlight) return;
+      runtime.interstitialInFlight = false; runtime.interstitialReady = false;
+      if (runtime.interstitialTimeout) { clearTimeout(runtime.interstitialTimeout); runtime.interstitialTimeout = null; }
+      const resolve = runtime.interstitialResolve; runtime.interstitialResolve = null;
+      if (typeof resolve === 'function') resolve(Boolean(shown));
+      window.setTimeout(() => { void prepareInterstitialAd(); }, 900);
+    }
+
+    async function showInterstitialIfReady(reason = 'feed-swipe', options = {}) {
+      const admob = getCapacitorAdMobPlugin();
+      if (isVipEntitled() || runtime.adInFlight || runtime.interstitialInFlight || !runtime.interstitialReady
+        || !admob || typeof admob.showInterstitial !== 'function') return false;
+      runtime.interstitialInFlight = true; runtime.interstitialReady = false;
+      if (options.pausePlayback) {
+        runtime.isPaused = true;
+        const activeVideo = document.getElementById('video-' + state.activeSeriesId);
+        if (activeVideo && !activeVideo.paused) activeVideo.pause();
+      }
+      const result = new Promise(resolve => { runtime.interstitialResolve = resolve; });
+      runtime.interstitialTimeout = window.setTimeout(() => {
+        console.warn('[NEXORA ads] Interstitial close event timed out; resuming safely.'); finishInterstitialAd(false);
+      }, 60000);
+      try { await admob.showInterstitial(); }
+      catch (error) { console.warn('[NEXORA ads] Interstitial presentation failed:', reason, error); finishInterstitialAd(false); }
+      const shown = await result;
+      if (options.pausePlayback) {
+        runtime.isPaused = false;
+        const activeVideo = document.getElementById('video-' + state.activeSeriesId);
+        if (activeVideo && !activeVideo.classList.contains('hidden')) {
+          if (activeVideo.readyState >= 2) activeVideo.play().catch(() => {});
+          else activeVideo.addEventListener('canplay', () => {
+            if (!runtime.isPaused && state.activeMainTab === 'foryou') activeVideo.play().catch(() => {});
+          }, { once: true });
+        }
+      }
+      return shown;
     }
 
     function updateAdMobStatusBadges() {
@@ -3810,21 +3914,18 @@
 
     function handleEpisodePlaybackEnded(series, finishedEpNum) {
       const nextEp = series.episodes.find(e => e.num === finishedEpNum + 1);
-      if (!nextEp) {
-        showToast(`🏁 Season finale of "${series.title}" completed!`);
-        return;
-      }
-
-      state.activeEpisodeBySeries[series.id] = nextEp.num;
-      recordContinueWatchingProgress(series.id, nextEp.num, 5);
-      saveAppState();
-      renderVerticalFeed();
-
-      if (isEpisodeUnlocked(series, nextEp)) {
-        showToast(`⏭️ Auto-playing Episode ${nextEp.num}`);
-      } else {
-        showToast(`🔒 Episode ${nextEp.num} requires Coins or VIP`);
-      }
+      if (!nextEp) { showToast(`🏁 Season finale of "${series.title}" completed!`); return; }
+      const advanceEpisode = () => {
+        state.activeEpisodeBySeries[series.id] = nextEp.num;
+        recordContinueWatchingProgress(series.id, nextEp.num, 5);
+        saveAppState(); renderVerticalFeed();
+        if (isEpisodeUnlocked(series, nextEp)) showToast(`⏭️ Auto-playing Episode ${nextEp.num}`);
+        else showToast(`🔒 Episode ${nextEp.num} requires Coins or VIP`);
+      };
+      // Only show after playback has ended; an unavailable ad never delays playback.
+      if (!isVipEntitled() && runtime.interstitialReady && !runtime.interstitialInFlight) {
+        void showInterstitialIfReady('episode-end').then(advanceEpisode);
+      } else advanceEpisode();
     }
 
     function cyclePlaybackSpeed() {
@@ -4145,9 +4246,19 @@
         if (!bestSlide || bestRatio < 0.75) return;
         const newId = bestSlide.getAttribute('data-series-id');
         if (!newId || state.activeSeriesId === newId) return;
-        state.activeSeriesId = newId;
-        runtime.isPaused = false;
-        mountActiveEpisodeMedia(newId);
+        const previousId = runtime.lastSettledFeedSeriesId || state.activeSeriesId;
+        state.activeSeriesId = newId; runtime.lastSettledFeedSeriesId = newId;
+        if (previousId && previousId !== newId) runtime.feedSwipeCount = (runtime.feedSwipeCount || 0) + 1;
+        const shouldShowSwipeAd = runtime.feedSwipeCount >= 2;
+        if (shouldShowSwipeAd) runtime.feedSwipeCount = 0;
+        const canShowSwipeAd = shouldShowSwipeAd && !isVipEntitled() && runtime.interstitialReady
+          && !runtime.interstitialInFlight && !runtime.adInFlight;
+        if (canShowSwipeAd) {
+          // Hold the incoming episode until the interstitial is dismissed.
+          runtime.isPaused = true;
+          const adTask = showInterstitialIfReady('feed-swipe', { pausePlayback: true });
+          mountActiveEpisodeMedia(newId); void adTask;
+        } else { runtime.isPaused = false; mountActiveEpisodeMedia(newId); }
       };
 
       feed.onscroll = () => {
@@ -5253,6 +5364,7 @@
     }
 
     async function triggerRewardedAd(unlockTarget = null) {
+      if (isVipEntitled()) { showToast('👑 Your VIP pass is completely ad-free.'); return; }
       if (state.adsWatchedToday >= state.maxAdsPerDay) {
         showToast('Daily rewarded ad limit reached (5/5). Come back tomorrow!');
         return;
