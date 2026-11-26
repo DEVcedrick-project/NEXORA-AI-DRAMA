@@ -32,6 +32,7 @@ public class NexoraUpdaterPlugin extends Plugin {
     private static final String DOWNLOADED = "downloaded_bytes";
     private static final String TOTAL = "total_bytes";
     private static final String APK_PATH = "apk_path";
+    private static final String DOWNLOAD_URL = "download_url";
     private static final String ERROR = "error";
     private static final String INSTALL_LAUNCHED = "install_launched";
     private static final long ACTIVE_DOWNLOAD_ID = 1L;
@@ -76,11 +77,25 @@ public class NexoraUpdaterPlugin extends Plugin {
         synchronized (DOWNLOAD_LOCK) {
             SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             String current = prefs.getString(STATUS, "");
-            if ("downloading".equals(current) || ("completed".equals(current) && new File(prefs.getString(APK_PATH, "")).isFile())) {
+            String previousUrl = prefs.getString(DOWNLOAD_URL, "");
+            boolean sameUpdate = rawUrl.equals(previousUrl);
+            if (sameUpdate && "downloading".equals(current)) {
                 JSObject result = new JSObject();
                 result.put("status", current);
                 result.put("downloadId", ACTIVE_DOWNLOAD_ID);
                 call.resolve(result);
+                return;
+            }
+            if (sameUpdate && "completed".equals(current)
+                    && new File(prefs.getString(APK_PATH, "")).isFile()) {
+                JSObject result = new JSObject();
+                result.put("status", current);
+                result.put("downloadId", ACTIVE_DOWNLOAD_ID);
+                call.resolve(result);
+                return;
+            }
+            if ("downloading".equals(current)) {
+                call.reject("A different NEXORA update is already downloading. Please wait for it to finish.");
                 return;
             }
             File target = new File(context.getExternalFilesDir(null), "NEXORA-AI-DRAMA-update.apk");
@@ -88,7 +103,7 @@ public class NexoraUpdaterPlugin extends Plugin {
             if (target.exists()) target.delete();
             if (temp.exists()) temp.delete();
             prefs.edit().putLong(DOWNLOAD_ID, ACTIVE_DOWNLOAD_ID)
-                    .putString(STATUS, "downloading").putLong(DOWNLOADED, 0)
+                    .putString(STATUS, "downloading").putString(DOWNLOAD_URL, rawUrl).putLong(DOWNLOADED, 0)
                     .putLong(TOTAL, 0).putString(APK_PATH, "").putString(ERROR, "")
                     .putBoolean(INSTALL_LAUNCHED, false).apply();
             EXECUTOR.execute(() -> downloadApk(rawUrl, target, temp, prefs));
@@ -126,6 +141,8 @@ public class NexoraUpdaterPlugin extends Plugin {
                  FileOutputStream output = new FileOutputStream(temp)) {
                 byte[] buffer = new byte[64 * 1024];
                 long count = 0;
+                long lastSavedBytes = 0;
+                long lastSavedAt = System.currentTimeMillis();
                 int read;
                 while ((read = input.read(buffer)) != -1) {
                     count += read;
@@ -133,9 +150,15 @@ public class NexoraUpdaterPlugin extends Plugin {
                         throw new IllegalStateException("The update package exceeded its expected size.");
                     }
                     output.write(buffer, 0, read);
-                    prefs.edit().putLong(DOWNLOADED, count).apply();
+                    long now = System.currentTimeMillis();
+                    if (count - lastSavedBytes >= 256L * 1024L || now - lastSavedAt >= 500L) {
+                        prefs.edit().putLong(DOWNLOADED, count).apply();
+                        lastSavedBytes = count;
+                        lastSavedAt = now;
+                    }
                 }
                 output.flush();
+                prefs.edit().putLong(DOWNLOADED, count).apply();
                 if (count != total) throw new IllegalStateException("The update download was incomplete.");
             }
             try (FileInputStream input = new FileInputStream(temp)) {
@@ -143,6 +166,19 @@ public class NexoraUpdaterPlugin extends Plugin {
                 if (input.read(signature) != 4 || signature[0] != 'P' || signature[1] != 'K') {
                     throw new IllegalStateException("The downloaded file is not a valid APK archive.");
                 }
+            }
+            android.content.pm.PackageManager packageManager = context.getPackageManager();
+            android.content.pm.PackageInfo candidate = packageManager.getPackageArchiveInfo(temp.getAbsolutePath(), 0);
+            if (candidate == null || !context.getPackageName().equals(candidate.packageName)) {
+                throw new IllegalStateException("The downloaded APK is not the official NEXORA AI DRAMA package.");
+            }
+            android.content.pm.PackageInfo installed = packageManager.getPackageInfo(context.getPackageName(), 0);
+            long candidateVersion = Build.VERSION.SDK_INT >= 28
+                    ? candidate.getLongVersionCode() : candidate.versionCode;
+            long installedVersion = Build.VERSION.SDK_INT >= 28
+                    ? installed.getLongVersionCode() : installed.versionCode;
+            if (candidateVersion <= installedVersion) {
+                throw new IllegalStateException("This APK is not newer than the installed NEXORA version.");
             }
             if (target.exists() && !target.delete()) throw new IllegalStateException("Could not replace the previous update file.");
             if (!temp.renameTo(target)) throw new IllegalStateException("Could not finalize the downloaded update.");
@@ -177,6 +213,13 @@ public class NexoraUpdaterPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void resetInstallLaunchState(PluginCall call) {
+        getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(INSTALL_LAUNCHED, false).apply();
+        call.resolve();
+    }
+
+    @PluginMethod
     public void installDownloadedApk(PluginCall call) {
         long id = call.getLong("downloadId", -1L);
         Context context = getContext();
@@ -184,6 +227,12 @@ public class NexoraUpdaterPlugin extends Plugin {
         if (id != ACTIVE_DOWNLOAD_ID || id != prefs.getLong(DOWNLOAD_ID, -2L)
                 || !"completed".equals(prefs.getString(STATUS, ""))) {
             call.reject("The NEXORA APK download is not complete.");
+            return;
+        }
+        if (prefs.getBoolean(INSTALL_LAUNCHED, false)) {
+            JSObject alreadyOpen = new JSObject();
+            alreadyOpen.put("status", "installer_already_opened");
+            call.resolve(alreadyOpen);
             return;
         }
         String path = prefs.getString(APK_PATH, "");
