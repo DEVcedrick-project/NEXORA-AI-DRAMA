@@ -333,17 +333,31 @@ jobs:
           echo "Production APK package ID, version, file, and APK signature checks passed."
 
       - name: Deep-validate APK archive and Android package parser
-        if: steps.signing.outputs.enabled == 'true'
+        if: always() && (steps.signing.outputs.enabled == 'true' || steps.signing.outputs.enabled == 'false')
         working-directory: android
         run: |
           set -euo pipefail
-          APK="app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk"
-          echo "Checking ZIP container integrity..."
+          if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
+            APK="app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk"
+          else
+            APK="app/build/outputs/apk/debug/app-debug.apk"
+          fi
+          test -s "$APK"
+          echo "Checking APK ZIP container integrity..."
           unzip -tq "$APK"
           echo "Checking required Android package entries..."
           unzip -Z1 "$APK" | grep -Fx "AndroidManifest.xml"
           unzip -Z1 "$APK" | grep -Fx "resources.arsc"
-          unzip -Z1 "$APK" | grep -E '(^|/)classes[0-9]*\.dex
+          unzip -Z1 "$APK" | grep -E '(^|/)classes[0-9]*\\.dex$'
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          echo "Verifying APK signature..."
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          echo "Parsing compiled Android manifest..."
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "package: name='com.devcedrick.nexoraaidrama'"
+          "$BUILD_TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml > /tmp/nexora-manifest-tree.txt
+          grep -F "com.devcedrick.nexoraaidrama" /tmp/nexora-manifest-tree.txt
+          echo "APK archive, signature, package ID and binary manifest checks passed."
+
       - name: Sign release AAB
         if: steps.signing.outputs.enabled == 'true'
         working-directory: android
