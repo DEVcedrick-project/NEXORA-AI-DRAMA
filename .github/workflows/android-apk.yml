@@ -211,6 +211,30 @@ jobs:
           print(f"Android version: {version} ({version_code})")
           PY
 
+      - name: Enforce strictly increasing release version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          python - <<'PY'
+          import json, os, re, urllib.request
+          current = tuple(int(x) for x in os.environ["CURRENT_VERSION"].split("."))
+          request = urllib.request.Request(
+              "https://api.github.com/repos/DEVcedrick-project/NEXORA-AI-DRAMA/releases/latest",
+              headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}", "Accept": "application/vnd.github+json"}
+          )
+          with urllib.request.urlopen(request, timeout=20) as response:
+              latest = json.load(response).get("tag_name", "")
+          match = re.fullmatch(r"v?(\\d+)\\.(\\d+)\\.(\\d+)", latest)
+          if not match:
+              raise SystemExit(f"Cannot validate latest published release tag: {latest!r}")
+          published = tuple(int(x) for x in match.groups())
+          if current <= published:
+              raise SystemExit(f"Version {os.environ['CURRENT_VERSION']} must be greater than latest published {latest}; bump package.json before releasing.")
+          print(f"Version check passed: {os.environ['CURRENT_VERSION']} > {latest}")
+          PY
+
       # Version injection runs after cap sync; copy the stamped HTML into the APK before building.
       - name: Copy version-stamped web assets into Android APK
         run: npx cap copy android
