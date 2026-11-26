@@ -4999,6 +4999,7 @@
       }
 
       await pullWalletAndUnlocksFromSupabase();
+      await refreshNexoraWalletFromServer(false);
       await pushLocalStateToFirebaseNow();
       saveAppState();
       syncWalletUI();
@@ -5196,6 +5197,28 @@
           ? 'pay-method-btn p-2.5 rounded-xl bg-sky-500/20 border border-sky-400 text-left text-xs font-extrabold text-sky-300'
           : 'pay-method-btn p-2.5 rounded-xl bg-black/60 border border-zinc-800 text-left text-xs font-bold text-zinc-300';
       });
+    }
+
+    async function refreshNexoraWalletFromServer(showFeedback = false) {
+      const user = runtime.fbAuth?.currentUser;
+      if (!user || user.isAnonymous) return false;
+      try {
+        const result = await callNexoraPaymentService({ action: 'wallet' });
+        if (!result.wallet) return false;
+        const wallet = result.wallet;
+        state.purchasedCoins = Math.max(0, Math.floor(Number(wallet.purchased_coins) || 0));
+        state.bonusCoins = Math.max(0, Math.floor(Number(wallet.bonus_coins) || 0));
+        state.vipExpiresAt = Number(wallet.vip_expires_at) || 0;
+        state.isVip = Boolean(wallet.is_vip) && (state.vipExpiresAt === 0 || state.vipExpiresAt > Date.now());
+        state.vipPlanLabel = state.isVip ? String(wallet.vip_plan_label || 'VIP Pass') : '';
+        saveAppState();
+        syncWalletUI();
+        return true;
+      } catch (error) {
+        console.warn('[NEXORA Payments] Wallet refresh did not complete:', error);
+        if (showFeedback) showToast(error?.message || 'Could not refresh your payment wallet.');
+        return false;
+      }
     }
 
     async function callNexoraPaymentService(payload) {
@@ -5593,7 +5616,13 @@
 
       // Start cloud services in parallel and let them finish in the background.
       const startupTasks = [
-        Promise.resolve().then(() => initFirebaseRealtimeSync(null)),
+        Promise.resolve().then(async () => {
+          const ready = await initFirebaseRealtimeSync(null);
+          if (ready && runtime.fbAuth?.currentUser && !runtime.fbAuth.currentUser.isAnonymous) {
+            await refreshNexoraWalletFromServer(false);
+          }
+          return ready;
+        }),
         Promise.resolve().then(() => initSupabaseClient(null, true)),
         Promise.resolve().then(() => initPublishedDramaCatalog())
       ];
