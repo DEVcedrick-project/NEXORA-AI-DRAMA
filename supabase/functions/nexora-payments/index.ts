@@ -18,14 +18,14 @@ const corsHeaders = {
 };
 
 const PRODUCTS: Record<string, {
-  title: string; amount: number; coins: number; coinsKind: "purchased" | "bonus" | "none"; vipDays: number;
+  title: string; amount: number; coins: number; purchasedCoins: number; bonusCoins: number; vipDays: number;
 }> = {
-  vip7: { title: "7-Day Binge Pass", amount: 69, coins: 0, coinsKind: "none", vipDays: 7 },
-  vip30: { title: "30-Day VIP Pass (+150 Coins)", amount: 99, coins: 150, coinsKind: "bonus", vipDays: 30 },
-  starter: { title: "First-Time Starter Bundle (160 Coins)", amount: 49, coins: 160, coinsKind: "purchased", vipDays: 0 },
-  pack1: { title: "300 + 30 Bonus Coins", amount: 149, coins: 330, coinsKind: "purchased", vipDays: 0 },
-  pack2: { title: "650 + 100 Bonus Coins", amount: 299, coins: 750, coinsKind: "purchased", vipDays: 0 },
-  pack3: { title: "1,600 + 350 Bonus Coins", amount: 699, coins: 1950, coinsKind: "purchased", vipDays: 0 },
+  vip7: { title: "7-Day Binge Pass", amount: 69, coins: 0, purchasedCoins: 0, bonusCoins: 0, vipDays: 7 },
+  vip30: { title: "30-Day VIP Pass (+150 Coins)", amount: 99, coins: 150, purchasedCoins: 0, bonusCoins: 150, vipDays: 30 },
+  starter: { title: "First-Time Starter Bundle (160 Coins)", amount: 49, coins: 160, purchasedCoins: 100, bonusCoins: 60, vipDays: 0 },
+  pack1: { title: "300 + 30 Bonus Coins", amount: 149, coins: 330, purchasedCoins: 300, bonusCoins: 30, vipDays: 0 },
+  pack2: { title: "650 + 100 Bonus Coins", amount: 299, coins: 750, purchasedCoins: 650, bonusCoins: 100, vipDays: 0 },
+  pack3: { title: "1,600 + 350 Bonus Coins", amount: 699, coins: 1950, purchasedCoins: 1600, bonusCoins: 350, vipDays: 0 },
 };
 const PAYMENT_METHODS: Record<string, string> = {
   GCash: "gcash",
@@ -112,7 +112,8 @@ async function createCheckout(userId: string, body: Record<string, unknown>) {
     title: product.title,
     amount_php: product.amount,
     coins_granted: product.coins,
-    coins_kind: product.coinsKind,
+    purchased_coins_granted: product.purchasedCoins,
+    bonus_coins_granted: product.bonusCoins,
     vip_days: product.vipDays,
     payment_method: paymentType,
     status: "pending",
