@@ -374,10 +374,15 @@ jobs:
           script: |
             const version = process.env.APP_VERSION;
             const path = 'update.json';
+            const fs = require('fs');
+            const crypto = require('crypto');
+            const apkPath = 'android/app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk';
+            const sha256 = crypto.createHash('sha256').update(fs.readFileSync(apkPath)).digest('hex');
             const manifest = {
               version,
               title: `NEXORA AI DRAMA v${version}`,
-              notes: 'Replaces Android Download Manager with a private in-app APK download, live progress inside NEXORA, and direct handoff to Android install confirmation.',
+              notes: 'Adds official APK SHA-256 verification and full archive integrity checks before Android installation.',
+              sha256,
               downloadUrl: `https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v${version}/NEXORA-AI-DRAMA-release.apk`
             };
             const content = Buffer.from(JSON.stringify(manifest, null, 2) + '\n').toString('base64');
