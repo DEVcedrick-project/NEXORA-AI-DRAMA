@@ -1423,23 +1423,37 @@
     }
 
     function pushInAppNotification(notif, showPopup = true) {
+      const pushType = String(notif.type || 'new_episode');
+      const type = ['app_update', 'update'].includes(pushType) ? 'update'
+        : pushType === 'continue_watching' ? 'reminder' : 'upload';
+      const safeId = String(notif.id || notif.messageId || `push_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+        .replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100);
+      const existing = state.notifications.find(item => item.id === safeId);
+      if (existing) {
+        if (showPopup && document.visibilityState === 'visible') showLiveNotifPopup(existing);
+        return existing;
+      }
       const item = {
-        id: notif.id || `notif_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        type: notif.type || 'upload',
-        title: notif.title || 'NEXORA Update',
-        body: notif.body || '',
-        time: notif.time || 'Just now',
+        id: safeId,
+        type,
+        pushType,
+        title: String(notif.title || 'NEXORA AI DRAMA').slice(0, 120),
+        body: String(notif.body || notif.synopsis || 'There is something new waiting for you.').slice(0, 500),
+        time: 'Just now',
+        createdAt: Date.now(),
         unread: true,
-        seriesId: notif.seriesId || '',
-        epNum: Number(notif.epNum) || 1,
-        version: notif.version || ''
+        seriesId: String(notif.seriesId || notif.dramaId || notif.drama_id || ''),
+        episodeId: String(notif.episodeId || ''),
+        epNum: Math.max(1, Number(notif.epNum || notif.episodeNumber) || 1),
+        version: String(notif.version || ''),
+        imageUrl: String(notif.imageUrl || notif.thumbnailUrl || '')
       };
       state.notifications.unshift(item);
-      state.notifications = state.notifications.slice(0, 30);
+      state.notifications = state.notifications.slice(0, 50);
       saveAppState();
       syncNotificationBadge();
-
-      // Notifications are delivered through Android's system notification shade, never an in-app popup.
+      if (showPopup && document.visibilityState === 'visible') showLiveNotifPopup(item);
+      return item;
     }
 
     function showLiveNotifPopup(item) {
@@ -1545,15 +1559,19 @@
         openOtaUpdateModal(item.version || 'v2.5.0', item.title, item.body);
       } else if (item.seriesId) {
         selectEpisodeFromDrawer(item.seriesId, item.epNum || 1);
+      } else if (item.type === 'reminder') {
+        state.activeNotifFilter = 'continue';
+        openNotificationDrawer();
       }
     }
 
     function renderNotificationCenter() {
       const filters = [
         { id: 'all', label: 'All Alerts' },
-        { id: 'upload', label: '🎬 New Uploads' },
-        { id: 'update', label: '🛡️ System Updates' },
-        { id: 'continue', label: '▶ Continue Watching' }
+        { id: 'upload', label: '🎬 New Episodes' },
+        { id: 'reminder', label: '▶ Reminders' },
+        { id: 'update', label: '🛡️ App Updates' },
+        { id: 'continue', label: 'Continue Watching' }
       ];
       const filterEl = document.getElementById('notif-filter-pills');
       if (filterEl) {
@@ -1597,18 +1615,24 @@
       const filtered = state.notifications.filter(n => state.activeNotifFilter === 'all' || n.type === state.activeNotifFilter);
       listEl.innerHTML = filtered.length === 0
         ? `<p class="text-xs text-zinc-500 text-center py-8">No notifications in this category yet.</p>`
-        : filtered.map(n => `
-            <button onclick="handleNotificationItemClick('${n.id}')" class="w-full p-3 rounded-2xl ${n.unread ? 'bg-[#1a1826] border-amber-400/40' : 'bg-black/50 border-zinc-800'} border text-left space-y-1 transition">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-[9px] font-black uppercase tracking-wider ${n.type === 'update' ? 'text-emerald-300' : 'text-amber-300'}">
-                  ${n.type === 'update' ? '🛡️ Safe OTA Update' : '🎬 New Upload'}
-                </span>
-                <span class="text-[9px] text-zinc-500">${escapeHtml(n.time)}</span>
-              </div>
-              <p class="text-xs font-black text-white">${escapeHtml(n.title)}</p>
-              <p class="text-[11px] text-zinc-300 leading-snug">${escapeHtml(n.body)}</p>
-            </button>
-          `).join('');
+        : filtered.map(n => {
+            const isUpdate = n.type === 'update';
+            const isReminder = n.type === 'reminder';
+            const label = isUpdate ? '🛡️ Official App Update' : isReminder ? '▶ Continue Watching' : '🎬 New Episode';
+            const labelClass = isUpdate ? 'text-emerald-300' : isReminder ? 'text-violet-300' : 'text-amber-300';
+            const safeId = String(n.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+            return `
+              <button onclick="handleNotificationItemClick('${safeId}')" class="w-full p-3 rounded-2xl ${n.unread ? 'bg-[#1a1826] border-amber-400/40' : 'bg-black/50 border-zinc-800'} border text-left space-y-1.5 transition">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-[9px] font-black uppercase tracking-wider ${labelClass}">${label}</span>
+                  <span class="text-[9px] text-zinc-500">${escapeHtml(n.time || 'Recently')}</span>
+                </div>
+                <p class="text-xs font-black text-white">${escapeHtml(n.title)}</p>
+                <p class="text-[11px] text-zinc-300 leading-snug">${escapeHtml(n.body)}</p>
+                ${n.seriesId && !isUpdate ? '<span class="inline-flex mt-1 px-2 py-1 rounded-lg bg-[#ff2e63]/15 text-[9px] font-extrabold text-rose-200">WATCH EPISODE ▶</span>' : ''}
+              </button>
+            `;
+          }).join('');
     }
 
     function openOtaUpdateModal(version = 'v2.6.1', title = 'New System & Drama Engine Update', notes = '', downloadUrl = state.pendingOtaUpdate?.downloadUrl || '') {
@@ -2281,15 +2305,24 @@
           const type = String(data.type || "new_content");
           const channelId = type === "app_update" ? "nexora_updates"
             : type === "continue_watching" ? "nexora_reminders" : "nexora_content";
+          const title = notification?.title || data.title || "NEXORA AI DRAMA";
+          const body = notification?.body || data.body || data.synopsis || "There's something new waiting for you.";
+          const inboxItem = pushInAppNotification({
+            ...data,
+            id: data.eventId || data.episodeId || notification?.id || '',
+            title,
+            body,
+            type
+          }, true);
           try {
             await LocalNotifications.schedule({
               notifications: [{
                 id: Math.floor(Date.now() % 2147483647),
-                title: notification?.title || "NEXORA AI DRAMA",
-                body: notification?.body || "There's something new waiting for you.",
+                title,
+                body,
                 channelId,
-                schedule: { at: new Date(Date.now() + 1000) },
-                extra: data
+                schedule: { at: new Date(Date.now() + 700) },
+                extra: { ...data, notificationId: inboxItem.id }
               }]
             });
           } catch (localError) {
@@ -2307,8 +2340,14 @@
             return;
           }
           if (["new_episode", "new_content", "continue_watching"].includes(data.type)) {
-            // Bring viewers back to the drama feed when they tap a content alert.
+            const seriesId = String(data.seriesId || data.dramaId || data.drama_id || '');
+            const episodeNumber = Math.max(1, Number(data.epNum || data.episodeNumber) || 1);
             switchMainTab("foryou");
+            if (seriesId) {
+              window.setTimeout(() => selectEpisodeFromDrawer(seriesId, episodeNumber), 180);
+            } else {
+              openNotificationDrawer();
+            }
           }
         };
 
