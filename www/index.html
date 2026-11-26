@@ -1022,7 +1022,7 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.6.25';
+    const APP_CURRENT_VERSION = 'v2.6.26';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
     const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
     let updateCheckInFlight = null;
@@ -3656,13 +3656,18 @@
       const startPlayback = () => {
         if (runtime.isPaused || runtime.isSheetOpen || state.activeMainTab !== 'foryou') return;
         if (!restorePlaybackAfterUpdate(videoEl, series.id, ep.num, streamUrl)) return;
-        videoEl.play().catch(() => {
-          runtime.isMuted = true;
-          videoEl.muted = true;
-          syncMuteHudButton();
-          videoEl.play().catch(() => {
-            fallbackToCanvasStage(series.id, 'autoplay blocked');
+        videoEl.muted = false;
+        runtime.isMuted = false;
+        syncMuteHudButton();
+        videoEl.play().catch((error) => {
+          // Never silently downgrade launch playback to muted video. Android
+          // WebView is configured for sound autoplay; if the OS/device still
+          // blocks it, keep the stream mounted and let the visible stage tap
+          // handler retry play() inside the user's gesture.
+          recordRuntimeError('audio-autoplay-blocked', error || 'Sound autoplay was blocked', {
+            seriesId: series.id, episode: ep.num
           });
+          showToast('Tap the video once to start playback with sound');
         });
       };
 
