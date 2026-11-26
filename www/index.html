@@ -1530,7 +1530,10 @@
       syncNotificationBadge();
 
       if (item.type === 'update') {
-        openOtaUpdateModal(item.version || 'v2.5.0', item.title, item.body);
+        // Never install from notification metadata: it may be an old Firebase notice.
+        // Fetch the official manifest, which supplies the version, URL, and SHA-256.
+        checkForSystemUpdatesNow(false);
+        return;
       } else if (item.seriesId) {
         selectEpisodeFromDrawer(item.seriesId, item.epNum || 1);
       } else {
@@ -2505,29 +2508,10 @@
       // Published drama catalog is authoritative in the dedicated NEXORA AI DRAMA Supabase project.
       // Do not let the legacy Firebase `series` node overwrite Supabase episode URLs or metadata.
 
-      const unsubSystemUpdate = onValue(ref(db, 'system/appUpdate'), (snap) => {
-        const upd = snap.val();
-        if (!upd || typeof upd !== 'object' || !upd.version) return;
-        // Ignore Firebase notices for the installed version or any older release.
-        // Normalize v-prefixes and compare numeric components to avoid repeat-update loops.
-        if (compareAppVersions(upd.version, APP_CURRENT_VERSION) > 0) {
-          const normalizedUpdateVersion = String(upd.version).startsWith('v') ? String(upd.version) : `v${upd.version}`;
-          state.pendingOtaUpdate = {
-            version: normalizedUpdateVersion,
-            title: upd.title || `NEXORA ${normalizedUpdateVersion} Live Update`,
-            notes: upd.notes || 'Safe OTA patch ready. No APK delete required.',
-            downloadUrl: upd.downloadUrl || ''
-          };
-          pushInAppNotification({
-            id: `ota_${upd.version}`,
-            type: 'update',
-            title: state.pendingOtaUpdate.title,
-            body: state.pendingOtaUpdate.notes,
-            version: upd.version
-          }, true);
-        }
-      }, () => {});
-      runtime.fbUnsubs.push(unsubSystemUpdate);
+      // APK releases are authoritative only through the signed update.json manifest.
+      // Legacy Firebase appUpdate records can be stale and must never replace the
+      // manifest URL/checksum or present an older APK as the current update.
+      // Existing update notifications are revalidated against update.json on tap.
 
       const unsubWallet = onValue(ref(db, `users/${uid}/wallet`), (snap) => {
         const w = snap.val();
