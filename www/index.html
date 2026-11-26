@@ -2997,7 +2997,7 @@
       if (options.pausePlayback) {
         runtime.isPaused = false;
         const activeVideo = document.getElementById('video-' + state.activeSeriesId);
-        if (activeVideo && !activeVideo.classList.contains('hidden')) {
+        if (activeVideo && state.activeMainTab === 'foryou' && !activeVideo.classList.contains('hidden')) {
           if (activeVideo.readyState >= 2) activeVideo.play().catch(() => {});
           else activeVideo.addEventListener('canplay', () => {
             if (!runtime.isPaused && state.activeMainTab === 'foryou') activeVideo.play().catch(() => {});
