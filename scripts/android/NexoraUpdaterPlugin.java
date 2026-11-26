@@ -354,9 +354,14 @@ public class NexoraUpdaterPlugin extends Plugin {
             validateUpdateApk(context, apk, prefs.getString(EXPECTED_SHA256, ""));
             Uri apkUri = FileProvider.getUriForFile(context,
                     context.getPackageName() + ".nexora-updater.fileprovider", apk);
-            Intent install = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-            install.setData(apkUri);
+            // Explicit APK MIME type is required by several Android package-installer
+            // implementations when the source is a FileProvider content URI.
+            // Supplying only ACTION_INSTALL_PACKAGE + data URI can open an installer
+            // that subsequently reports the generic "problem parsing package" error.
+            Intent install = new Intent(Intent.ACTION_VIEW);
+            install.setDataAndType(apkUri, "application/vnd.android.package-archive");
             install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            install.addCategory(Intent.CATEGORY_DEFAULT);
             install.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
             context.startActivity(install);
             prefs.edit().putBoolean(INSTALL_LAUNCHED, true).commit();
