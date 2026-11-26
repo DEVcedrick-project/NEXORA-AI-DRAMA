@@ -118,7 +118,7 @@ begin
     case when v_order.vip_days > 0
       then floor(extract(epoch from (now() + make_interval(days => v_order.vip_days))) * 1000)::bigint
       else 0 end,
-    case when v_order.vip_days > 0 then v_order.title else '',
+    case when v_order.vip_days > 0 then v_order.title else '' end,
     now()
   )
   on conflict (user_id) do update set
