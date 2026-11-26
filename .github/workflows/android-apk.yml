@@ -333,7 +333,7 @@ jobs:
           echo "Production APK package ID, version, file, and APK signature checks passed."
 
       - name: Deep-validate APK archive and Android package parser
-        if: always() && (steps.signing.outputs.enabled == 'true' || steps.signing.outputs.enabled == 'false')
+        if: steps.signing.outputs.enabled == 'true' || steps.signing.outputs.enabled == 'false'
         working-directory: android
         run: |
           set -euo pipefail
