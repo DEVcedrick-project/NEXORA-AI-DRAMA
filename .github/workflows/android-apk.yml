@@ -226,7 +226,7 @@ jobs:
           )
           with urllib.request.urlopen(request, timeout=20) as response:
               latest = json.load(response).get("tag_name", "")
-          match = re.fullmatch(r"v?(\\d+)\\.(\\d+)\\.(\\d+)", latest)
+          match = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", latest)
           if not match:
               raise SystemExit(f"Cannot validate latest published release tag: {latest!r}")
           published = tuple(int(x) for x in match.groups())
