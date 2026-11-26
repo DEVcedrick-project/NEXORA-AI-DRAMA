@@ -1022,7 +1022,7 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.6.15';
+    const APP_CURRENT_VERSION = 'v2.6.16';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
     const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
     let updateCheckInFlight = null;
@@ -1163,8 +1163,33 @@
       lastContinueSaveMs: 0,
       socialLoadAt: {},
       socialLoadInFlight: {},
-      socialRefreshTimer: null
+      socialRefreshTimer: null,
+      lastAnimationErrorAt: 0,
+      bootstrapStarted: false
     };
+
+    // Keep a small, local diagnostic ring buffer. Never store account data or tokens.
+    const NEXORA_DIAGNOSTICS_KEY = 'nexora_runtime_diagnostics_v1';
+    function recordRuntimeError(source, error, details = {}) {
+      const message = String(error?.message || error || 'Unknown runtime error').slice(0, 500);
+      const stack = String(error?.stack || '').slice(0, 1800);
+      console.error('[NEXORA]', source, message, error);
+      try {
+        const prior = JSON.parse(localStorage.getItem(NEXORA_DIAGNOSTICS_KEY) || '[]');
+        const entries = Array.isArray(prior) ? prior : [];
+        entries.push({
+          at: new Date().toISOString(),
+          version: APP_CURRENT_VERSION,
+          source: String(source).slice(0, 80),
+          message,
+          stack,
+          details: String(details?.message || details || '').slice(0, 300)
+        });
+        localStorage.setItem(NEXORA_DIAGNOSTICS_KEY, JSON.stringify(entries.slice(-30)));
+      } catch (storageError) {
+        console.warn('[NEXORA] Could not persist runtime diagnostics:', storageError);
+      }
+    }
 
     // =========================================================================
     // 2B. STARTUP SPLASH SCREEN & APK ICON / SPLASH ASSET STUDIO
@@ -1846,9 +1871,13 @@
     // Android returns to the WebView after the user grants install permission in Settings.
     // Resume the selected update automatically instead of making the user press Update again.
     document.addEventListener('visibilitychange', async () => {
-      if (document.hidden || !runtime.updatePermissionPending) return;
+      if (document.hidden) return;
       try {
         const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
+        // The installer may have been cancelled. Clear the native launch guard
+        // only after Android returns focus, so a second intentional tap can retry.
+        await NexoraUpdater.resetInstallLaunchState();
+        if (!runtime.updatePermissionPending) return;
         const permission = await NexoraUpdater.checkInstallPermission();
         if (!permission?.granted) {
           showToast('NEXORA still needs permission to install APK updates.');
@@ -4127,7 +4156,13 @@
               advanceWatchToEarnTimer(dt);
             }
           }
-        } catch (_loopErr) {}
+        } catch (loopError) {
+          const nowMs = Date.now();
+          if (nowMs - runtime.lastAnimationErrorAt > 10000) {
+            runtime.lastAnimationErrorAt = nowMs;
+            recordRuntimeError('animation-loop', loopError, { tab: state.activeMainTab });
+          }
+        }
 
         runtime.rafId = requestAnimationFrame(tick);
       }
@@ -5277,10 +5312,16 @@
     });
 
     window.addEventListener('error', (event) => {
-      console.error('[NEXORA] Uncaught application error:', event.error || event.message);
+      const target = event.target;
+      if (target && target !== window) {
+        const failedAsset = target.src || target.href || target.tagName || 'unknown resource';
+        recordRuntimeError('resource-load', event.message || 'A page resource failed to load', failedAsset);
+        return;
+      }
+      recordRuntimeError('uncaught-error', event.error || event.message || 'Unknown window error');
     });
     window.addEventListener('unhandledrejection', (event) => {
-      console.error('[NEXORA] Unhandled promise rejection:', event.reason);
+      recordRuntimeError('unhandled-promise', event.reason || 'Unhandled promise rejection');
     });
 
     async function bootstrapNexoraApp() {
@@ -5300,7 +5341,7 @@
       safeCreateIcons();
       startMainAnimationLoop();
 
-      initCapacitorAdMobBridge();
+      void initCapacitorAdMobBridge().catch(error => recordRuntimeError('admob-initialization', error));
       setStartupStatus('Preparing your experience…');
 
       // Start cloud services in parallel and let them finish in the background.
@@ -5343,10 +5384,21 @@
       redrawActiveCanvasNow();
     });
 
+    function launchNexoraBootstrap() {
+      if (runtime.bootstrapStarted) return;
+      runtime.bootstrapStarted = true;
+      void bootstrapNexoraApp().catch(error => {
+        recordRuntimeError('bootstrap', error);
+        // Never leave a user trapped behind the splash after a startup exception.
+        try { dismissSplashScreen(); } catch (_splashError) {}
+        try { showToast('NEXORA encountered a startup issue. Please reopen the app if this continues.'); } catch (_toastError) {}
+      });
+    }
+
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bootstrapNexoraApp);
+      document.addEventListener('DOMContentLoaded', launchNexoraBootstrap, { once: true });
     } else {
-      bootstrapNexoraApp();
+      launchNexoraBootstrap();
     }
   </script>
 </body>
