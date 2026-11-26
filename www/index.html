@@ -39,7 +39,10 @@
     }
     .snap-feed {
       scroll-snap-type: y mandatory;
-      scroll-behavior: smooth;
+      scroll-behavior: auto;
+      overscroll-behavior-y: contain;
+      background: #050508;
+      -webkit-overflow-scrolling: touch;
     }
     .snap-slide {
       scroll-snap-align: start;
@@ -47,9 +50,10 @@
       background-color: #050508;
       isolation: isolate;
     }
-    /* Keep the poster visible until the incoming video has a decoded frame. */
-    .feed-poster-layer { z-index: 1; background: #050508; backface-visibility: hidden; }
-    .feed-video-layer { z-index: 2; opacity: 0; background: #050508; transition: opacity 140ms ease-out; backface-visibility: hidden; }
+    /* The poster remains as a permanent fallback beneath Android's video surface.
+       WebView can briefly recompose hardware-decoded video during vertical snap scrolling. */
+    .feed-poster-layer { z-index: 1; display: block; background: #050508; backface-visibility: hidden; transform: translateZ(0); }
+    .feed-video-layer { z-index: 2; opacity: 0; background: transparent; transition: none; backface-visibility: hidden; transform: translateZ(0); }
     .feed-video-layer.is-frame-ready { opacity: 1; }
     @keyframes heartPop {
       0% { transform: translate(-50%, -50%) scale(0.3) rotate(-12deg); opacity: 0; }
@@ -3619,8 +3623,9 @@
 
       const revealDecodedVideoFrame = () => {
         if (state.activeSeriesId !== series.id || videoEl.readyState < 2) return;
+        // Do not hide the poster: it must remain underneath the hardware video
+        // surface to cover transient blank frames while Android scrolls/recomposes.
         videoEl.classList.add('is-frame-ready');
-        posterEl?.classList.add('hidden');
         runtime.isBuffering = false;
         spinnerEl?.classList.add('hidden');
       };
