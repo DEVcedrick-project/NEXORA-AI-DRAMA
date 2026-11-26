@@ -8,7 +8,7 @@
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 1800,
+      "launchShowDuration": 2800,
       "launchFadeOutDuration": 350,
       "splashFullScreen": true,
       "splashImmersive": true,

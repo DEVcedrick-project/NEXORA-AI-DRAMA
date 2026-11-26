@@ -63,4 +63,18 @@ if "NexoraUpdaterPlugin" not in text:
         raise SystemExit("Could not register native NEXORA updater plugin")
     main.write_text(text)
 
+# Configure Android WebView to allow launch-time media playback with sound.
+# Capacitor's default gesture gate can block autoplay even when HTML calls play().
+activity_text = main.read_text()
+gesture_setting = "getBridge().getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);"
+if gesture_setting not in activity_text:
+    activity_text = activity_text.replace(
+        "super.onCreate(savedInstanceState);",
+        "super.onCreate(savedInstanceState);\\n        // Permit automatic drama audio playback on app launch.\\n        if (getBridge() != null && getBridge().getWebView() != null) {\\n            " + gesture_setting + "\\n        }",
+        1
+    )
+    if gesture_setting not in activity_text:
+        raise SystemExit("Could not configure Android WebView audio autoplay")
+    main.write_text(activity_text)
+
 print("Installed NEXORA's private in-app downloader and FileProvider. Android DownloadManager is no longer used.")
