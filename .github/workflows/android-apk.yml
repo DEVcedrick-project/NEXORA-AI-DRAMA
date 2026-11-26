@@ -255,8 +255,12 @@ jobs:
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
+            if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
+              echo "::error::Production release blocked: permanent Android signing secrets are missing. Refusing to publish or label a debug APK as an update."
+              exit 1
+            fi
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "Release signing secrets are not configured; building a debug APK only."
+            echo "Release signing secrets are unavailable; this non-production run may build a debug APK for testing only."
           fi
 
       - name: Build debug APK
@@ -310,6 +314,23 @@ jobs:
           "$BUILD_TOOLS/apksigner" sign --ks release-key.jks --ks-key-alias "$ANDROID_KEY_ALIAS" --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD --out "$SIGNED" "$ALIGNED"
           "$BUILD_TOOLS/apksigner" verify --verbose "$SIGNED"
           rm -f "$ALIGNED"
+
+      - name: Verify production APK package and release metadata
+        if: steps.signing.outputs.enabled == 'true'
+        working-directory: android
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk"
+          test -s "$APK"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+          BADGING="$("$BUILD_TOOLS/aapt" dump badging "$APK")"
+          echo "$BADGING" | grep -F "package: name='com.devcedrick.nexoraaidrama'"
+          EXPECTED_VERSION="$(node -p "require('../package.json').version")"
+          echo "$BADGING" | grep -F "versionName='$EXPECTED_VERSION'"
+          EXPECTED_CODE="$(node -e "const [a,b,c]=require('../package.json').version.split('.').map(Number); process.stdout.write(String(a*1000000+b*1000+c))")"
+          echo "$BADGING" | grep -F "versionCode='$EXPECTED_CODE'"
+          echo "Production APK package ID, version, file, and APK signature checks passed."
 
       - name: Sign release AAB
         if: steps.signing.outputs.enabled == 'true'
