@@ -106,7 +106,7 @@ public class NexoraUpdaterPlugin extends Plugin {
                     .putString(STATUS, "downloading").putString(DOWNLOAD_URL, rawUrl).putLong(DOWNLOADED, 0)
                     .putLong(TOTAL, 0).putString(APK_PATH, "").putString(ERROR, "")
                     .putBoolean(INSTALL_LAUNCHED, false).apply();
-            EXECUTOR.execute(() -> downloadApk(rawUrl, target, temp, prefs));
+            EXECUTOR.execute(() -> downloadApk(context, rawUrl, target, temp, prefs));
         }
         JSObject result = new JSObject();
         result.put("status", "downloading");
@@ -114,7 +114,7 @@ public class NexoraUpdaterPlugin extends Plugin {
         call.resolve(result);
     }
 
-    private void downloadApk(String rawUrl, File target, File temp, SharedPreferences prefs) {
+    private void downloadApk(Context context, String rawUrl, File target, File temp, SharedPreferences prefs) {
         HttpURLConnection connection = null;
         try {
             URL url = new URL(rawUrl);
