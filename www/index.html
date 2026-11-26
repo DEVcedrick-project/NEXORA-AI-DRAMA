@@ -3458,8 +3458,22 @@
       state.seriesCatalog.forEach(s => {
         if (s.id !== series.id) {
           const otherVid = document.getElementById(`video-${s.id}`);
-          if (otherVid && !otherVid.paused) {
-            try { otherVid.pause(); } catch (_e) {}
+          if (otherVid) {
+            try {
+              otherVid.pause();
+              otherVid.removeAttribute('src');
+              otherVid.innerHTML = '';
+              otherVid.load();
+              otherVid.classList.add('hidden');
+            } catch (mediaCleanupError) {
+              recordRuntimeError('inactive-video-cleanup', mediaCleanupError, { seriesId: s.id });
+            }
+          }
+          if (runtime.hlsInstances[s.id]) {
+            try { runtime.hlsInstances[s.id].destroy(); } catch (hlsCleanupError) {
+              recordRuntimeError('inactive-hls-cleanup', hlsCleanupError, { seriesId: s.id });
+            }
+            delete runtime.hlsInstances[s.id];
           }
         }
       });
@@ -3468,9 +3482,21 @@
       const spinnerEl = document.getElementById(`buffer-spinner-${series.id}`);
       if (!videoEl) return;
 
-      runtime.isPreloadedReady = false;
-      runtime.preloadedTargetKey = '';
-      document.getElementById('preload-status-pill')?.classList.add('hidden');
+      const mediaChanged = runtime.activeVideoState.seriesId !== series.id
+        || runtime.activeVideoState.epNum !== ep.num;
+      if (mediaChanged) {
+        destroyPreloaderHls();
+        const preloaderVideo = document.getElementById('next-ep-preloader-video');
+        if (preloaderVideo) {
+          preloaderVideo.pause();
+          preloaderVideo.removeAttribute('src');
+          preloaderVideo.load();
+          preloaderVideo.onloadeddata = null;
+        }
+        runtime.isPreloadedReady = false;
+        runtime.preloadedTargetKey = '';
+        document.getElementById('preload-status-pill')?.classList.add('hidden');
+      }
 
       const streamUrl = (ep && typeof ep.videoUrl === 'string') ? ep.videoUrl.trim() : '';
       if (!streamUrl || !unlocked) {
@@ -3593,6 +3619,10 @@
       };
 
       videoEl.onerror = () => {
+        const mediaError = videoEl.error;
+        recordRuntimeError('video-element', mediaError || 'Stream load error', {
+          seriesId: series.id, episode: ep.num, mediaErrorCode: mediaError?.code
+        });
         fallbackToCanvasStage(series.id, 'stream load error');
       };
 
@@ -3621,14 +3651,20 @@
           hls.attachMedia(videoEl);
           hls.on(window.Hls.Events.MANIFEST_PARSED, () => startPlayback());
           hls.on(window.Hls.Events.ERROR, (_event, data) => {
-            if (data && data.fatal) {
-              if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
-                hls.startLoad();
-              } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
-                hls.recoverMediaError();
-              } else {
-                fallbackToCanvasStage(series.id, 'HLS fatal error');
-              }
+            if (!data || !data.fatal || state.activeSeriesId !== series.id) return;
+            recordRuntimeError('hls-fatal', data.details || data.type || 'Fatal HLS playback error', {
+              seriesId: series.id, episode: ep.num, errorType: data.type
+            });
+            if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+              hls._nexoraNetworkRetries = (hls._nexoraNetworkRetries || 0) + 1;
+              if (hls._nexoraNetworkRetries <= 3) hls.startLoad();
+              else fallbackToCanvasStage(series.id, 'HLS network retry limit reached');
+            } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+              hls._nexoraMediaRecoveries = (hls._nexoraMediaRecoveries || 0) + 1;
+              if (hls._nexoraMediaRecoveries <= 2) hls.recoverMediaError();
+              else fallbackToCanvasStage(series.id, 'HLS media recovery failed');
+            } else {
+              fallbackToCanvasStage(series.id, 'HLS fatal error');
             }
           });
         } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
@@ -3964,6 +4000,12 @@
       const feed = document.getElementById('foryou-feed-container');
       if (!feed) return;
 
+      // Re-rendering the feed must not leave old observers retaining detached slides.
+      if (runtime.observer) {
+        try { runtime.observer.disconnect(); } catch (observerError) {
+          recordRuntimeError('feed-observer-cleanup', observerError);
+        }
+      }
       runtime.observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
