@@ -2918,33 +2918,30 @@
       }
 
       if (state.admob.nativeAvailable) {
-        setupInterstitialAdListeners(admob);
+        await setupInterstitialAdListeners(admob);
         void prepareInterstitialAd();
       }
       updateAdMobStatusBadges();
     }
 
-    function setupInterstitialAdListeners(admob) {
+    async function setupInterstitialAdListeners(admob) {
       if (runtime.interstitialListeners.length || !admob || typeof admob.addListener !== 'function') return;
       const add = async (eventName, callback) => {
         try {
           const handle = await admob.addListener(eventName, callback);
           if (handle) runtime.interstitialListeners.push(handle);
-        } catch (error) {
-          console.warn('[NEXORA ads] Could not attach interstitial listener:', eventName, error);
-        }
+        } catch (error) { console.warn('[NEXORA ads] Could not attach interstitial listener:', eventName, error); }
       };
-      void add('interstitialAdLoaded', () => { runtime.interstitialReady = true; runtime.interstitialPreparing = false; });
-      void add('interstitialAdFailedToLoad', (error) => {
+      await add('interstitialAdLoaded', () => { runtime.interstitialReady = true; runtime.interstitialPreparing = false; });
+      await add('interstitialAdFailedToLoad', (error) => {
         runtime.interstitialReady = false; runtime.interstitialPreparing = false;
         console.warn('[NEXORA ads] Interstitial failed to load:', error);
       });
-      void add('interstitialAdDismissed', () => finishInterstitialAd(true));
-      void add('interstitialAdFailedToShow', (error) => {
+      await add('interstitialAdDismissed', () => finishInterstitialAd(true));
+      await add('interstitialAdFailedToShow', (error) => {
         console.warn('[NEXORA ads] Interstitial failed to show:', error); finishInterstitialAd(false);
       });
     }
-
     function isVipEntitled() {
       return Boolean(state.isVip && (!Number(state.vipExpiresAt) || Number(state.vipExpiresAt) > Date.now()));
     }
