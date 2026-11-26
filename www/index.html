@@ -1032,7 +1032,7 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.6.27';
+    const APP_CURRENT_VERSION = 'v2.6.36';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
     const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
     let updateCheckInFlight = null;
@@ -1686,7 +1686,7 @@
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 10000);
         try {
-          const response = await fetch(APP_UPDATE_MANIFEST_URL, {
+          const response = await fetch(`${APP_UPDATE_MANIFEST_URL}?_=${Date.now()}`, {
             cache: 'no-store',
             signal: controller.signal
           });
