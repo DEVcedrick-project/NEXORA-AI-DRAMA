@@ -1871,7 +1871,7 @@
     // Android returns to the WebView after the user grants install permission in Settings.
     // Resume the selected update automatically instead of making the user press Update again.
     document.addEventListener('visibilitychange', async () => {
-      if (document.hidden) return;
+      if (document.hidden || !window.Capacitor?.isNativePlatform?.()) return;
       try {
         const { NexoraUpdater } = await import('./vendor/nexora-native-plugins.js');
         // The installer may have been cancelled. Clear the native launch guard
@@ -5319,7 +5319,7 @@
         return;
       }
       recordRuntimeError('uncaught-error', event.error || event.message || 'Unknown window error');
-    });
+    }, true);
     window.addEventListener('unhandledrejection', (event) => {
       recordRuntimeError('unhandled-promise', event.reason || 'Unhandled promise rejection');
     });
