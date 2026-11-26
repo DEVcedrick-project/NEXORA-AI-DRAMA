@@ -346,7 +346,7 @@ jobs:
 
       - name: Publish update manifest after successful signed release
         if: steps.signing.outputs.enabled == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           APP_VERSION: ${{ steps.version.outputs.value }}
         with:
