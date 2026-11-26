@@ -1022,7 +1022,7 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.6.20';
+    const APP_CURRENT_VERSION = 'v2.6.21';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
     const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
     let updateCheckInFlight = null;
@@ -1120,7 +1120,7 @@
     const runtime = {
       isPaused: false,
       isBuffering: false,
-      isMuted: false,
+      isMuted: true,
       playbackSpeed: 1.0,
       speedOptions: [1.0, 1.25, 1.5, 2.0],
       activeVideoState: {
@@ -1234,7 +1234,7 @@
       if (runtime.splashTimer) clearTimeout(runtime.splashTimer);
       runtime.splashTimer = setTimeout(() => {
         dismissSplashScreen();
-      }, 2800);
+      }, 1800);
     }
 
     function drawNexoraBrandArtwork(ctx, w, h, mode = 'icon') {
@@ -3629,7 +3629,7 @@
 
         recordContinueWatchingProgress(series.id, ep.num, pct);
 
-        if (pct >= 75) {
+        if (pct >= 45) {
           preloadNextEpisodeMedia(series, ep.num);
         }
       };
@@ -3720,7 +3720,7 @@
       };
 
       if (isHlsStreamUrl(nextUrl) && window.Hls && window.Hls.isSupported()) {
-        const pHls = new window.Hls({ maxBufferLength: 6 });
+        const pHls = new window.Hls({ maxBufferLength: 12, backBufferLength: 0 });
         runtime.preloaderHls = pHls;
         pHls.loadSource(nextUrl);
         pHls.attachMedia(preloaderVid);
@@ -3845,7 +3845,7 @@
             </div>
 
             <img id="poster-${series.id}" src="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" alt="${escapeHtml(series.title)} poster" class="absolute inset-0 w-full h-full object-cover ${ep.posterUrl || series.coverUrl ? '' : 'hidden'}" loading="lazy" decoding="async" />
-            <video id="video-${series.id}" poster="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" playsinline preload="none" crossorigin="anonymous" class="hidden absolute inset-0 w-full h-full object-cover bg-black"></video>
+            <video id="video-${series.id}" poster="${escapeHtml(ep.posterUrl || series.coverUrl || '')}" playsinline preload="auto" crossorigin="anonymous" class="hidden absolute inset-0 w-full h-full object-cover bg-black"></video>
 
             <div id="buffer-spinner-${series.id}" class="hidden pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
               <div class="w-10 h-10 rounded-full border-3 border-white/20 border-t-[#ff2e63] animate-spin"></div>
@@ -5426,7 +5426,7 @@
       });
 
       // Keep the branded intro short; slow or offline services cannot delay entry.
-      runtime.splashTimer = setTimeout(() => dismissSplashScreen(), 2800);
+      runtime.splashTimer = setTimeout(() => dismissSplashScreen(), 1800);
 
       // Ask for notification permission only after the first screen is visible,
       // so the Android permission dialog never interrupts the branded splash.
