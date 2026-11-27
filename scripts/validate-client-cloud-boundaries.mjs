@@ -21,20 +21,20 @@ for (const forbidden of ["wallet:", "vipStatus:", "unlockedEpisodes:"]) {
 }
 
 const rewardCredit = block("function creditCoins(", "function unlockEpisodeWithRewardedAd(");
-assert(!/update\\(ref\\([^)]*wallet/.test(rewardCredit), "Client coin rewards must not write Firebase wallet balances.");
+assert(!/update\(ref\([^)]*wallet/.test(rewardCredit), "Client coin rewards must not write Firebase wallet balances.");
 
 const rewardedUnlock = block("function unlockEpisodeWithRewardedAd(", "function unlockEpisodeWithCoins(");
-assert(!/update\\(ref\\(/.test(rewardedUnlock), "Rewarded-ad callbacks must not write server entitlements.");
+assert(!/update\(ref\(/.test(rewardedUnlock), "Rewarded-ad callbacks must not write server entitlements.");
 
 const coinUnlock = block("function unlockEpisodeWithCoins(", "function syncWalletUI(");
-assert(!/update\\(ref\\(/.test(coinUnlock), "Coin unlocks must not write server wallet or entitlement records.");
+assert(!/update\(ref\(/.test(coinUnlock), "Coin unlocks must not write server wallet or entitlement records.");
 
 const walletSync = block("async function syncStateToSupabaseNow(", "function getCapacitorAdMobPlugin()");
-assert(!/\\.from\\(['"](?:user_wallets|unlocked_episodes)['"]\\)/.test(walletSync),
+assert(!/\.from\(['"](?:user_wallets|unlocked_episodes)['"]\)/.test(walletSync),
   "The public Supabase client must not read or write protected wallet tables.");
 
 const signOut = block("async function handleSignOutAccount()", "function cycleUserAvatar()");
-assert(!/update\\(ref\\(/.test(signOut), "Account switching must not flush protected data from the client.");
+assert(!/update\(ref\(/.test(signOut), "Account switching must not flush protected data from the client.");
 
 const pushFunction = fs.readFileSync("supabase/functions/nexora-push-register/index.ts", "utf8");
 assert(source.includes('"Authorization": "Bearer " + idToken'),
