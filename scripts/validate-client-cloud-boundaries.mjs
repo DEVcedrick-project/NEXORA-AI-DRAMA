@@ -118,6 +118,11 @@ assert(socialFunction.includes("APP_CHECK_JWKS") &&
 assert(socialFunction.includes("x-firebase-appcheck") &&
   socialFunction.includes("APP_CHECK_PROJECT_NUMBER"),
   "Social API must accept and validate project-scoped Firebase App Check tokens.");
+assert(socialFunction.includes('subject!==APP_CHECK_APP_ID') &&
+  socialFunction.includes('1:201389649043:android:4dd0433ed5959b5e85f166'),
+  "Social API must bind App Check tokens to the NEXORA AI DRAMA Android app, not other Firebase apps in the project.");
+assert(source.includes("PlayIntegrityAppCheckProviderFactory") === false,
+  "Web source must not import native-only Play Integrity SDK classes.");
 const socialClient = block("async function getNexoraAppCheckToken()", "function applyNexoraSocialSnapshot(");
 assert(socialClient.includes("plugin.getToken()") &&
   socialClient.includes("X-Firebase-AppCheck") &&
