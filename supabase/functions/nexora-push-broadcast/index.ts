@@ -118,9 +118,12 @@ Deno.serve(async (req: Request) => {
             .delete().eq("token", device.token).eq("app_id", APP_ID);
           if (deleteError) throw deleteError;
           invalidTokensRemoved++;
+        } else if (response.status >= 500 || response.status === 408 || response.status === 429) {
+          // A server error, timeout, or throttling response can be ambiguous.
+          // Keep "sending" so no later run blindly duplicates a possibly accepted push.
+          throw new Error(`FCM outcome is ambiguous (${response.status}); delivery was not reset for retry`);
         } else {
-          // A concrete FCM rejection means this request was not accepted;
-          // return it to pending so a later run can retry safely.
+          // A definite client-side rejection was not accepted by FCM; retry later.
           const { error: retryError } = await admin.from("nexora_push_deliveries")
             .update({ status: "pending", updated_at: new Date().toISOString() })
             .eq("event_key", eventKey).eq("token", device.token).eq("status", "sending");
