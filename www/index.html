@@ -2113,18 +2113,13 @@
       ];
     }
 
-    function restoreLocalAccountWallet(uid, email) {
+    function restoreLocalAccountWallet(uid) {
+      if (!uid) return false;
       const vault = readLocalAccountVault();
-      const uidKey = uid ? `uid:${String(uid)}` : '';
-      const emailKey = String(email || '').trim().toLowerCase();
-      // Prefer the stable Firebase UID. Read the old email-keyed snapshot only
-      // as a one-time compatibility fallback for accounts saved by older builds.
-      const saved = (uidKey && vault[uidKey]?.snapshot) || (emailKey && vault[emailKey]?.snapshot);
+      const uidKey = `uid:${String(uid)}`;
+      // Never fall back to email: it is mutable and is not an authorization key.
+      const saved = vault[uidKey]?.snapshot;
       if (!saved || typeof saved !== 'object') return false;
-      if (uidKey && !vault[uidKey]) {
-        vault[uidKey] = { uid: String(uid), email: emailKey, snapshot: saved, savedAt: Date.now() };
-        writeLocalAccountVault(vault);
-      }
       state.purchasedCoins = Math.max(0, Math.floor(Number(saved.purchasedCoins) || 0));
       state.bonusCoins = Math.max(0, Math.floor(Number(saved.bonusCoins) || 0));
       const exp = Number(saved.vipExpiresAt) || 0;
@@ -2162,43 +2157,22 @@
           state.notifications = parsed.notifications.slice(0, 30);
         }
 
-        if (parsed.user && typeof parsed.user === 'object') {
-          if (typeof parsed.user.name === 'string' && parsed.user.name.trim()) {
-            state.user.name = parsed.user.name.trim().slice(0, 22);
-          }
-          if (typeof parsed.user.uid === 'string' && parsed.user.uid.trim()) {
-            state.user.uid = parsed.user.uid.trim();
-          }
-          if (Number.isFinite(parsed.user.avatarIdx)) {
-            state.user.avatarIdx = Math.max(0, Math.min(AVATAR_CHOICES.length - 1, Math.floor(parsed.user.avatarIdx)));
-          }
-          if (typeof parsed.user.email === 'string') {
-            state.user.email = parsed.user.email.trim();
-          }
-          state.user.isGuest = !state.user.email;
+        // A device-wide snapshot is not proof of the Firebase account currently
+        // signed in. Restore only a cosmetic avatar preference here; identity,
+        // wallet balances and episode unlocks are rebound after Auth confirms UID.
+        if (parsed.user && typeof parsed.user === 'object' && Number.isFinite(parsed.user.avatarIdx)) {
+          state.user.avatarIdx = Math.max(0, Math.min(AVATAR_CHOICES.length - 1, Math.floor(parsed.user.avatarIdx)));
         }
 
-        state.purchasedCoins = Math.max(0, Math.floor(Number(parsed.purchasedCoins) || 0));
-        state.bonusCoins = Math.max(0, Math.floor(Number(parsed.bonusCoins) || 0));
-
-        const exp = Number(parsed.vipExpiresAt) || 0;
-        state.vipExpiresAt = exp;
-        state.isVip = Boolean(parsed.isVip) && (exp === 0 || exp > Date.now());
-        state.vipPlanLabel = state.isVip ? String(parsed.vipPlanLabel || 'VIP Pass') : '';
-        state.starterPackClaimed = Boolean(parsed.starterPackClaimed);
-
-        if (parsed.unlockedEpisodes && typeof parsed.unlockedEpisodes === 'object') {
-          state.unlockedEpisodes = parsed.unlockedEpisodes;
-        }
+        // Account-owned wallet and unlock data are deliberately not hydrated
+        // from the device-wide snapshot before Firebase Auth has restored identity.
+        // VIP/subscription fields are intentionally left to their existing flow.
         // Shared social state is always hydrated from the authenticated backend,
         // never from a previous account's device-local snapshot.
         state.savedSeries = [];
         state.likedSeries = {};
         state.commentsBySeries = {};
         state.socialLikesCount = {};
-        if (Array.isArray(parsed.walletHistory) && parsed.walletHistory.length > 0) {
-          state.walletHistory = parsed.walletHistory.slice(0, 25);
-        }
         if (parsed.wte && typeof parsed.wte === 'object') {
           state.wte = { ...state.wte, ...parsed.wte };
         }
@@ -2577,6 +2551,9 @@
         runtime.fbDb = db;
         state.firebase.authUid = user.uid;
         state.user.uid = user.uid;
+        // Restore this installation's cached account snapshot only after Firebase
+        // has restored the session and supplied the authoritative UID.
+        restoreLocalAccountWallet(user.uid);
         if (user.email) {
           state.user.email = user.email;
           state.user.isGuest = false;
@@ -2631,6 +2608,7 @@
       // Existing update notifications are revalidated against update.json on tap.
 
       const unsubWallet = onValue(ref(db, `users/${uid}/wallet`), (snap) => {
+        if (runtime.fbAuth?.currentUser?.uid !== uid) return;
         const w = snap.val();
         if (w && typeof w === 'object') {
           state.purchasedCoins = Math.max(0, Math.floor(Number(w.purchasedCoins) || 0));
@@ -2644,6 +2622,7 @@
       runtime.fbUnsubs.push(unsubWallet);
 
       const unsubVip = onValue(ref(db, `users/${uid}/vipStatus`), (snap) => {
+        if (runtime.fbAuth?.currentUser?.uid !== uid) return;
         const v = snap.val();
         const exp = Number(v?.vipExpiresAt) || 0;
         state.vipExpiresAt = exp;
@@ -2656,6 +2635,7 @@
       runtime.fbUnsubs.push(unsubVip);
 
       const unsubUnlocks = onValue(ref(db, `users/${uid}/unlockedEpisodes`), (snap) => {
+        if (runtime.fbAuth?.currentUser?.uid !== uid) return;
         const u = snap.val();
         if (u && typeof u === 'object') {
           state.unlockedEpisodes = { ...state.unlockedEpisodes, ...u };
@@ -5115,11 +5095,11 @@
           void registerNativePushDevice().catch(error => console.error('[NEXORA Push] Account-change registration failed:', error));
           // Report only after Firebase confirms a successful interactive email login.
           void reportNexoraAuthEvent('login');
-          // Preserve the account being left, then load only the target account's
-          // local fallback before reading its UID-scoped cloud records.
+          // Preserve the account being left, then bind the new session strictly
+          // to Firebase's verified UID. A local email-keyed snapshot is never used.
           saveAppState();
           resetAccountWalletState();
-          restoreLocalAccountWallet(u.uid, u.email || email);
+          restoreLocalAccountWallet(u.uid);
           state.firebase.authUid = u.uid;
           state.user.uid = u.uid;
           state.user.email = u.email || email;
@@ -5131,6 +5111,9 @@
           try {
             if (runtime.fbDb) {
               const accountSnap = await get(ref(runtime.fbDb, `users/${u.uid}`));
+              // A slow response from account A must never overwrite account B
+              // after a rapid account switch or overlapping login attempt.
+              if (runtime.fbAuth?.currentUser?.uid !== u.uid) return;
               const accountData = accountSnap.val() || {};
               if (accountData.wallet && typeof accountData.wallet === 'object') {
                 state.purchasedCoins = Math.max(0, Math.floor(Number(accountData.wallet.purchasedCoins) || 0));
@@ -5150,6 +5133,7 @@
               state.firebase.lastError = '';
             }
           } catch (databaseError) {
+            if (runtime.fbAuth?.currentUser?.uid !== u.uid) return;
             state.firebase.connected = false;
             state.firebase.lastError = databaseError?.message || 'Could not restore cloud wallet data';
             console.warn('[NEXORA Firebase] Login succeeded; cloud wallet restore is pending:', databaseError);
@@ -5160,8 +5144,11 @@
         }
       }
 
+      if (runtime.fbAuth?.currentUser?.uid !== state.firebase.authUid) return;
       await pullWalletAndUnlocksFromSupabase();
+      if (runtime.fbAuth?.currentUser?.uid !== state.firebase.authUid) return;
       await pushLocalStateToFirebaseNow();
+      if (runtime.fbAuth?.currentUser?.uid !== state.firebase.authUid) return;
       saveAppState();
       syncWalletUI();
       updateAuthStatusUI();
