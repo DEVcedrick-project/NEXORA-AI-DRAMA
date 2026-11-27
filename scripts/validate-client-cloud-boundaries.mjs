@@ -92,6 +92,21 @@ assert(pushClient.includes("const registrationUid = firebaseUser.uid") &&
 assert(pushClient.includes("getNexoraAppCheckToken") &&
   pushClient.includes('headers["X-Firebase-AppCheck"] = appCheckToken'),
   "Push registration must attach a native App Check token when available.");
+assert(pushClient.includes("async function unregisterNativePushDeviceForCurrentAccount") &&
+  pushClient.includes('action: "unregister"') &&
+  pushClient.includes("await unregisterNativePushDeviceForCurrentAccount()"),
+  "Account changes must detach the FCM token using the old Firebase identity before switching.");
+const pushRegisterFunction = fs.readFileSync("supabase/functions/nexora-push-register/index.ts", "utf8");
+assert(pushRegisterFunction.includes('body?.action === "unregister"') &&
+  pushRegisterFunction.includes('admin.rpc("nexora_unregister_push_device"') &&
+  pushRegisterFunction.includes("p_user_id: userId"),
+  "Push unregister must be server-authenticated and scoped to the verified Firebase UID.");
+const pushUnregisterMigration = fs.readFileSync("supabase/migrations/20261127180000_nexora_push_authenticated_unregister.sql", "utf8");
+assert(pushUnregisterMigration.includes("where token = p_token") &&
+  pushUnregisterMigration.includes("and user_id = p_user_id") &&
+  pushUnregisterMigration.includes("to service_role"),
+  "Push unregister RPC must delete only the exact token owned by the authenticated UID.");
+
 
 const broadcastFunction = fs.readFileSync("supabase/functions/nexora-push-broadcast/index.ts", "utf8");
 assert(broadcastFunction.includes('.eq("app_id", APP_ID)') &&
