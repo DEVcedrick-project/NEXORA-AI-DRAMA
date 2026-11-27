@@ -2265,6 +2265,46 @@
     let nexoraPushAuthObserverInstalled = false;
     let nexoraPushLastObservedUid = null;
 
+    async function unregisterNativePushDeviceForCurrentAccount() {
+      const tokenValue = nexoraNativeFcmToken;
+      const firebaseUser = runtime.fbAuth?.currentUser;
+      if (!tokenValue || !firebaseUser || !window.Capacitor?.isNativePlatform?.()) return true;
+      try {
+        const idToken = await firebaseUser.getIdToken();
+        if (runtime.fbAuth?.currentUser?.uid !== firebaseUser.uid) return false;
+        const appCheckToken = await getNexoraAppCheckToken();
+        const headers = {
+          "Content-Type": "application/json",
+          "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
+          "Authorization": "Bearer " + idToken,
+          "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
+        };
+        if (appCheckToken) headers["X-Firebase-AppCheck"] = appCheckToken;
+        const response = await fetch(
+          NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register",
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              action: "unregister",
+              token: tokenValue,
+              app_version: APP_CURRENT_VERSION,
+              install_id: localStorage.getItem("nexora_push_install_id") || crypto.randomUUID()
+            })
+          }
+        );
+        if (!response.ok) {
+          console.warn("[NEXORA Push] Secure unregister returned HTTP", response.status);
+          return false;
+        }
+        console.info("[NEXORA Push] Device detached from the account being left.");
+        return true;
+      } catch (error) {
+        console.warn("[NEXORA Push] Could not detach device before account change:", error);
+        return false;
+      }
+    }
+
     async function registerNativePushDevice(tokenValue = nexoraNativeFcmToken) {
       if (!tokenValue || !window.Capacitor?.isNativePlatform?.()) return false;
       if (nexoraPushRegistrationInFlight) {
@@ -5130,7 +5170,10 @@
         // guest/member wallet. Save the old account locally, sign it out, and
         // start the new Firebase UID with its own starter balance.
         saveAppState();
-        if (runtime.fbAuth.currentUser) await signOut(runtime.fbAuth);
+        if (runtime.fbAuth.currentUser) {
+          await unregisterNativePushDeviceForCurrentAccount();
+          await signOut(runtime.fbAuth);
+        }
         resetAccountWalletState();
         const created = await createUserWithEmailAndPassword(runtime.fbAuth, email, password);
         credUser = created.user;
@@ -5184,6 +5227,9 @@
 
       if (runtime.fbAuth) {
         try {
+          // Remove this installation from the old UID while its Firebase token
+          // is still valid; never transfer a device token across account owners.
+          await unregisterNativePushDeviceForCurrentAccount();
           const res = await signInWithEmailAndPassword(runtime.fbAuth, email, password);
           const u = res.user;
           // Rebind the existing installation token to the newly authenticated account.
@@ -5275,6 +5321,8 @@
       clearFirebaseListeners();
       if (runtime.fbAuth) {
         try {
+          // Authenticate the detach request as the account being signed out.
+          await unregisterNativePushDeviceForCurrentAccount();
           await signOut(runtime.fbAuth);
         } catch (signOutError) {
           console.warn('[NEXORA] Sign-out did not complete:', signOutError);
