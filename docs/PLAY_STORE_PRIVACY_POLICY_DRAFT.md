@@ -16,7 +16,7 @@ This draft describes data flows visible in the current NEXORA AI DRAMA source co
 
 Depending on the features you use and the services enabled, NEXORA AI DRAMA may process:
 
-- Account information: email address, display name, and Firebase user identifier when you create or use an account.
+- Account information: email address, display name, and Firebase user identifier when you create or use an account. If notifications are enabled, the app also sends an FCM device token and installation identifier associated with the Firebase account.
 - App activity and preferences: viewing progress, saved series, likes, selected episodes, notifications, and local wallet/coin and episode-unlock state. These wallet and unlock values currently remain on the device and are not synchronized to a server-authoritative wallet service.
 - Service and diagnostic data: connection status, timestamps, and technical information processed by Firebase, Supabase, Google Play services, and their infrastructure.
 - Advertising data: Google AdMob may process device identifiers, ad interaction data, approximate location derived by Google, and diagnostics according to Google's settings and policies.
