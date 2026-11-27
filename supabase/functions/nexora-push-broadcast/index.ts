@@ -133,10 +133,13 @@ Deno.serve(async (req: Request) => {
     claimedEventKey = "";
     return json({ ok: true, version, sent: sentTotal || 0, sentThisAttempt: deliveredThisAttempt, invalidTokensRemoved });
   } catch (error) {
-    if (claimAdmin && claimedEventKey && claimToken && deliveredThisAttempt === 0) {
-      await claimAdmin.rpc("nexora_release_push_event", {
+    if (claimAdmin && claimedEventKey && claimToken) {
+      const { error: releaseError } = await claimAdmin.rpc("nexora_release_push_event", {
         p_event_key: claimedEventKey, p_claim_token: claimToken
-      }).catch(() => {});
+      });
+      if (releaseError) {
+        console.error("[NEXORA Push] Failed to release incomplete event claim:", releaseError.code || "unknown");
+      }
     }
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
