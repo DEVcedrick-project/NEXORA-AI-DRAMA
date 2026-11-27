@@ -126,7 +126,7 @@ Deno.serve(async(req:Request)=>{
   const cursorCreatedAt=typeof body.cursorCreatedAt==="string"?body.cursorCreatedAt:"";
   const cursorId=typeof body.cursorId==="string"?body.cursorId:"";
   if(Boolean(cursorCreatedAt)!==Boolean(cursorId)) return reply(400,{error:"Invalid comment pagination cursor"});
-  if(cursorCreatedAt && (!Number.isFinite(Date.parse(cursorCreatedAt)) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cursorId))) return reply(400,{error:"Invalid comment pagination cursor"});
+  if(cursorCreatedAt && (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(cursorCreatedAt) || !Number.isFinite(Date.parse(cursorCreatedAt)) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cursorId))) return reply(400,{error:"Invalid comment pagination cursor"});
   const [likes,ownLike,ownSave]=await Promise.all([
    db.from("nexora_social_likes").select("user_id",{count:"exact",head:true}).eq("series_id",seriesId),
    db.from("nexora_social_likes").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle(),
