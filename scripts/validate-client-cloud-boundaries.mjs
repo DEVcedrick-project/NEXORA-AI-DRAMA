@@ -95,7 +95,7 @@ assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Pub
   "Social actions must reject draft, hidden and nonexistent dramas.");
 
 assert(socialFunction.includes("nexora_check_social_request_rate_limit") &&
-  socialFunction.includes("trustedNetworkHash") && socialFunction.includes("x-forwarded-for"),
+  socialFunction.includes("trustedNetworkHash") && socialFunction.includes("cf-connecting-ip") && socialFunction.includes("x-real-ip"),
   "Every social action must be protected by a trusted network-scoped and per-account limiter.");
 assert(socialFunction.includes("nexora_toggle_social_reaction") &&
   socialFunction.includes("nexora_create_social_comment"),
