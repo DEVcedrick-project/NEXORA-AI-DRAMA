@@ -149,7 +149,7 @@ assert(appCheckClient.includes("nexoraAppCheckInitPromise = null") &&
 assert(pushClient.includes("getNexoraAppCheckToken") &&
   pushClient.includes('headers["X-Firebase-AppCheck"] = appCheckToken'),
   "Push registration must attach a native App Check token when available.");
-assert(socialClient.includes("NexoraAppCheck.getToken") &&
+assert(socialClient.includes("plugin.getToken()") &&
   socialClient.includes("X-Firebase-AppCheck") &&
   socialClient.includes("if (appCheckToken)"),
   "Social requests must attach a native App Check token when available without blocking legacy clients.");
