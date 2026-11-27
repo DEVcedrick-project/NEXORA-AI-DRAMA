@@ -27,6 +27,31 @@ function enforceNexoraAppCheck(status: NexoraAppCheckStatus): boolean {
   return Deno.env.get("NEXORA_APP_CHECK_ENFORCE") === "true" && status !== "valid";
 }
 
+async function hashSocialNetworkAddress(request: Request, secret: string): Promise<string> {
+  // Supabase's edge gateway supplies the connecting address. Prefer the
+  // Cloudflare value; otherwise use the gateway-appended final X-Forwarded-For hop.
+  const cloudflareAddress = (request.headers.get("cf-connecting-ip") || "").trim();
+  const forwarded = (request.headers.get("x-forwarded-for") || "")
+    .split(",").map((value) => value.trim()).filter(Boolean);
+  const address = cloudflareAddress || forwarded[forwarded.length - 1] || "";
+  if (!address || address.length > 128 || /[\\s,]/.test(address)) {
+    throw new Error("trusted_client_network_address_unavailable");
+  }
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode("nexora-social-network-v1:" + address),
+  );
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 const PROJECT_ID = "nexora-ai-drama";
@@ -72,14 +97,22 @@ Deno.serve(async(req:Request)=>{
   const userId=String(payload.sub||"");
   if(!userId||userId.length>128) return reply(401,{error:"Invalid Firebase user"});
   const body=await readJsonLimited(req), action=String(body.action||""), seriesId=String(body.seriesId||"").trim();
-  // Every valid action returns a social snapshot (including the comment page),
-  // so limiting only action=read lets like/save/comment requests bypass the
-  // per-user read budget while still triggering the same database reads.
+  // Every action returns a social snapshot. Enforce both per-UID and per-network
+  // limits so rotating anonymous Firebase accounts cannot reset the whole budget.
   if(["read","like","save","comment"].includes(action)) {
    const rateUrl=Deno.env.get("SUPABASE_URL"), rateKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
    if(!rateUrl||!rateKey) return reply(503,{error:"Social service is temporarily unavailable"});
+   let networkHash="";
+   try {
+    networkHash=await hashSocialNetworkAddress(req,rateKey);
+   } catch(error) {
+    console.error("[nexora-social] trusted network identity unavailable");
+    return reply(503,{error:"Social requests are temporarily unavailable"});
+   }
    const rateDb=createClient(rateUrl,rateKey,{auth:{persistSession:false,autoRefreshToken:false}});
-   const {data:allowed,error:rateError}=await rateDb.rpc("nexora_check_social_read_rate_limit",{p_user_id:userId});
+   const {data:allowed,error:rateError}=await rateDb.rpc("nexora_check_social_request_rate_limit",{
+    p_user_id:userId,p_network_hash:networkHash,p_action:action
+   });
    if(rateError) {
     console.error("[nexora-social] request rate-limit check failed",rateError.code||"unknown");
     return reply(503,{error:"Social requests are temporarily unavailable"});
