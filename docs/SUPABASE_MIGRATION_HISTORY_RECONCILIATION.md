@@ -74,3 +74,21 @@ The migration-path commit history and historical trees were inspected. One of th
 - The original migration creates the private per-device delivery ledger with the initial `pending/sent/invalid` status check and service-role-only table grants. The live database's expanded status set reflects later schema evolution, so this original file must remain historical and must not be edited to imitate the current schema.
 
 This recovery check does **not** recover the other 25 missing files. The inspected historical tree at the delivery-ledger commit also contained only this one migration file. No historical migration file has been restored or replayed as part of this follow-up. Continue searching other trusted authoring commits/artifacts for the remaining 25 exact SQL sources.
+
+
+## Exact historical files recovered into this PR branch
+
+A search of the repository's existing audit/fix branches found six additional migration files whose version prefixes exactly match six applied Supabase migration versions. Their file contents were copied byte-for-byte from the source branch blobs into this PR branch (new Git blobs may have different SHA values only if line-ending normalization occurred; source blob SHAs are recorded below for traceability):
+
+| Applied version | Restored file | Original source branch | Original blob SHA |
+|---|---|---|---|
+| 20261127031947 | `20261127031947_atomic_push_device_registration.sql` | `fix/deep-nonsubscription-audit-2026-11-27` | `f33c0ba68aac375c427152a9ab355486f09420ef` |
+| 20261127033930 | `20261127033930_atomic_social_comment_rate_limit.sql` | `fix/deep-nonsubscription-audit-2026-11-27` | `ec7f83ff692596be98af27b05fb642994caef490` |
+| 20261127034051 | `20261127034051_atomic_push_broadcast_claims.sql` | `fix/deep-nonsubscription-audit-2026-11-27` | `a4ad501624360beff0d90e49445dab8c4488bc58` |
+| 20261127041718 | `20261127041718_atomic_social_reactions.sql` | `fix/deep-nonsubscription-audit-2026-11-27` | `49d0c8f76de7c3aa1f41ae7d0a75f1cbb8551ca4` |
+| 20261127143619 | `20261127143619_nexora_social_shared_network_rate_limits.sql` | `fix/deep-audit-nexora-2026-11-27` | `1cd19909f84344ab34320e2a079d6c081f6cc2ee` |
+| 20261127143817 | `20261127143817_nexora_social_request_limit_retention.sql` | `fix/deep-audit-nexora-2026-11-27` | `18cb7972ef24f9ec058f245761827c831c06b3cb` |
+
+These files were restored to source control only. They were **not** executed against Supabase. The registration migration is an earlier version of the registration RPC; the later applied regex-hardening migration remains in sequence and replaces it. The push-claim migration reproduces the currently inspected RPC definitions, including the known 15-minute claim and unconditional completion behavior; restoring history does not imply those behaviors are approved or repaired.
+
+The live applied migration inventory is now matched by 8 source-controlled migration files (the original two plus these six). **20 applied migration files remain unrecovered.** The next recovery pass must resolve timestamp-mismatched candidate files individually against deployment evidence and live schema before restoring them. In particular, do not rename a candidate just because its purpose resembles a missing migration.
