@@ -133,7 +133,7 @@ assert(socialFunction.includes('nexora_check_social_read_rate_limit') &&
   "Every social action must pass through the per-user request rate limiter, not only feed reads.");
 assert(socialFunction.includes('status:429') && socialFunction.includes('"Retry-After":"60"'),
   "Social rate limiting must return HTTP 429 with a one-minute Retry-After header.");
-assert(socialFunction.includes("!/^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(?:\\\\.\\\\d{1,6})?(?:Z|[+-]\\\\d{2}:\\\\d{2})$/.test(cursorCreatedAt)"),
+assert(socialFunction.includes("!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(cursorCreatedAt)"),
   "Comment pagination cursors must use strict ISO timestamps before entering the PostgREST filter.");
 
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");
