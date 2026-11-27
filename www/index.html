@@ -5027,23 +5027,9 @@
 
     async function handleSignOutAccount() {
       const previousUid = state.firebase.authUid || state.user.uid;
-      // Flush this account's last known snapshot before changing Firebase UID.
+      // Persist this account locally before changing Firebase UID. Protected wallet,
+      // VIP and unlock records are server-owned and are never flushed by the client.
       saveAppState();
-      if (runtime.fbAuth && runtime.fbDb && previousUid && state.firebase.connected) {
-        try {
-          await update(ref(runtime.fbDb, `users/${previousUid}`), {
-            wallet: { purchasedCoins: state.purchasedCoins, bonusCoins: state.bonusCoins },
-            vipStatus: {
-              isVip: Boolean(state.isVip) && (!state.vipExpiresAt || state.vipExpiresAt > Date.now()),
-              vipExpiresAt: Number(state.vipExpiresAt) || 0,
-              planLabel: state.isVip ? state.vipPlanLabel : ''
-            },
-            unlockedEpisodes: state.unlockedEpisodes
-          });
-        } catch (flushError) {
-          console.warn('[NEXORA] Account snapshot saved locally; cloud flush failed:', flushError);
-        }
-      }
 
       clearFirebaseListeners();
       if (runtime.fbAuth) {
