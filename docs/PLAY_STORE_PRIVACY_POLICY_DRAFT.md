@@ -17,7 +17,7 @@ This draft describes data flows visible in the current NEXORA AI DRAMA source co
 Depending on the features you use and the services enabled, NEXORA AI DRAMA may process:
 
 - Account information: email address, display name, and Firebase user identifier when you create or use an account.
-- App activity and preferences: viewing progress, saved series, likes, selected episodes, notifications, wallet/coin state, and episode-unlock state. Some of this information is stored locally on your device; cloud synchronization depends on the configured backend.
+- App activity and preferences: viewing progress, saved series, likes, selected episodes, notifications, and local wallet/coin and episode-unlock state. These wallet and unlock values currently remain on the device and are not synchronized to a server-authoritative wallet service.
 - Service and diagnostic data: connection status, timestamps, and technical information processed by Firebase, Supabase, Google Play services, and their infrastructure.
 - Advertising data: Google AdMob may process device identifiers, ad interaction data, approximate location derived by Google, and diagnostics according to Google's settings and policies.
 
@@ -29,7 +29,7 @@ Information may be used to:
 - Create and authenticate an account.
 - Display account profile details.
 - Remember viewing progress, preferences, and episode access.
-- Synchronize supported wallet and unlock information when the cloud service is configured.
+- Synchronize supported account profile information with Firebase. Wallet and episode-unlock cloud synchronization is currently disabled until a trusted server-side wallet service is deployed.
 - Retrieve the published drama and episode catalog.
 - Display and measure rewarded advertisements.
 - Maintain app security, reliability, and troubleshooting.
@@ -38,7 +38,7 @@ Information may be used to:
 
 The app source integrates with:
 - Firebase Authentication and Firebase Realtime Database for account authentication and related account data.
-- Supabase for the published drama catalog and, when separately configured, wallet and unlocked-episode synchronization.
+- Supabase for the published drama catalog. Direct client wallet and unlocked-episode synchronization is disabled; the app must not send authoritative wallet values through a public client key.
 - Google AdMob for advertising.
 - Third-party content delivery services used to load app libraries, fonts, and video streams.
 
