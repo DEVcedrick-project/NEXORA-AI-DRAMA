@@ -266,6 +266,23 @@ jobs:
       - name: Copy version-stamped web assets into Android APK
         run: npx cap copy android
 
+      - name: Determine whether this commit publishes a new release
+        id: release
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          current = tuple(int(x) for x in json.loads(Path("package.json").read_text())["version"].split("."))
+          previous = tuple(int(x) for x in json.loads(Path("update.json").read_text())["version"].removeprefix("v").split("."))
+          if current < previous:
+              raise SystemExit(f"Current app version {current} is older than published version {previous}.")
+          available = current > previous
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"available={'true' if available else 'false'}\\n")
+          print("A new release is available." if available else "No version change: build checks will run, but upgrade test and release publishing are skipped.")
+          PY
+
       - name: Generate premium launcher icon and splash assets
         run: |
           python -m pip install --disable-pip-version-check cairosvg pillow
@@ -432,7 +449,7 @@ jobs:
           fi
 
       - name: Test real in-place upgrade from the previous signed release
-        if: steps.signing.outputs.enabled == 'true'
+        if: steps.signing.outputs.enabled == 'true' && steps.release.outputs.available == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -466,7 +483,7 @@ jobs:
           rm -f release-key.jks
 
       - name: Publish signed APK and AAB as GitHub Release
-        if: steps.signing.outputs.enabled == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: steps.signing.outputs.enabled == 'true' && steps.release.outputs.available == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.value }}
@@ -480,7 +497,7 @@ jobs:
           make_latest: true
 
       - name: Publish update manifest after successful signed release
-        if: steps.signing.outputs.enabled == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: steps.signing.outputs.enabled == 'true' && steps.release.outputs.available == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/github-script@v8
         env:
           APP_VERSION: ${{ steps.version.outputs.value }}
@@ -518,7 +535,7 @@ jobs:
             }
 
       - name: Notify Android users about the new app version
-        if: steps.signing.outputs.enabled == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: steps.signing.outputs.enabled == 'true' && steps.release.outputs.available == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         continue-on-error: true
         env:
           NEXORA_RELEASE_WEBHOOK_SECRET: ${{ secrets.NEXORA_RELEASE_WEBHOOK_SECRET }}
@@ -541,7 +558,7 @@ jobs:
           fi
 
       - name: Upload signed release APK and AAB
-        if: steps.signing.outputs.enabled == 'true'
+        if: steps.signing.outputs.enabled == 'true' && steps.release.outputs.available == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: NEXORA-AI-DRAMA-Play-Store-Bundle
