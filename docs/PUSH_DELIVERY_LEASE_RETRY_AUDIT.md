@@ -26,3 +26,19 @@ Read-only inspection of the NEXORA AI DRAMA push broadcast Edge Function and the
 ## Rollout safety
 
 This is an audit-only change. Do not deploy a partial Edge Function-only patch: the database claim/complete RPCs and worker must change together. Before rollout, reconcile live schema/migration history, run database and Edge Function tests, deploy the RPC migration first, then deploy the worker, and monitor pending/sending/failed/invalid/sent counts plus oldest pending age. No notification should be replayed solely because a worker's lease expired without first checking persisted per-token state.
+
+
+## Production deployment comparison (2026-11-28)
+
+The active Supabase Edge Function `nexora-push-broadcast` was inspected read-only. Production reports version **17** and status **ACTIVE**. Its deployed source is not identical to the worker file currently checked into this PR branch.
+
+Production version 17 already includes several safeguards absent from the PR branch copy:
+- marks a delivery `sending` before the FCM network call;
+- changes a concrete non-UNREGISTERED FCM rejection back to `pending` before returning an error;
+- uses FCM `collapse_key` and Android notification `tag` keyed by the release event to coalesce duplicate update notifications.
+
+This means the checked-in worker is stale relative to the active deployment, and any future worker repair must first reconcile the exact deployed version-17 source into source control or intentionally replace it with a reviewed successor. Do not deploy the branch copy over production: it would regress the `sending` transition and collapse behavior.
+
+The production source still reads all eligible devices and pending deliveries without pagination, has no finite attempt ceiling or persisted retry schedule, uses the fixed claim timeout, and completes without a database-side check that all deliveries are terminal. Its catch path also retains the claim after any successful send in the current invocation, so partial progress can remain blocked until claim expiry. The `sending` state makes uncertain outcomes more visible; it does not by itself resolve or safely retry them.
+
+This comparison was read-only. No function was deployed, no secrets were read, and no notification was sent.
