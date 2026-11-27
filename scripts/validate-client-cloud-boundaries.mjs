@@ -82,6 +82,13 @@ assert(pushClient.includes("firebaseUser.getIdToken(true)"),
 assert(pushClient.includes('window.addEventListener("online", recover)') &&
   pushClient.includes('document.addEventListener("visibilitychange", recover)'),
   "FCM registration must recover after network reconnection and app resume.");
+assert(source.includes("onAuthStateChanged") &&
+  pushClient.includes("nexoraPushAuthObserverInstalled") &&
+  pushClient.includes("Auth-change registration recovery failed"),
+  "FCM registration must observe Firebase account changes and retry for the active identity.");
+assert(pushClient.includes("const registrationUid = firebaseUser.uid") &&
+  pushClient.includes("runtime.fbAuth?.currentUser?.uid !== registrationUid"),
+  "A stale in-flight push registration must stop when the Firebase account changes.");
 assert(pushClient.includes("getNexoraAppCheckToken") &&
   pushClient.includes('headers["X-Firebase-AppCheck"] = appCheckToken'),
   "Push registration must attach a native App Check token when available.");
