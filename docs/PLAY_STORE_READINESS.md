@@ -19,7 +19,7 @@ Status: Technical preparation in progress. This is not a declaration that the ap
 
 1. **Account deletion:** The app supports account creation/sign-in, but the current source does not show a complete in-app account deletion flow or a public web deletion-request page. Implement and test both.
 2. **Firebase security:** Verify production Realtime Database rules are authenticated and scoped to each user's UID. Never use permissive development rules for production.
-3. **Supabase security:** The repository's README identifies permissive development policies in supabase/schema.sql. Do not apply them to production. Add authenticated, user-scoped policies and server-side validation before enabling wallet or unlock synchronization.
+3. **Supabase security:** The dedicated NEXORA AI DRAMA project has RLS enabled on wallet and unlock tables and denies direct client access. Keep that deny-by-default posture. The viewer client now disables direct wallet reads/upserts; implement a Firebase-token-verifying server API and ledger before enabling wallet or unlock synchronization.
 4. **Wallet/rewards integrity:** Verify coin balances, VIP entitlements, episode unlocks, and rewarded-ad credits cannot be altered by editing local app state or making direct client requests.
 5. **Digital goods payments:** If coins, VIP, or paid episode access are sold inside the Play-distributed app, review Google Play Billing requirements. Do not ship personal Maya/GCash QR payment links for digital in-app content unless the app is enrolled in an applicable Google-approved alternative billing program and meets its rules.
 6. **Ad disclosures and consent:** Complete the Play Console ads declaration and Data safety form. Review AdMob consent requirements for the countries where the app will be distributed.
@@ -34,6 +34,7 @@ Status: Technical preparation in progress. This is not a declaration that the ap
 - Wallet/unlock Supabase synchronization has a separate configuration and must be security-reviewed.
 - Rewarded advertising is integrated through the Capacitor AdMob bridge.
 - The app stores some preferences and viewing state in localStorage.
+- Direct client wallet sync is disabled until a trusted wallet API is deployed; current coin and unlock state is device-local and is not authoritative.
 - The source currently does not show a complete account deletion feature.
 - Do not claim automatic payment verification for personal e-wallet QR payments.
 
