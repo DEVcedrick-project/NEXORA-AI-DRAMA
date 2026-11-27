@@ -1,61 +1,74 @@
-# NEXORA AI DRAMA — Production Security Audit
+# NEXORA AI DRAMA — Production Security & Reliability Audit
 
-Audit date: 2026-11-25
+Audit date: 2026-11-27
 Repository: NEXORA-AI-DRAMA
 Application ID: com.devcedrick.nexoraaidrama
-Release inspected: v2.5.6
+Scope: Android packaging/updater, Firebase, Supabase catalog/social/push, playback, ads, privacy, account lifecycle and release automation. Subscription and payment flows are intentionally excluded.
 
-## Executive result
+## Current assessment
 
-**NOT production-safe for monetized public launch yet.** The Android build and APK/AAB signing pipeline pass, but source review found client-trust issues that cannot be solved by packaging alone.
+**Not yet certified production-ready.** Several source-level protections are present and the dedicated NEXORA AI DRAMA Supabase project is healthy, but production Firebase rules deployment, backend secret configuration, end-to-end device tests and Play Console compliance remain unverified.
 
-## Critical findings
+## Confirmed findings and changes
 
-### 1. Supabase wallet tables had public write policies — FIXED IN REPOSITORY
+### Firebase Realtime Database
 
-The previous `supabase/schema.sql` granted `anon` and `authenticated` unrestricted row access (`USING (true)` / `WITH CHECK (true)`) to wallet and episode-entitlement tables. A public client could modify another user's balance or unlock records by supplying a different `user_id`.
+- The app's authenticated initialization reads `series` and writes `users/{uid}/connectionCheck/lastVerifiedAt`.
+- The previous rules template denied that connection-check write. That caused initialization to mark Realtime Database disconnected and skip the account listeners when the template was deployed.
+- The template now allows only the authenticated matching UID to write a connection-check object containing exactly one numeric `lastVerifiedAt` field.
+- Root reads/writes remain denied. User reads remain UID-scoped. Wallet, VIP and episode-unlock writes remain denied to clients.
+- A Node regression test validates these rules and is run by CI.
+- **Deployment still required:** the JSON template is not automatically deployed to Firebase. Compare it with the live rules and publish it through the authorized Firebase Console/CLI process.
 
-The schema now drops those policies, enables and forces RLS, revokes direct client table privileges, and intentionally creates no client policies. **This change is not active in a live Supabase project until the SQL is executed there.**
+### Dedicated Supabase project
 
-Important identity mismatch: app wallet rows use Firebase UIDs while the Supabase client authenticates with a public key, not a Firebase-backed Supabase JWT. A simple `auth.uid() = user_id` policy would not secure this integration.
+- Dedicated project `vureiymqoosubwubhvdu` (`NEXORA-NEXORA-AI-DRAMA`) was found and reported `ACTIVE_HEALTHY`. NEXORA STUDIO remains a separate project and is not modified by this audit.
+- Published catalog tables have RLS and explicit policies limiting public reads to published dramas and episodes whose parent drama is also published.
+- Wallet and unlocked-episode tables have RLS enabled and direct client access denied. This is the correct safe default while a trusted wallet service is not integrated.
+- The app still contains legacy direct client read/upsert code for wallet and unlock tables. Those calls conflict with the current default-deny schema and must not be represented as a working secure sync path. A trusted Firebase-token-verifying wallet API and client migration are still required before wallet persistence can be considered complete.
+- Security advisor returned four informational `rls_enabled_no_policy` notices for social comments, likes, saves, and payment orders. The social tables are intentionally accessed through the Firebase-token-verifying `nexora-social` Edge Function using server credentials; do not add permissive client policies to silence these notices. Payment tables are outside this audit scope.
+- Performance advisor reported one unused social-saves index. No index was removed without workload evidence.
 
-### 2. Firebase Realtime Database rules are not in this repository — ACTION REQUIRED
+### Push notifications
 
-The app writes client-supplied wallet and entitlement values under `users/{uid}`. Source code alone cannot establish the deployed RTDB rules. A rules template is included at `firebase/database.rules.production.template.json`.
+- The project has active `nexora-push-register`, `nexora-push-broadcast`, `nexora-social`, and `studio-content-sync` Edge Functions.
+- The broadcast function requires a server-side release secret and Firebase service-account JSON. Secret presence and real FCM delivery were not verified in this audit.
+- The registration endpoint currently checks an app-ID header but does not authenticate Firebase App Check or a Firebase user token. Since a public app-ID header can be spoofed, add attestation/rate limiting before treating device registration as abuse-resistant.
+- Physical foreground/background notification delivery and tap routing still need device testing.
 
-The template permits users to read their own data and edit profile only; wallet, VIP and unlocked-episode writes are server-only. Public catalog reads are limited to `series`. Review compatibility with the actual Firebase database structure before deploying.
+### Android updater and release workflow
 
-### 3. Client-side wallet and reward state is not authoritative — OPEN BLOCKER
+- The in-place upgrade shell test was moved to a standalone Bash script because the emulator runner evaluates shell script lines separately.
+- The test validates official manifest URL/checksum, package ID, semantic version increase, APK signatures, matching signing certificate, install-over-install behavior, app UID, and an app-specific external-storage sentinel.
+- The sentinel does not directly prove private WebView localStorage retention; add an app-level data continuity test for that.
+- Workflow run 45926173884 failed before emulator testing because Maven Central returned HTTP 429 for multiple Gradle dependencies. A Google-hosted Maven Central mirror fallback has now been added to generated Android Gradle repositories. The follow-up CI run must confirm the fix.
+- Production release signing still depends on the repository's permanent Android signing secrets. Never publish a debug APK as an official update.
+- Keep the splash screen visible briefly (about 1.5–2 seconds) but never delay app readiness unnecessarily.
 
-The app stores balances and unlocks in localStorage and updates them from client code. Rewarded-ad callbacks can grant local rewards; coin unlocks debit local state. A modified client can tamper with local values. AdMob reward callbacks in the app are useful UX signals but are not a trusted ledger.
+### Playback and ads
 
-Before monetized launch:
-- Implement a trusted backend that verifies Firebase ID tokens.
-- Verify AdMob server-side verification (SSV) callbacks for rewarded ads.
-- Record idempotent reward transactions server-side.
-- Calculate coin debits and episode entitlements on the server.
-- Never accept client-supplied balance, VIP status, price, or reward amount as authoritative.
-- Reconcile wallet state from the server after sign-in.
+- HLS playback has fatal network retry and media recovery handling, but HLS/MP4 playback, app background/foreground transitions, low-memory recovery, orientation, audio focus and autoplay behavior have not been verified across physical devices.
+- AdMob initialization and interstitial event listeners are present. Real production ad delivery, consent behavior and reward callback handling have not been validated here.
+- Client-side rewarded-ad callbacks are not proof of a verified reward. Do not grant trusted wallet value until AdMob Server-Side Verification is deployed and tested.
 
-### 4. Purchases are not implemented — safe failure currently
+### Privacy and account lifecycle
 
-The purchase confirmation handler explicitly reports that secure checkout is not connected and does not grant coins/VIP. Do not advertise paid purchases as operational. For digital content/coins sold in the Play-distributed app, implement Google Play Billing unless the app qualifies for and is enrolled in an approved alternative billing program.
+- A complete in-app account deletion flow and public deletion-request page were not found in the reviewed source.
+- The privacy-policy draft, Play Data safety form, content rating, support contact, publisher details, content rights and genuine store screenshots/feature graphic still require completion.
+- Do not submit until data collection and deletion disclosures match the deployed Firebase, Supabase, AdMob, notification and media services.
 
-### 5. Account deletion and privacy disclosures — OPEN BLOCKER
+## Remaining release blockers
 
-The repository does not show a complete account deletion flow or a public account-deletion request page. Implement account deletion for Firebase Auth and associated user data, revoke sessions, and publish a verified privacy policy before Play submission.
-
-## Production Firebase RTDB rules template
-
-See `firebase/database.rules.production.template.json`. This is a template, not a deployed ruleset. Verify that all other app reads/writes match the rules before publishing.
+1. Deploy and verify the corrected Firebase rules against the live RTDB.
+2. Replace legacy client wallet synchronization with a trusted server-authoritative API; keep direct client writes denied.
+3. Add attestation/rate limiting to public FCM token registration and verify sender secrets and end-to-end delivery.
+4. Complete account deletion and the public deletion-request route.
+5. Run Android emulator and physical-device regression tests for updater, player, notifications, ads, app lifecycle and data continuity.
+6. Complete Play Console policy, privacy, content-rights and store-asset requirements.
+7. Confirm the new Gradle mirror resolves dependencies and the signed APK/AAB plus in-place upgrade test pass.
 
 ## Verification limits
 
-This audit reviewed repository source and workflow configuration only. It did not access or change the live Firebase or Supabase project, inspect deployed database rules, verify production AdMob SSV, perform penetration testing, or test on a physical Android device.
+This audit includes repository source inspection, live Supabase project metadata/table/policy inspection, Supabase advisors, and GitHub Actions logs. It does not constitute a penetration test. Live Firebase rules were not deployed or inspected; Supabase Edge Function secrets were not read; no production push was sent; AdMob SSV was not tested; and no physical Android device was available.
 
-## Release decision
-
-- Build pipeline: PASS (Build #83).
-- Signed APK/AAB packaging: PASS.
-- Monetized production security: BLOCKED pending server-authoritative wallet/rewards and deployed database rules.
-- Play Store readiness: BLOCKED pending account deletion, final privacy policy, policy declarations, and real-device testing.
+A successful CI build is a packaging milestone, not proof that all production services are secure or operational.
