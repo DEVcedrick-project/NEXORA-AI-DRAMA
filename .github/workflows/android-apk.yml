@@ -393,64 +393,7 @@ jobs:
           ram-size: 4096M
           heap-size: 512M
           disable-animations: true
-          script: |
-            set -euo pipefail
-            # The emulator action may execute its script from a temporary directory.
-            # Always resolve repository files from the checked-out workspace.
-            cd "$GITHUB_WORKSPACE"
-            NEW_APK="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk"
-            if [ ! -s "$NEW_APK" ]; then
-              echo "::error::Signed APK is missing at the expected workspace path."
-              echo "Workspace: $GITHUB_WORKSPACE"
-              echo "APK build outputs:"
-              find "$GITHUB_WORKSPACE/android/app/build/outputs" -maxdepth 5 -type f -name '*.apk' -print 2>/dev/null || true
-              exit 1
-            fi
-
-            # The manifest points to the previously published signed APK until
-            # this workflow publishes the new release. Verify it before testing.
-            python - <<'PY'
-            import json
-            from pathlib import Path
-            manifest = json.loads(Path("update.json").read_text())
-            version = str(manifest.get("version", "")).lstrip("v")
-            url = str(manifest.get("downloadUrl", ""))
-            sha = str(manifest.get("sha256", "")).lower()
-            if not version or not url.startswith("https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/") or len(sha) != 64:
-                raise SystemExit("Previous update.json is not a valid official release manifest; refusing upgrade test.")
-            Path("/tmp/nexora-previous-release.txt").write_text(url + "\n" + sha + "\n" + version)
-            PY
-            mapfile -t PREVIOUS < /tmp/nexora-previous-release.txt
-            PREVIOUS_URL="${PREVIOUS[0]}"
-            PREVIOUS_SHA="${PREVIOUS[1]}"
-            PREVIOUS_VERSION="${PREVIOUS[2]}"
-            CURRENT_VERSION="$(node -p "require('./package.json').version")"
-            if [ "$(printf '%s\n%s\n' "$PREVIOUS_VERSION" "$CURRENT_VERSION" | sort -V | tail -1)" != "$CURRENT_VERSION" ] || [ "$PREVIOUS_VERSION" = "$CURRENT_VERSION" ]; then
-              echo "No older published APK is available for this rerun; skipping in-place upgrade test."
-              exit 0
-            fi
-
-            curl --fail --location --retry 4 --retry-all-errors --connect-timeout 20 --max-time 240 "$PREVIOUS_URL" -o /tmp/NEXORA-previous.apk
-            echo "$PREVIOUS_SHA  /tmp/NEXORA-previous.apk" | sha256sum --check -
-            BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
-            OLD_BADGING="$("$BUILD_TOOLS/aapt" dump badging /tmp/NEXORA-previous.apk)"
-            echo "$OLD_BADGING" | grep -F "package: name='com.devcedrick.nexoraaidrama'"
-            echo "$OLD_BADGING" | grep -F "versionName='$PREVIOUS_VERSION'"
-            "$BUILD_TOOLS/aapt" dump badging "$NEW_APK" | grep -F "versionName='$CURRENT_VERSION'"
-            "$BUILD_TOOLS/apksigner" verify --verbose /tmp/NEXORA-previous.apk
-            "$BUILD_TOOLS/apksigner" verify --verbose "$NEW_APK"
-            OLD_CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs /tmp/NEXORA-previous.apk | grep 'Signer #1 certificate SHA-256 digest' | head -1 | awk '{print $NF}')"
-            NEW_CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$NEW_APK" | grep 'Signer #1 certificate SHA-256 digest' | head -1 | awk '{print $NF}')"
-            test -n "$OLD_CERT"
-            test "$OLD_CERT" = "$NEW_CERT" || { echo "::error::New APK signing certificate differs from the previous official release."; exit 1; }
-
-            adb install /tmp/NEXORA-previous.apk
-            adb shell monkey -p com.devcedrick.nexoraaidrama 1
-            sleep 3
-            adb install -r "$NEW_APK"
-            adb shell dumpsys package com.devcedrick.nexoraaidrama | grep -F "versionName=$CURRENT_VERSION"
-            adb shell monkey -p com.devcedrick.nexoraaidrama 1
-            echo "PASS: previous official APK upgraded in place to $CURRENT_VERSION with matching signer and retained package installation."
+          script: bash "$GITHUB_WORKSPACE/scripts/test-inplace-upgrade.sh"
       - name: Sign release AAB
         if: steps.signing.outputs.enabled == 'true'
         working-directory: android
