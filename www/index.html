@@ -2287,6 +2287,7 @@
           installId = crypto.randomUUID();
           localStorage.setItem("nexora_push_install_id", installId);
         }
+        const { FirebaseAppCheck } = await import("./vendor/nexora-native-plugins.js");
         const appCheckResult = await FirebaseAppCheck.getToken({ forceRefresh: false });
         const appCheckToken = String(appCheckResult?.token || "").trim();
         if (!appCheckToken) {
