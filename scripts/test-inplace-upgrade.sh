@@ -73,6 +73,13 @@ grep -F "package: name='$PACKAGE_ID'" <<< "$OLD_BADGING"
 grep -F "versionName='$PREVIOUS_VERSION'" <<< "$OLD_BADGING"
 grep -F "package: name='$PACKAGE_ID'" <<< "$NEW_BADGING"
 grep -F "versionName='$CURRENT_VERSION'" <<< "$NEW_BADGING"
+OLD_VERSION_CODE="$(sed -n "s/.*versionCode='\\([0-9][0-9]*\\)'.*/\\1/p" <<< "$OLD_BADGING")"
+NEW_VERSION_CODE="$(sed -n "s/.*versionCode='\\([0-9][0-9]*\\)'.*/\\1/p" <<< "$NEW_BADGING")"
+if [[ ! "$OLD_VERSION_CODE" =~ ^[0-9]+$ || ! "$NEW_VERSION_CODE" =~ ^[0-9]+$ ]] ||
+   (( NEW_VERSION_CODE <= OLD_VERSION_CODE )); then
+  echo "::error::APK versionCode must increase for an in-place Android update (old=$OLD_VERSION_CODE, new=$NEW_VERSION_CODE)."
+  exit 1
+fi
 "$BUILD_TOOLS/apksigner" verify --verbose "$PREVIOUS_APK"
 "$BUILD_TOOLS/apksigner" verify --verbose "$NEW_APK"
 

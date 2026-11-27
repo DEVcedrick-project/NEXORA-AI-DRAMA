@@ -1179,7 +1179,9 @@
       catalogError: '',
       resetConfirmStep: false,
       splashDismissed: false,
+      splashStartedAt: Date.now(),
       splashTimer: null,
+      splashMinTimer: null,
       activeLiveNotif: null,
       liveNotifTimer: null,
       lastContinueSaveMs: 0,
@@ -1218,10 +1220,31 @@
     // =========================================================================
     function dismissSplashScreen() {
       if (runtime.splashDismissed) return;
+
+      // Never flash the splash away during an unusually fast bootstrap failure.
+      // Keep a short minimum visible duration, while the normal path still exits
+      // on its existing two-second timer.
+      const minimumVisibleMs = 1600;
+      const elapsedMs = Date.now() - (runtime.splashStartedAt || Date.now());
+      const remainingMs = minimumVisibleMs - elapsedMs;
+      if (remainingMs > 0) {
+        if (!runtime.splashMinTimer) {
+          runtime.splashMinTimer = setTimeout(() => {
+            runtime.splashMinTimer = null;
+            dismissSplashScreen();
+          }, remainingMs);
+        }
+        return;
+      }
+
       runtime.splashDismissed = true;
       if (runtime.splashTimer) {
         clearTimeout(runtime.splashTimer);
         runtime.splashTimer = null;
+      }
+      if (runtime.splashMinTimer) {
+        clearTimeout(runtime.splashMinTimer);
+        runtime.splashMinTimer = null;
       }
       const splash = document.getElementById('nexora-splash-screen');
       if (!splash) return;
@@ -1239,6 +1262,11 @@
       const splash = document.getElementById('nexora-splash-screen');
       if (!splash) return;
       runtime.splashDismissed = false;
+      runtime.splashStartedAt = Date.now();
+      if (runtime.splashMinTimer) {
+        clearTimeout(runtime.splashMinTimer);
+        runtime.splashMinTimer = null;
+      }
       splash.classList.remove('hidden');
       splash.classList.remove('is-exiting');
       splash.style.pointerEvents = 'auto';
@@ -2315,6 +2343,7 @@
               throw new Error("Sign in to Firebase before registering this device for notifications.");
             }
             const idToken = await firebaseUser.getIdToken();
+            const appCheckHeaders = await getNexoraAppCheckHeaders();
             const endpoint = NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register";
             const response = await fetch(endpoint, {
               method: "POST",
@@ -2322,7 +2351,8 @@
                 "Content-Type": "application/json",
                 "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
                 "Authorization": "Bearer " + idToken,
-                "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
+                "x-nexora-app-id": "com.devcedrick.nexoraaidrama",
+                ...appCheckHeaders
               },
               body: JSON.stringify({
                 token: token.value,
@@ -4047,14 +4077,30 @@
       state.seriesCatalog.forEach(series => loadNexoraSocial(series.id));
     }
 
+    async function getNexoraAppCheckHeaders() {
+      if (!window.Capacitor?.isNativePlatform?.()) return {};
+      try {
+        const { NexoraAppCheck } = await import("./vendor/nexora-native-plugins.js");
+        const result = await NexoraAppCheck.getToken();
+        const token = typeof result?.token === "string" ? result.token.trim() : "";
+        return token ? { "X-Firebase-AppCheck": token } : {};
+      } catch (error) {
+        // App Check enforcement remains disabled server-side until console registration
+        // and production monitoring are complete; never block playback on attestation.
+        console.warn("[NEXORA App Check] Token unavailable; request continues in monitor-only mode.", error);
+        return {};
+      }
+    }
+
     async function callNexoraSocial(action, seriesId, extra = {}) {
       const user = runtime.fbAuth?.currentUser;
       if (!user || (user.isAnonymous && action !== 'read')) throw new Error('Sign in to like, comment or save posts.');
       const cfg = NEXORA_DEFAULT_CONFIG.studioCatalog;
       const token = await user.getIdToken();
+      const appCheckHeaders = await getNexoraAppCheckHeaders();
       const response = await fetch(`${cfg.url}/functions/v1/nexora-social`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': cfg.publishableKey, 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', 'apikey': cfg.publishableKey, 'Authorization': `Bearer ${token}`, ...appCheckHeaders },
         body: JSON.stringify({ action, seriesId, displayName: user.displayName || state.user.name, ...extra })
       });
       const result = await response.json().catch(() => ({}));

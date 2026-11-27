@@ -1,5 +1,6 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceNexoraAppCheck, verifyNexoraAppCheck } from "../_shared/nexora-app-check.ts";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const PROJECT_ID = "nexora-ai-drama";
 const MAX_DEVICES_PER_USER = 5;
@@ -9,7 +10,7 @@ const FIREBASE_JWKS = createRemoteJWKSet(
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-nexora-app-id",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-nexora-app-id, x-firebase-appcheck",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json",
 };
@@ -17,6 +18,13 @@ const cors = {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST required" }, 405);
+  const appCheckStatus = await verifyNexoraAppCheck(req);
+  if (enforceNexoraAppCheck(appCheckStatus)) {
+    return json({ error: "A valid NEXORA app attestation is required" }, 401);
+  }
+  if (appCheckStatus !== "valid") {
+    console.info("[NEXORA App Check] Push registration attestation status:", appCheckStatus);
+  }
 
   const appId = req.headers.get("x-nexora-app-id") || "";
   if (appId !== "com.devcedrick.nexoraaidrama") {
@@ -65,44 +73,28 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const [{ count, error: countError }, { data: existing, error: existingError }] = await Promise.all([
-      admin.from("nexora_push_devices")
-        .select("token", { count: "exact", head: true })
-        .eq("user_id", userId),
-      admin.from("nexora_push_devices")
-        .select("token,user_id,install_id")
-        .eq("token", token)
-        .maybeSingle(),
-    ]);
-    if (countError || existingError) {
-      console.error("[NEXORA Push] Device-limit lookup failed.");
-      return json({ error: "Device registration is temporarily unavailable" }, 503);
-    }
-    if (existing?.user_id !== userId && (count ?? 0) >= MAX_DEVICES_PER_USER) {
-      return json({ error: `A maximum of ${MAX_DEVICES_PER_USER} devices can be registered per account` }, 429);
-    }
-    // A stolen/guessed FCM token must not be silently reassigned to another
-    // Firebase account. Permit account switching only from the same install.
-    if (existing?.user_id && existing.user_id !== userId && existing.install_id !== installId) {
-      return json({ error: "This notification token is already linked to another account" }, 409);
-    }
-
-    const now = new Date().toISOString();
-    const { error } = await admin.from("nexora_push_devices").upsert({
-      token,
-      user_id: userId,
-      platform: "android",
-      app_id: appId,
-      app_version: version,
-      install_id: installId,
-      updated_at: now,
-      last_seen_at: now,
-    }, { onConflict: "token" });
+    const { data: registration, error } = await admin.rpc("nexora_register_push_device", {
+      p_token: token,
+      p_user_id: userId,
+      p_app_version: version,
+      p_install_id: installId,
+    });
 
     if (error) {
-      console.error("[NEXORA Push] Device registration write failed.");
+      console.error("[NEXORA Push] Atomic device registration failed:", error.code || "unknown");
+      return json({ error: "Device registration is temporarily unavailable" }, 503);
+    }
+    if (registration === "device_limit") {
+      return json({ error: `A maximum of ${MAX_DEVICES_PER_USER} devices can be registered per account` }, 429);
+    }
+    if (registration === "token_conflict") {
+      return json({ error: "This notification token is already linked to another account" }, 409);
+    }
+    if (registration !== "registered") {
+      console.error("[NEXORA Push] Unexpected registration result.");
       return json({ error: "Device registration failed" }, 503);
     }
+
     return json({ ok: true, registered: true, maxDevices: MAX_DEVICES_PER_USER });
   } catch (error) {
     console.error("[NEXORA Push] Invalid registration request:", error);
