@@ -36,16 +36,24 @@ assert(!/\.from\(['"](?:user_wallets|unlocked_episodes)['"]\)/.test(walletSync),
 const signOut = block("async function handleSignOutAccount()", "function cycleUserAvatar()");
 assert(!/update\(ref\(/.test(signOut), "Account switching must not flush protected data from the client.");
 
-const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const nativeEntry = fs.readFileSync("scripts/native-plugins-entry.js", "utf8");
-assert(packageJson.dependencies?.["@capacitor-firebase/app-check"] === "8.6.0",
-  "Native Firebase App Check must use the Capacitor 8-compatible pinned plugin.");
-assert(nativeEntry.includes('export { FirebaseAppCheck } from "@capacitor-firebase/app-check";'),
-  "The native App Check bridge must be included in the locally bundled plugin runtime.");
+const nativeAppCheck = fs.readFileSync("scripts/android/NexoraAppCheckPlugin.java", "utf8");
+const appCheckInstaller = fs.readFileSync("scripts/install-native-app-check.py", "utf8");
+assert(!JSON.parse(fs.readFileSync("package.json", "utf8")).dependencies?.["@capacitor-firebase/app-check"],
+  "The native bridge must not force an incompatible Firebase JavaScript SDK upgrade.");
+assert(nativeEntry.includes('export const NexoraAppCheck = registerPlugin("NexoraAppCheck");'),
+  "The local Capacitor runtime must register the native App Check bridge.");
+assert(nativeAppCheck.includes("PlayIntegrityAppCheckProviderFactory.getInstance()") &&
+  nativeAppCheck.includes("setTokenAutoRefreshEnabled(true)") &&
+  nativeAppCheck.includes("getAppCheckToken(false)"),
+  "The native Android bridge must use Play Integrity, auto-refresh and return App Check tokens.");
+assert(appCheckInstaller.includes("firebase-appcheck-playintegrity:19.0.1") &&
+  appCheckInstaller.includes("registerPlugin(NexoraAppCheckPlugin.class)"),
+  "The Android build must install the native Play Integrity SDK and register its Capacitor bridge.");
 const appCheckClient = block('async function getNexoraAppCheckToken()', 'const NEXORA_DEFAULT_CONFIG');
-assert(appCheckClient.includes("FirebaseAppCheck.initialize({ isTokenAutoRefreshEnabled: true })") &&
-  appCheckClient.includes("FirebaseAppCheck.getToken()"),
-  "Native App Check must initialize Play Integrity, refresh tokens and retrieve a token.");
+assert(appCheckClient.includes("NexoraAppCheck.initialize()") &&
+  appCheckClient.includes("NexoraAppCheck.getToken()"),
+  "The client must initialize the native bridge and retrieve App Check tokens.");
 assert(appCheckClient.includes("if (!window.Capacitor?.isNativePlatform?.()) return") &&
   appCheckClient.includes('return ""') &&
   appCheckClient.includes("continuing in monitor-only mode"),
