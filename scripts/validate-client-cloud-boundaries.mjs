@@ -119,7 +119,7 @@ assert(socialFunction.includes("x-firebase-appcheck") &&
   socialFunction.includes("APP_CHECK_PROJECT_NUMBER"),
   "Social API must accept and validate project-scoped Firebase App Check tokens.");
 const socialClient = block("async function getNexoraAppCheckToken()", "function applyNexoraSocialSnapshot(");
-assert(socialClient.includes("FirebaseAppCheck.getToken") &&
+assert(socialClient.includes("plugin.getToken()") &&
   socialClient.includes("X-Firebase-AppCheck") &&
   socialClient.includes("if (appCheckToken)"),
   "Social client must attach a native App Check token when available without blocking legacy clients.");
@@ -138,7 +138,7 @@ assert(appCheckInstaller.includes("firebase-appcheck-playintegrity:19.0.1") &&
   "The Android build must install the native Play Integrity SDK and register its Capacitor bridge.");
 const appCheckClient = block("let nexoraAppCheckInitPromise = null;", "async function callNexoraSocial(");
 assert(appCheckClient.includes("NexoraAppCheck.initialize()") &&
-  appCheckClient.includes("NexoraAppCheck.getToken()"),
+  appCheckClient.includes("plugin.getToken()"),
   "The client must initialize the native bridge and retrieve App Check tokens.");
 assert(appCheckClient.includes("setTimeout(() => resolve(null), 2500)") &&
   appCheckClient.includes("clearTimeout(timeoutId)"),
