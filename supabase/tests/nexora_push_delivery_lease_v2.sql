@@ -4,7 +4,6 @@
 
 do $tests$
 declare
-  v record;
   fn record;
   def text;
 begin
@@ -12,47 +11,34 @@ begin
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'nexora_push_events'
       and column_name = 'lease_expires_at'
-  ) then
-    raise exception 'missing nexora_push_events.lease_expires_at';
+  ) then raise exception 'missing nexora_push_events.lease_expires_at'; end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'nexora_push_deliveries'
+      and column_name = 'next_attempt_at'
+  ) then raise exception 'missing nexora_push_deliveries.next_attempt_at'; end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'nexora_push_deliveries'
+      and column_name = 'last_error_code'
+  ) then raise exception 'missing nexora_push_deliveries.last_error_code'; end if;
+
+  if to_regprocedure('public.nexora_claim_push_event_v2(text,text,integer)') is null
+     or to_regprocedure('public.nexora_renew_push_event_v2(text,text,integer)') is null
+     or to_regprocedure('public.nexora_complete_push_event_v2(text,text)') is null
+     or to_regprocedure('public.nexora_release_push_event_v2(text,text)') is null then
+    raise exception 'one or more v2 lease RPCs are missing';
   end if;
 
-  foreach v in array array[
-    row('nexora_push_deliveries','next_attempt_at')::record,
-    row('nexora_push_deliveries','last_error_code')::record
-  ] loop
-    if not exists (
-      select 1 from information_schema.columns
-      where table_schema = 'public'
-        and table_name = v.f1 and column_name = v.f2
-    ) then
-      raise exception 'missing %.%', v.f1, v.f2;
-    end if;
-  end loop;
-
-  foreach fn in array array[
-    row('nexora_claim_push_event_v2','text, text, integer')::record,
-    row('nexora_renew_push_event_v2','text, text, integer')::record,
-    row('nexora_complete_push_event_v2','text, text')::record,
-    row('nexora_release_push_event_v2','text, text')::record
-  ] loop
-    if not exists (
-      select 1 from pg_catalog.pg_proc p
-      join pg_catalog.pg_namespace n on n.oid = p.pronamespace
-      where n.nspname = 'public'
-        and p.proname = fn.f1
-        and pg_catalog.pg_get_function_identity_arguments(p.oid) = fn.f2
-    ) then
-      raise exception 'missing RPC public.%(%)', fn.f1, fn.f2;
-    end if;
-  end loop;
-
-  if not pg_catalog.has_function_privilege(
+  if not has_function_privilege(
     'service_role', 'public.nexora_claim_push_event_v2(text,text,integer)', 'EXECUTE'
   ) then raise exception 'service_role cannot execute claim v2'; end if;
-  if pg_catalog.has_function_privilege(
+  if has_function_privilege(
     'anon', 'public.nexora_claim_push_event_v2(text,text,integer)', 'EXECUTE'
   ) then raise exception 'anon can execute claim v2'; end if;
-  if pg_catalog.has_function_privilege(
+  if has_function_privilege(
     'authenticated', 'public.nexora_claim_push_event_v2(text,text,integer)', 'EXECUTE'
   ) then raise exception 'authenticated can execute claim v2'; end if;
 
