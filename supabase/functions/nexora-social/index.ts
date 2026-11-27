@@ -12,10 +12,8 @@ function validClientIp(ip:string) {
  return value.includes(":") && /^[0-9a-fA-F:]+$/.test(value);
 }
 async function trustedNetworkHash(req:Request):Promise<string|null> {
- // Supabase gateway appends the peer address to X-Forwarded-For; use the last hop only.
- const forwarded=req.headers.get("x-forwarded-for")||"";
- const hops=forwarded.split(",").map(value=>value.trim()).filter(Boolean);
- const clientIp=hops[hops.length-1]||"";
+ // Cloudflare overwrites cf-connecting-ip at the trusted edge; x-real-ip is the gateway fallback.
+ const clientIp=(req.headers.get("cf-connecting-ip")||req.headers.get("x-real-ip")||"").trim();
  if(!validClientIp(clientIp)) return null;
  const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(clientIp.toLowerCase()));
  return Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,"0")).join("");
