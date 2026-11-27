@@ -37,7 +37,7 @@ const signOut = block("async function handleSignOutAccount()", "function cycleUs
 assert(!/update\(ref\(/.test(signOut), "Account switching must not flush protected data from the client.");
 
 const pushFunction = fs.readFileSync("supabase/functions/nexora-push-register/index.ts", "utf8");
-assert(source.includes('Authorization: "Bearer " + idToken'),
+assert(source.includes('"Authorization": "Bearer " + idToken'),
   "FCM registration must send a Firebase ID token.");
 assert(pushFunction.includes("jwtVerify") && pushFunction.includes("securetoken.google.com/"),
   "Push registration must cryptographically verify Firebase ID tokens.");
