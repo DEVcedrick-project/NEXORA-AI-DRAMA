@@ -33,20 +33,19 @@ Deno.serve(async (req: Request) => {
     for (const row of data || []) {
       if (!events.has(row.event_key)) events.set(row.event_key, {
         eventKey: row.event_key,
-        counts: { pending: 0, sent: 0, failed: 0, invalid: 0, unknown: 0 },
+        counts: { pending: 0, sending: 0, sent: 0, failed: 0, invalid: 0 },
         stalePending: 0,
-        ambiguous: [],
+        stuckSending: [],
         lastUpdatedAt: row.updated_at,
       });
       const event = events.get(row.event_key);
       if (event.counts[row.status] !== undefined) event.counts[row.status]++;
       if (row.status === "pending" && now - new Date(row.updated_at).getTime() > 10 * 60 * 1000) event.stalePending++;
-      if (row.status === "unknown") event.ambiguous.push({
+      if (row.status === "sending" && now - new Date(row.updated_at).getTime() > 10 * 60 * 1000) event.stuckSending.push({
         attempts: row.attempt_count,
         lastAttemptAt: row.last_attempt_at,
         updatedAt: row.updated_at,
-        responseStatus: row.response_status,
-        errorCode: row.last_error_code,
+        
       });
     }
     return json({
@@ -55,7 +54,7 @@ Deno.serve(async (req: Request) => {
       stalePendingThresholdMinutes: 10,
       events: [...events.values()],
       truncated: (data || []).length === 500,
-      note: "Sent means FCM accepted the request, not that Android displayed the notification. Unknown outcomes are not automatically retried.",
+      note: "Sending rows older than the threshold are ambiguous: the sender persisted the sending state before calling FCM. They are not automatically retried. Sent means FCM accepted the request, not that Android displayed the notification.",
     });
   } catch (_error) {
     return json({ error: "Push monitoring query failed" }, 503);
