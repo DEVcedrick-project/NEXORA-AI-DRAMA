@@ -120,6 +120,11 @@ assert(broadcastFunction.includes("nexora_push_deliveries") &&
 assert(broadcastFunction.includes('code === "UNREGISTERED"') &&
   !broadcastFunction.includes('code === "INVALID_ARGUMENT"'),
   "Only confirmed unregistered FCM tokens may be removed.");
+assert(broadcastFunction.includes("DEVICE_PAGE_SIZE = 500") &&
+  broadcastFunction.includes(".range(deviceOffset, deviceOffset + DEVICE_PAGE_SIZE - 1)") &&
+  broadcastFunction.includes("DELIVERY_BATCH_SIZE = 100") &&
+  broadcastFunction.includes(".limit(DELIVERY_BATCH_SIZE)"),
+  "Push broadcasts must page device registration and pending delivery reads instead of silently stopping at the database row cap.");
 
 const socialFunction = fs.readFileSync("supabase/functions/nexora-social/index.ts", "utf8");
 assert(socialFunction.includes("A valid published drama ID is required"),
