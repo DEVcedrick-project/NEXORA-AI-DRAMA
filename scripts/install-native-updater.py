@@ -83,15 +83,27 @@ app_gradle = Path("android/app/build.gradle")
 gradle_text = app_gradle.read_text()
 bom = 'implementation platform("com.google.firebase:firebase-bom:35.2.0")'
 dependency = 'implementation "com.google.firebase:firebase-appcheck-playintegrity"'
+# Ensure the Firebase BoM and App Check artifact independently. A partially
+# configured Gradle file must not silently skip the BoM just because the
+# App Check dependency is already present.
+missing_dependencies = []
+if "firebase-bom" not in gradle_text:
+    missing_dependencies.append(bom)
 if "firebase-appcheck-playintegrity" not in gradle_text:
+    missing_dependencies.append(dependency)
+if missing_dependencies:
     match = re.search(r"(?m)^\s*dependencies\s*\{", gradle_text)
     if match:
         insert_at = match.end()
-        gradle_text = gradle_text[:insert_at] + "\n    " + bom + "\n    " + dependency + gradle_text[insert_at:]
+        additions = "".join("\n    " + item for item in missing_dependencies)
+        gradle_text = gradle_text[:insert_at] + additions + gradle_text[insert_at:]
     else:
         # Some Capacitor templates omit an app-level dependency block entirely.
-        gradle_text += "\n\ndependencies {\n    " + bom + "\n    " + dependency + "\n}\n"
+        gradle_text += "\n\ndependencies {\n" + "".join("    " + item + "\n" for item in missing_dependencies) + "}\n"
     app_gradle.write_text(gradle_text)
+
+if "firebase-bom" not in gradle_text or "firebase-appcheck-playintegrity" not in gradle_text:
+    raise SystemExit("Firebase App Check dependencies were not configured correctly.")
 
 appcheck_plugin = package_dir / "NexoraAppCheckPlugin.java"
 appcheck_plugin.write_text("""package com.devcedrick.nexoraaidrama;
