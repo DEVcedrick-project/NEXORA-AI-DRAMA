@@ -77,4 +77,70 @@ if gesture_setting not in activity_text:
         raise SystemExit("Could not configure Android WebView audio autoplay")
     main.write_text(activity_text)
 
-print("Installed NEXORA's private in-app downloader and FileProvider. Android DownloadManager is no longer used.")
+
+# Install Firebase App Check with Play Integrity and expose short-lived tokens to the WebView.
+app_gradle = Path("android/app/build.gradle")
+gradle_text = app_gradle.read_text()
+bom = 'implementation platform("com.google.firebase:firebase-bom:35.2.0")'
+dependency = 'implementation "com.google.firebase:firebase-appcheck-playintegrity"'
+if "firebase-appcheck-playintegrity" not in gradle_text:
+    match = re.search(r"dependencies\\s*\\{", gradle_text)
+    if not match:
+        raise SystemExit("Could not find Android app dependencies block for Firebase App Check")
+    insert_at = match.end()
+    gradle_text = gradle_text[:insert_at] + "\\n    " + bom + "\\n    " + dependency + gradle_text[insert_at:]
+    app_gradle.write_text(gradle_text)
+
+appcheck_plugin = package_dir / "NexoraAppCheckPlugin.java"
+appcheck_plugin.write_text("""package com.devcedrick.nexoraaidrama;
+
+import com.getcapacitor.JSObject;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
+import com.google.firebase.appcheck.FirebaseAppCheck;
+
+@CapacitorPlugin(name = "NexoraAppCheck")
+public class NexoraAppCheckPlugin extends Plugin {
+    @PluginMethod
+    public void getToken(PluginCall call) {
+        try {
+            FirebaseAppCheck.getInstance().getAppCheckToken(false)
+                .addOnSuccessListener(token -> {
+                    JSObject result = new JSObject();
+                    result.put("token", token.getToken());
+                    result.put("expireTimeMillis", token.getExpireTimeMillis());
+                    call.resolve(result);
+                })
+                .addOnFailureListener(error -> call.reject("Firebase App Check token unavailable", error));
+        } catch (Exception error) {
+            call.reject("Firebase App Check is not initialized", error);
+        }
+    }
+}
+""")
+
+main = Path("android/app/src/main/java/com/devcedrick/nexoraaidrama/MainActivity.java")
+main_text = main.read_text()
+if "NexoraAppCheckPlugin" not in main_text:
+    main_text = main_text.replace(
+        "import com.devcedrick.nexoraaidrama.NexoraUpdaterPlugin;",
+        "import com.devcedrick.nexoraaidrama.NexoraUpdaterPlugin;\\nimport com.devcedrick.nexoraaidrama.NexoraAppCheckPlugin;"
+    )
+    main_text = main_text.replace(
+        "registerPlugin(NexoraUpdaterPlugin.class);",
+        "registerPlugin(NexoraUpdaterPlugin.class);\\n        registerPlugin(NexoraAppCheckPlugin.class);"
+    )
+if "PlayIntegrityAppCheckProviderFactory" not in main_text:
+    main_text = main_text.replace(
+        "import com.getcapacitor.BridgeActivity;",
+        "import com.getcapacitor.BridgeActivity;\\nimport com.google.firebase.FirebaseApp;\\nimport com.google.firebase.appcheck.FirebaseAppCheck;\\nimport com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory;"
+    )
+    main_text = main_text.replace(
+        "    public void onCreate(android.os.Bundle savedInstanceState) {",
+        "    public void onCreate(android.os.Bundle savedInstanceState) {\\n        FirebaseApp.initializeApp(this);\\n        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance());"
+    )
+main.write_text(main_text)
+
+print("Installed native updater plus Firebase App Check Play Integrity bridge.")
