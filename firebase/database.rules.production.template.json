@@ -20,6 +20,10 @@
         },
         "unlockedEpisodes": {
           ".write": false
+        },
+        "connectionCheck": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['lastVerifiedAt']) && newData.numChildren() === 1 && newData.child('lastVerifiedAt').isNumber()"
         }
       }
     }
