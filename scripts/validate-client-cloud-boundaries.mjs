@@ -118,6 +118,12 @@ assert(broadcastFunction.includes("nexora_push_deliveries") &&
 assert(broadcastFunction.includes("collapse_key: eventKey") &&
   broadcastFunction.includes("tag: eventKey"),
   "Retries for one release event must coalesce while queued and replace duplicate Android tray notifications.");
+assert(broadcastFunction.includes('status: "sending"') &&
+  broadcastFunction.includes('.eq("status", "sending")'),
+  "FCM sends must be marked in-flight before network calls and finalized from that state.");
+assert(broadcastFunction.includes("outcome unknown") &&
+  broadcastFunction.includes('update({ status: "pending"'),
+  "Ambiguous FCM outcomes must not be automatically retried; only explicit FCM rejections return to pending.");
 assert(broadcastFunction.includes('code === "UNREGISTERED"') &&
   !broadcastFunction.includes('code === "INVALID_ARGUMENT"'),
   "Only confirmed unregistered FCM tokens may be removed.");
