@@ -3,7 +3,7 @@ set -euo pipefail
 
 ENDPOINT="https://vureiymqoosubwubhvdu.supabase.co/functions/v1/nexora-push-register"
 BODY='{"token":"not-a-real-fcm-token","app_version":"v2.6.39","install_id":"00000000-0000-4000-8000-000000000000"}'
-API_KEY="$(node -e 'const fs=require("fs"); const s=fs.readFileSync("www/index.html","utf8"); const m=s.match(/studioCatalog:\\s*\\{\\s*url:\\s*"[^"]+",\\s*publishableKey:\\s*"([^"]+)"/); if (!m) process.exit(1); process.stdout.write(m[1]);')"
+API_KEY="$(node -e 'const fs=require("fs"); const s=fs.readFileSync("www/index.html","utf8"); const m=s.match(/studioCatalog:\s*\{\s*url:\s*"[^"]+",\s*publishableKey:\s*"([^"]+)"/); if (!m) process.exit(1); process.stdout.write(m[1]);')"
 
 check_unauthorized() {
   local auth_header="${1:-}"
