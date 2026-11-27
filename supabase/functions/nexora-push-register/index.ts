@@ -99,6 +99,19 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    const action = body?.action === "unregister" ? "unregister" : "register";
+    if (action === "unregister") {
+      const { data: removed, error: removeError } = await admin.rpc("nexora_unregister_push_device", {
+        p_token: token,
+        p_user_id: userId,
+      });
+      if (removeError) {
+        console.error("[NEXORA Push] Atomic device unregister failed:", removeError.code || "unknown");
+        return json({ error: "Device unregistration is temporarily unavailable" }, 503);
+      }
+      return json({ ok: true, unregistered: Boolean(removed) });
+    }
+
     const { data: registration, error } = await admin.rpc("nexora_register_push_device", {
       p_token: token,
       p_user_id: userId,
