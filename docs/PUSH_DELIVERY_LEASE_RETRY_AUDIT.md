@@ -42,3 +42,8 @@ This means the checked-in worker is stale relative to the active deployment, and
 The production source still reads all eligible devices and pending deliveries without pagination, has no finite attempt ceiling or persisted retry schedule, uses the fixed claim timeout, and completes without a database-side check that all deliveries are terminal. Its catch path also retains the claim after any successful send in the current invocation, so partial progress can remain blocked until claim expiry. The `sending` state makes uncertain outcomes more visible; it does not by itself resolve or safely retry them.
 
 This comparison was read-only. No function was deployed, no secrets were read, and no notification was sent.
+
+
+## Source-control reconciliation (2026-11-28)
+
+The active Supabase Edge Function `nexora-push-broadcast` was read from production (version 17, source SHA-256 `28b19853ba0535c2d708eb2250bf15c9892685476b79ae0a025b5e1f5be803a6`) and its exact `index.ts` content was copied into this audit branch at `supabase/functions/nexora-push-broadcast/index.ts`. This is a source-control reconciliation only: no Edge Function was deployed, no database migration was applied, and no notification was sent. The prior repository copy differed and was older; it must not be deployed over production. The reconciled v17 source still has unbounded device and pending-delivery reads, no persisted retry schedule/attempt ceiling, a fixed 15-minute claim expiry, and completion without checking for remaining pending/sending rows. A reviewed successor must preserve the existing `sending` transition, concrete-rejection reset to `pending`, FCM `collapse_key`, and Android notification `tag` behavior while addressing those gaps.
