@@ -58,6 +58,10 @@ assert(registrationMigration.includes("revoke all on function public.nexora_regi
 const broadcastFunction = fs.readFileSync("supabase/functions/nexora-push-broadcast/index.ts", "utf8");
 assert(broadcastFunction.includes('.from("nexora_push_devices").select("token").not("user_id", "is", null)'),
   "Update broadcasts must never target unowned or unauthenticated device registrations.");
+assert(broadcastFunction.includes('admin.rpc("nexora_claim_push_event"') &&
+  broadcastFunction.includes('admin.rpc("nexora_complete_push_event"') &&
+  broadcastFunction.includes('admin.rpc("nexora_release_push_event"'),
+  "Update broadcasts must use atomic claims, completion, and safe pre-delivery release.");
 
 const socialFunction = fs.readFileSync("supabase/functions/nexora-social/index.ts", "utf8");
 assert(socialFunction.includes("A valid published drama ID is required"),
