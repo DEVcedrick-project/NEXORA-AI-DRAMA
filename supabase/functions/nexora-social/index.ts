@@ -59,6 +59,22 @@ async function readJsonLimited(req:Request,maxBytes=8192):Promise<Record<string,
  if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)) throw new Error("invalid_json_object");
  return parsed as Record<string,unknown>;
 }
+async function hashClientNetwork(req: Request, secret: string): Promise<string | null> {
+ // Supabase's hosted gateway exposes the Cloudflare-observed client address here.
+ // Do not fall back to caller-controlled X-Forwarded-For values.
+ const clientIp = (req.headers.get("cf-connecting-ip") || "").trim();
+ if (!clientIp || clientIp.length > 64 || /[\\s,]/.test(clientIp)) return null;
+ const key = await crypto.subtle.importKey(
+  "raw",
+  new TextEncoder().encode(secret),
+  { name: "HMAC", hash: "SHA-256" },
+  false,
+  ["sign"],
+ );
+ const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(clientIp));
+ return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS") return new Response("ok",{headers:cors});
  if(req.method!=="POST") return reply(405,{error:"POST required"});
@@ -78,8 +94,17 @@ Deno.serve(async(req:Request)=>{
   if(["read","like","save","comment"].includes(action)) {
    const rateUrl=Deno.env.get("SUPABASE_URL"), rateKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
    if(!rateUrl||!rateKey) return reply(503,{error:"Social service is temporarily unavailable"});
+   const networkHash=await hashClientNetwork(req,rateKey);
+   if(!networkHash) {
+    console.error("[nexora-social] trusted client network address unavailable");
+    return reply(503,{error:"Social requests are temporarily unavailable"});
+   }
    const rateDb=createClient(rateUrl,rateKey,{auth:{persistSession:false,autoRefreshToken:false}});
-   const {data:allowed,error:rateError}=await rateDb.rpc("nexora_check_social_read_rate_limit",{p_user_id:userId});
+   const {data:allowed,error:rateError}=await rateDb.rpc("nexora_check_social_request_rate_limit",{
+    p_user_id:userId,
+    p_network_hash:networkHash,
+    p_action:action
+   });
    if(rateError) {
     console.error("[nexora-social] request rate-limit check failed",rateError.code||"unknown");
     return reply(503,{error:"Social requests are temporarily unavailable"});
