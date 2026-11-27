@@ -76,6 +76,9 @@ jobs:
       - name: Validate client cloud security boundaries
         run: node scripts/validate-client-cloud-boundaries.mjs
 
+      - name: Verify push registration rejects unauthenticated requests
+        run: bash scripts/test-push-registration-auth.sh
+
       - name: Bundle native notification bridges locally
         run: npm run build-native-plugins
 
