@@ -92,3 +92,14 @@ A search of the repository's existing audit/fix branches found six additional mi
 These files were restored to source control only. They were **not** executed against Supabase. The registration migration is an earlier version of the registration RPC; the later applied regex-hardening migration remains in sequence and replaces it. The push-claim migration reproduces the currently inspected RPC definitions, including the known 15-minute claim and unconditional completion behavior; restoring history does not imply those behaviors are approved or repaired.
 
 The live applied migration inventory is now matched by 8 source-controlled migration files (the original two plus these six). **20 applied migration files remain unrecovered.** The next recovery pass must resolve timestamp-mismatched candidate files individually against deployment evidence and live schema before restoring them. In particular, do not rename a candidate just because its purpose resembles a missing migration.
+
+
+## Timestamp-mismatched candidates held back
+
+Additional historical branches contain SQL candidates that must not yet be copied into the applied migration sequence:
+
+- `20261127130000_index_social_comment_pagination.sql` and `20261127163000_nexora_social_comment_keyset_index.sql` both create the live `nexora_social_comments_series_created_id_idx` index. The latter also drops the old two-column index. The database records applied version `20261127145201`; the source timestamps do not match. The live index definition is consistent with the later candidate, but this is not enough to prove the exact deployed migration file/version mapping.
+- `20261127170000_nexora_push_stale_device_cleanup.sql`, `20261127180000_nexora_push_authenticated_unregister.sql`, and `20261127190000_nexora_push_ambiguous_delivery_state.sql` resemble applied migrations `20261127150042`, `20261127151611`, and `20261127152344` by purpose, but their timestamps differ. Keep them as unverified candidates until commit/deployment evidence and complete live definitions establish exact correspondence.
+- `20261127143000_prune_terminal_push_delivery_history.sql` was found on another branch, but its index/function are not present in the current live schema inspection and it is not in the applied migration inventory. It is not an applied migration recovery candidate.
+
+No timestamp-mismatched candidate was restored. The six exact-version files listed above remain the only new restorations in this PR branch.
