@@ -4111,14 +4111,31 @@
       state.seriesCatalog.forEach(series => loadNexoraSocial(series.id));
     }
 
+    async function getNexoraAppCheckToken() {
+      // Native Capacitor Play Integrity integration can expose this small bridge.
+      // Older APKs and browser previews safely continue without an App Check header.
+      const bridge = window.NexoraAppCheck;
+      if (!bridge || typeof bridge.getToken !== 'function') return '';
+      try {
+        const result = await bridge.getToken();
+        return typeof result === 'string' ? result : String(result?.token || '');
+      } catch (error) {
+        console.warn('[NEXORA App Check] Token unavailable; compatibility mode remains active:', error);
+        return '';
+      }
+    }
+
     async function callNexoraSocial(action, seriesId, extra = {}) {
       const user = runtime.fbAuth?.currentUser;
       if (!user || (user.isAnonymous && action !== 'read')) throw new Error('Sign in to like, comment or save posts.');
       const cfg = NEXORA_DEFAULT_CONFIG.studioCatalog;
       const token = await user.getIdToken();
+      const headers = { 'Content-Type': 'application/json', 'apikey': cfg.publishableKey, 'Authorization': `Bearer ${token}` };
+      const appCheckToken = await getNexoraAppCheckToken();
+      if (appCheckToken) headers['X-Firebase-AppCheck'] = appCheckToken;
       const response = await fetch(`${cfg.url}/functions/v1/nexora-social`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': cfg.publishableKey, 'Authorization': `Bearer ${token}` },
+        headers,
         body: JSON.stringify({ action, seriesId, displayName: user.displayName || state.user.name, ...extra })
       });
       const result = await response.json().catch(() => ({}));
