@@ -2,6 +2,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 const PROJECT_ID = "nexora-ai-drama";
 const APP_CHECK_PROJECT_NUMBER = "201389649043";
+const APP_CHECK_ALLOWED_APP_IDS = new Set([
+ "1:201389649043:web:fd6846443425fbe885f166",
+ "1:201389649043:android:4dd0433ed5959b5e85f166"
+]);
 const MAX_APP_CHECK_TOKEN_LENGTH = 8192;
 const JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"));
 const APP_CHECK_JWKS = createRemoteJWKSet(new URL("https://firebaseappcheck.googleapis.com/v1/jwks"));
@@ -25,7 +29,7 @@ async function checkAppCheck(req:Request):Promise<boolean> {
    algorithms:["RS256"]
   });
   const subject=String(payload.sub||"");
-  if(protectedHeader.typ!=="JWT" || !subject.startsWith(`1:${APP_CHECK_PROJECT_NUMBER}:`)) throw new Error("Unexpected App Check app identity");
+  if(protectedHeader.typ!=="JWT" || !APP_CHECK_ALLOWED_APP_IDS.has(subject)) throw new Error("Unexpected App Check app identity");
   return true;
  } catch(error) {
   console.warn("[nexora-social] App Check token rejected in compatibility mode:",error);
