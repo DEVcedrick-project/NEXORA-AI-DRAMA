@@ -1,13 +1,45 @@
+const PROJECT_NUMBER = "201389649043";
+const APP_ID = "1:201389649043:android:4dd0433ed5959b5e85f166";
+const APP_CHECK_JWKS = createRemoteJWKSet(
+  new URL("https://firebaseappcheck.googleapis.com/v1/jwks"),
+  { cacheMaxAge: 6 * 60 * 60 * 1000 },
+);
+
+type NexoraAppCheckStatus = "valid" | "missing" | "invalid";
+
+async function verifyNexoraAppCheck(request: Request): Promise<NexoraAppCheckStatus> {
+  const token = (request.headers.get("x-firebase-appcheck") || "").trim();
+  if (!token) return "missing";
+  try {
+    const { payload, protectedHeader } = await jwtVerify(token, APP_CHECK_JWKS, {
+      algorithms: ["RS256"],
+      issuer: `https://firebaseappcheck.googleapis.com/${PROJECT_NUMBER}`,
+      audience: `projects/${PROJECT_NUMBER}`,
+    });
+    if (protectedHeader.typ !== "JWT" || payload.sub !== APP_ID) return "invalid";
+    return "valid";
+  } catch {
+    return "invalid";
+  }
+}
+
+function enforceNexoraAppCheck(status: NexoraAppCheckStatus): boolean {
+  return Deno.env.get("NEXORA_APP_CHECK_ENFORCE") === "true" && status !== "valid";
+}
+
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 const PROJECT_ID = "nexora-ai-drama";
 const JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"));
-const cors = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
+const cors = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info, x-firebase-appcheck","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
 function reply(status:number, body:Record<string,unknown>) { return new Response(JSON.stringify(body),{status,headers:cors}); }
 function cleanName(value:unknown) { const name=String(value||"NEXORA Viewer").replace(/[<>\u0000-\u001f]/g,"").trim().slice(0,40); return name||"NEXORA Viewer"; }
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS") return new Response("ok",{headers:cors});
  if(req.method!=="POST") return reply(405,{error:"POST required"});
+ const appCheckStatus=await verifyNexoraAppCheck(req);
+ if(enforceNexoraAppCheck(appCheckStatus)) return reply(401,{error:"A valid NEXORA app attestation is required"});
+ if(appCheckStatus!=="valid") console.info("[NEXORA App Check] Social request attestation status:",appCheckStatus);
  try {
   const match=(req.headers.get("Authorization")||"").match(/^Bearer\s+(.+)$/i);
   if(!match) return reply(401,{error:"Firebase sign-in required"});
@@ -31,27 +63,29 @@ Deno.serve(async(req:Request)=>{
    .select("id").eq("id",seriesId).eq("status","published").maybeSingle();
   if(publishedDramaError) throw publishedDramaError;
   if(!publishedDrama) return reply(404,{error:"Published drama not found"});
-  if(action==="like") {
-   const {data:existing,error:readError}=await db.from("nexora_social_likes").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle();
-   if(readError) throw readError;
-   if(existing) { const {error}=await db.from("nexora_social_likes").delete().eq("user_id",userId).eq("series_id",seriesId); if(error) throw error; }
-   else { const {error}=await db.from("nexora_social_likes").insert({user_id:userId,series_id:seriesId}); if(error&&error.code!=="23505") throw error; }
-  } else if(action==="save") {
-   const {data:existing,error:readError}=await db.from("nexora_social_saves").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle();
-   if(readError) throw readError;
-   if(existing) { const {error}=await db.from("nexora_social_saves").delete().eq("user_id",userId).eq("series_id",seriesId); if(error) throw error; }
-   else { const {error}=await db.from("nexora_social_saves").insert({user_id:userId,series_id:seriesId}); if(error&&error.code!=="23505") throw error; }
+  if(action==="like" || action==="save") {
+   // Serialize each viewer/series/reaction toggle in PostgreSQL. A client-side
+   // read followed by insert/delete can race when a user taps rapidly or sends
+   // requests from multiple devices.
+   const {error}=await db.rpc("nexora_toggle_social_reaction",{
+    p_user_id:userId,
+    p_series_id:seriesId,
+    p_reaction:action
+   });
+   if(error) throw error;
   } else if(action==="comment") {
    const comment=String(body.comment||"").trim().slice(0,500);
    if(!comment) return reply(400,{error:"Comment cannot be empty"});
-   const since=new Date(Date.now()-60_000).toISOString();
-   const {count:recentCount,error:rateError}=await db.from("nexora_social_comments").select("id",{count:"exact",head:true}).eq("user_id",userId).gte("created_at",since);
-   if(rateError) throw rateError;
-   if((recentCount||0)>=5) return reply(429,{error:"Please wait before posting another comment"});
    const email=typeof payload.email==="string"?payload.email:"";
    const safeName=payload.name || (email?email.split("@")[0]:"NEXORA Viewer");
-   const {error}=await db.from("nexora_social_comments").insert({user_id:userId,display_name:cleanName(safeName),series_id:seriesId,body:comment});
+   const {data:created,error}=await db.rpc("nexora_create_social_comment",{
+    p_user_id:userId,
+    p_display_name:cleanName(safeName),
+    p_series_id:seriesId,
+    p_body:comment
+   });
    if(error) throw error;
+   if(created!==true) return reply(429,{error:"Please wait before posting another comment"});
   }
   const [likes,ownLike,ownSave,comments]=await Promise.all([
    db.from("nexora_social_likes").select("user_id",{count:"exact",head:true}).eq("series_id",seriesId),
