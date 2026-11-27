@@ -2727,141 +2727,34 @@
       }
     }
 
-    async function initSupabaseClient(customCfg = null, pullRemote = true) {
-      try {
-        let cfg = customCfg;
-        if (!cfg) {
-          if (typeof window.__supabase_config !== 'undefined' && window.__supabase_config) {
-            cfg = typeof window.__supabase_config === 'string'
-              ? JSON.parse(window.__supabase_config)
-              : window.__supabase_config;
-          } else {
-            const saved = window.localStorage.getItem(SB_CONFIG_STORAGE_KEY);
-            if (saved) {
-              cfg = JSON.parse(saved);
-            } else if (NEXORA_DEFAULT_CONFIG.supabase.url && NEXORA_DEFAULT_CONFIG.supabase.anonKey) {
-              cfg = { ...NEXORA_DEFAULT_CONFIG.supabase };
-            }
-          }
-        }
-
-        if (!cfg || !cfg.url || !cfg.anonKey) {
-          state.supabase.connected = false;
-          runtime.sbClient = null;
-          updateFirebaseSyncBadges();
-          return false;
-        }
-
-        runtime.sbClient = createClient(cfg.url.trim(), cfg.anonKey.trim());
-        state.supabase.url = cfg.url.trim();
-        state.supabase.anonKey = cfg.anonKey.trim();
-        state.supabase.connected = true;
-
-        if (pullRemote) {
-          await pullWalletAndUnlocksFromSupabase();
-        }
-
-        updateFirebaseSyncBadges();
-        return true;
-      } catch (_err) {
-        state.supabase.connected = false;
-        runtime.sbClient = null;
-        updateFirebaseSyncBadges();
-        return false;
-      }
+    async function initSupabaseClient(_customCfg = null, _pullRemote = true) {
+      // Wallet and entitlement tables intentionally deny direct anon-client access.
+      // Until a Firebase-token-verifying wallet Edge Function is integrated, do not
+      // mark a publishable-key client as a connected or authoritative wallet backend.
+      state.supabase.connected = false;
+      runtime.sbClient = null;
+      updateFirebaseSyncBadges();
+      return false;
     }
 
-    async function pullWalletAndUnlocksFromSupabase() {
-      if (!state.supabase.connected || !runtime.sbClient) return;
-      const uid = state.user.uid;
-      try {
-        const { data: walletRow, error: wErr } = await runtime.sbClient
-          .from('user_wallets')
-          .select('purchased_coins, bonus_coins, is_vip, vip_expires_at, vip_plan_label')
-          .eq('user_id', uid)
-          .maybeSingle();
-
-        if (!wErr && walletRow) {
-          state.purchasedCoins = Math.max(0, Math.floor(Number(walletRow.purchased_coins) || 0));
-          state.bonusCoins = Math.max(0, Math.floor(Number(walletRow.bonus_coins) || 0));
-          const exp = Number(walletRow.vip_expires_at) || 0;
-          state.vipExpiresAt = exp;
-          state.isVip = Boolean(walletRow.is_vip) && (exp === 0 || exp > Date.now());
-          state.vipPlanLabel = state.isVip ? String(walletRow.vip_plan_label || 'VIP Pass') : '';
-        }
-
-        const { data: unlockRows, error: uErr } = await runtime.sbClient
-          .from('unlocked_episodes')
-          .select('episode_key')
-          .eq('user_id', uid);
-
-        if (!uErr && Array.isArray(unlockRows)) {
-          unlockRows.forEach(row => {
-            if (row && row.episode_key) {
-              state.unlockedEpisodes[row.episode_key] = true;
-            }
-          });
-        }
-
-        saveAppState();
-        syncWalletUI();
-        renderVerticalFeed();
-      } catch (_err) {}
+        async function pullWalletAndUnlocksFromSupabase() {
+      // Deliberately fail closed: wallet and unlock data are server-owned.
+      // Never hydrate authoritative entitlements from a public client key.
+      state.supabase.connected = false;
+      updateFirebaseSyncBadges();
+      return false;
     }
 
-    async function syncStateToSupabaseNow(showFeedback = false) {
-      if (!state.supabase.connected || !runtime.sbClient) {
-        if (showFeedback) showToast('Enter Supabase Project URL & Anon Key first.');
-        return;
+        async function syncStateToSupabaseNow(showFeedback = false) {
+      // Direct client upserts are denied by the production RLS policy. Keep this
+      // compatibility function inert until the trusted wallet API is integrated.
+      if (showFeedback) {
+        showToast('Secure wallet cloud sync is not enabled yet. Your current wallet remains on this device.');
       }
-
-      const uid = state.user.uid;
-      try {
-        const { error: wErr } = await runtime.sbClient
-          .from('user_wallets')
-          .upsert({
-            user_id: uid,
-            display_name: state.user.name,
-            purchased_coins: state.purchasedCoins,
-            bonus_coins: state.bonusCoins,
-            is_vip: state.isVip,
-            vip_expires_at: state.vipExpiresAt,
-            vip_plan_label: state.vipPlanLabel,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id' });
-
-        if (wErr) throw wErr;
-
-        const unlockedKeys = Object.keys(state.unlockedEpisodes).filter(k => Boolean(state.unlockedEpisodes[k]));
-        if (unlockedKeys.length > 0) {
-          const rows = unlockedKeys.map(key => {
-            const parts = key.split('_ep');
-            return {
-              user_id: uid,
-              episode_key: key,
-              series_id: parts[0] || 'unknown',
-              episode_num: Number(parts[1]) || 1,
-              unlocked_at: new Date().toISOString()
-            };
-          });
-          const { error: uErr } = await runtime.sbClient
-            .from('unlocked_episodes')
-            .upsert(rows, { onConflict: 'user_id,episode_key' });
-          if (uErr) throw uErr;
-        }
-
-        renderRtdbSchemaInspector();
-        if (showFeedback) {
-          showToast('🗄️ Wallet & unlocked episodes synced to Supabase!');
-        }
-      } catch (_err) {
-        if (showFeedback) {
-          showToast('Supabase sync failed. Check table schema & RLS policies.');
-        }
-      }
+      return false;
     }
 
-    function getCapacitorAdMobPlugin() {
+        function getCapacitorAdMobPlugin() {
       try {
         const cap = window.Capacitor;
         if (!cap) return null;
@@ -3033,36 +2926,31 @@
 
     async function pushLocalStateToFirebaseNow() {
       if (!state.firebase.connected || !runtime.fbDb || !state.firebase.authUid) {
-        showToast('Connect Firebase API Key first to push to cloud.');
-        return;
+        showToast('Connect Firebase first to sync your profile.');
+        return false;
       }
       const uid = state.firebase.authUid;
       try {
+        // Only profile fields are client-writable under the production rules.
+        // Wallet, VIP entitlements and episode unlocks are intentionally server-only.
         await update(ref(runtime.fbDb, `users/${uid}`), {
           profile: {
             name: state.user.name,
             email: state.user.email || null,
             updatedAt: serverTimestamp()
-          },
-          wallet: {
-            purchasedCoins: state.purchasedCoins,
-            bonusCoins: state.bonusCoins
-          },
-          vipStatus: {
-            isVip: state.isVip,
-            vipExpiresAt: state.vipExpiresAt,
-            planLabel: state.vipPlanLabel
-          },
-          unlockedEpisodes: state.unlockedEpisodes
+          }
         });
-        showToast('☁️ Local wallet, VIP & unlocks synced to Firebase!');
+        showToast('☁️ Profile synced. Wallet and episode unlocks remain local until secure cloud sync is enabled.');
         renderRtdbSchemaInspector();
-      } catch (_err) {
-        showToast('Cloud push failed. Check RTDB rules.');
+        return true;
+      } catch (error) {
+        console.error('[NEXORA Firebase] Profile sync failed:', error);
+        showToast('Profile sync failed. Check your Firebase profile rules.');
+        return false;
       }
     }
 
-    function updateFirebaseSyncBadges() {
+        function updateFirebaseSyncBadges() {
       const pill = document.getElementById('header-sync-pill');
       const dot = document.getElementById('header-sync-dot');
       const label = document.getElementById('header-sync-label');
@@ -3117,26 +3005,16 @@
 
     async function handleSaveSupabaseConfig(event) {
       event.preventDefault();
-      const url = document.getElementById('sb-url-input').value.trim();
-      const anonKey = document.getElementById('sb-key-input').value.trim();
-      if (!url || !anonKey) {
-        showToast('Enter both Supabase Project URL and Anon Key.');
-        return;
-      }
-      const cfg = { url, anonKey };
-      try {
-        window.localStorage.setItem(SB_CONFIG_STORAGE_KEY, JSON.stringify(cfg));
-      } catch (_e) {}
-
-      const ok = await initSupabaseClient(cfg, true);
-      if (ok) {
-        await syncStateToSupabaseNow(false);
-      }
+      // A public Supabase key must never be used to write wallet balances or
+      // entitlements. Keep the old settings untouched and explain the limitation.
+      state.supabase.connected = false;
+      runtime.sbClient = null;
+      updateFirebaseSyncBadges();
       renderRtdbSchemaInspector();
-      showToast(ok ? '🗄️ Connected to Supabase & synced wallet!' : '⚠️ Invalid Supabase URL or Anon Key.');
+      showToast('Secure wallet backend is not connected. Direct client wallet sync is disabled for your safety.');
     }
 
-    function renderRtdbSchemaInspector() {
+        function renderRtdbSchemaInspector() {
       const pre = document.getElementById('rtdb-schema-inspector');
       if (!pre) return;
       const sample = {
@@ -3228,18 +3106,14 @@
       renderVerticalFeed();
       closeAllSheets();
 
-      if (state.firebase.connected && runtime.fbDb && state.firebase.authUid) {
-        update(ref(runtime.fbDb, `users/${state.firebase.authUid}/unlockedEpisodes`), {
-          [key]: true
-        }).catch(() => {});
-      }
-      syncStateToSupabaseNow(false);
-      showToast(`🎬 Ad completed — Episode ${epNum} unlocked!`);
+      // Client-side ad callbacks cannot grant a server-authoritative entitlement.
+      // This local unlock is intentionally not written to Firebase or Supabase.
+      showToast(`🎬 Episode ${epNum} unlocked on this device. Secure account sync is not enabled yet.`);
     }
 
-    function unlockEpisodeWithCoins(seriesId, epNum) {
+        function unlockEpisodeWithCoins(seriesId, epNum) {
       const series = getSeriesById(seriesId);
-      const ep = series.episodes.find(e => e.num === epNum);
+      const ep = series?.episodes.find(e => e.num === epNum);
       if (!ep) return;
       if (isEpisodeUnlocked(series, ep)) {
         state.activeEpisodeBySeries[seriesId] = epNum;
@@ -3277,18 +3151,11 @@
       syncWalletUI();
       renderVerticalFeed();
       closeAllSheets();
-      if (state.firebase.connected && runtime.fbDb && state.firebase.authUid) {
-        update(ref(runtime.fbDb, `users/${state.firebase.authUid}`), {
-          wallet: { purchasedCoins: state.purchasedCoins, bonusCoins: state.bonusCoins },
-          [`unlockedEpisodes/${key}`]: true
-        }).catch(() => {});
-      }
-      syncStateToSupabaseNow(false);
-
-      showToast(`🔓 Unlocked Episode ${epNum}!`);
+      // No client-side write to server-protected wallet or entitlement records.
+      showToast(`🔓 Episode ${epNum} unlocked on this device. Secure wallet sync is not enabled yet.`);
     }
 
-    function syncWalletUI() {
+        function syncWalletUI() {
       const total = getTotalCoins();
       const setElText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
       setElText('header-total-coins', total);
