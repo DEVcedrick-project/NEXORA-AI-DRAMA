@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = {
-  "Access-Control-Allow-Origin": "https://github.com",
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "x-nexora-release-secret",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Content-Type": "application/json",
@@ -24,7 +24,7 @@ Deno.serve(async (req: Request) => {
   try {
     const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data, error } = await admin.from("nexora_push_deliveries")
-      .select("event_key,status,attempt_count,last_attempt_at,updated_at,response_status,last_error_code")
+      .select("event_key,status,attempt_count,last_attempt_at,updated_at")
       .order("updated_at", { ascending: false }).limit(500);
     if (error) throw error;
 
@@ -45,7 +45,6 @@ Deno.serve(async (req: Request) => {
         attempts: row.attempt_count,
         lastAttemptAt: row.last_attempt_at,
         updatedAt: row.updated_at,
-        
       });
     }
     return json({
