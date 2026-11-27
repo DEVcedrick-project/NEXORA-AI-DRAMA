@@ -7,7 +7,7 @@ NEXORA AI DRAMA is the public-facing vertical micro-drama Android application. I
 - `www/index.html` — NEXORA AI DRAMA viewer application.
 - `package.json` — Capacitor 8, Android platform, AdMob and splash-screen dependencies.
 - `capacitor.config.json` — Android application identity and splash-screen configuration.
-- `supabase/schema.sql` — legacy development schema for wallet and unlocked-episode data.
+- `supabase/schema.sql` — default-deny schema baseline for wallet and unlocked-episode data.
 - `.github/workflows/android-apk.yml` — GitHub Actions Android APK build.
 
 The Android project is generated from this Capacitor project during the GitHub Actions build. The old standalone Kotlin/Jetpack Compose project is no longer the source of the app.
@@ -64,4 +64,4 @@ NEXORA STUDIO remains the private source/editor project. The `studio-content-syn
 
 ## Android notifications
 
-The app currently creates in-app alerts when the published NEXORA STUDIO catalog refresh detects a newly published drama or episode while the app is running. System-tray notifications that arrive while the app is closed require Firebase Cloud Messaging (FCM), Android Firebase configuration, and a trusted server-side sender. Those credentials and native FCM setup are not present in this repository yet; do not treat the current in-app alert as background push delivery.
+The app includes native FCM registration and the dedicated AI DRAMA Supabase project has active `nexora-push-register` and `nexora-push-broadcast` Edge Functions. Registration has succeeded for two installs, but the registration endpoint currently relies on a spoofable app-ID header rather than Firebase App Check attestation or a Firebase-authenticated token. The broadcast function depends on Firebase service-account and release-webhook secrets stored outside this repository. Verify those secrets and perform real foreground/background delivery tests before claiming push delivery is production-ready. In-app catalog alerts are not proof of background system-tray delivery.
