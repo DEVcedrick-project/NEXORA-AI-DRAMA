@@ -103,3 +103,14 @@ Additional historical branches contain SQL candidates that must not yet be copie
 - `20261127143000_prune_terminal_push_delivery_history.sql` was found on another branch, but its index/function are not present in the current live schema inspection and it is not in the applied migration inventory. It is not an applied migration recovery candidate.
 
 No timestamp-mismatched candidate was restored. The six exact-version files listed above remain the only new restorations in this PR branch.
+
+
+## Live-definition verification of three timestamp-mismatched candidates
+
+Further read-only comparison against the live database confirms:
+
+- Candidate `20261127170000_nexora_push_stale_device_cleanup.sql` defines `nexora_register_push_device`. Its function body matches the live function's token allowlist, strict UUID install ID, advisory-lock ordering, refusal to transfer a token across users, 180-day stale-device cleanup, five-device cap, and same-owner upsert.
+- Candidate `20261127180000_nexora_push_authenticated_unregister.sql` defines `nexora_unregister_push_device`. Its body matches the live function's token/user validation and exact token-plus-user deletion.
+- Candidate `20261127190000_nexora_push_ambiguous_delivery_state.sql` changes the delivery status constraint to `pending/sending/sent/invalid/failed` and documents ambiguous `sending` outcomes. Both the live check constraint and the live column comment match this candidate.
+
+The corresponding applied migration versions are recorded as `20261127150042`, `20261127151611`, and `20261127152344`, respectively, so the candidate filenames still do not match the migration ledger versions. Function/schema equivalence is strong corroborating evidence of deployed content, but it does not establish the exact historical version-to-file mapping. **These three files remain un-restored pending an authoritative Git rename/commit or deployment record that maps each exact SQL blob to its applied version.** No SQL was executed and no production changes were made.
