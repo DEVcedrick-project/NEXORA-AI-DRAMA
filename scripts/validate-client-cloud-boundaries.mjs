@@ -43,8 +43,7 @@ assert(packageJson.dependencies?.["@capacitor-firebase/app-check"] === "8.6.0",
 assert(nativeEntry.includes('export { FirebaseAppCheck } from "@capacitor-firebase/app-check";'),
   "The native App Check bridge must be included in the locally bundled plugin runtime.");
 const appCheckClient = block('async function getNexoraAppCheckToken()', 'const NEXORA_DEFAULT_CONFIG');
-assert(appCheckClient.includes("FirebaseAppCheck.initialize()") &&
-  appCheckClient.includes("FirebaseAppCheck.setTokenAutoRefreshEnabled({ isTokenAutoRefreshEnabled: true })") &&
+assert(appCheckClient.includes("FirebaseAppCheck.initialize({ isTokenAutoRefreshEnabled: true })") &&
   appCheckClient.includes("FirebaseAppCheck.getToken()"),
   "Native App Check must initialize Play Integrity, refresh tokens and retrieve a token.");
 assert(appCheckClient.includes("if (!window.Capacitor?.isNativePlatform?.()) return") &&
