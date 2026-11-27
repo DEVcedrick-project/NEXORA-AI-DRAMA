@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 const PROJECT_ID = "nexora-ai-drama";
 const APP_CHECK_PROJECT_NUMBER = "201389649043";
+const MAX_APP_CHECK_TOKEN_LENGTH = 8192;
 const JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"));
 const APP_CHECK_JWKS = createRemoteJWKSet(new URL("https://firebaseappcheck.googleapis.com/v1/jwks"));
 const cors = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info, x-firebase-appcheck","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
@@ -9,6 +10,10 @@ function reply(status:number, body:Record<string,unknown>, extraHeaders:Record<s
 async function checkAppCheck(req:Request):Promise<boolean> {
  const required=Deno.env.get("NEXORA_APP_CHECK_ENFORCE")==="true";
  const token=(req.headers.get("x-firebase-appcheck")||"").trim();
+ if(token.length>MAX_APP_CHECK_TOKEN_LENGTH) {
+  console.warn("[nexora-social] Oversized App Check token rejected.");
+  return !required;
+ }
  if(!token) {
   if(required) return false;
   return true; // Compatibility mode: legacy clients continue while App Check rollout is measured.
