@@ -128,5 +128,10 @@ assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").mayb
   "Social actions must authorize the target against the published drama catalog.");
 assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
   "Social actions must reject draft, hidden and nonexistent dramas.");
+assert(socialFunction.includes('nexora_check_social_read_rate_limit') &&
+  !/if\s*\(action\s*===\s*["']read["']\)\s*\{[\s\S]*?nexora_check_social_read_rate_limit/.test(socialFunction),
+  "Every social action must pass through the per-user request rate limiter, not only feed reads.");
+assert(socialFunction.includes('status:429') && socialFunction.includes('"Retry-After":"60"'),
+  "Social rate limiting must return HTTP 429 with a one-minute Retry-After header.");
 
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");
