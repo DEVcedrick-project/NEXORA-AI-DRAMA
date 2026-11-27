@@ -35,16 +35,16 @@ Deno.serve(async(req:Request)=>{
    .select("id").eq("id",seriesId).eq("status","published").maybeSingle();
   if(publishedDramaError) throw publishedDramaError;
   if(!publishedDrama) return reply(404,{error:"Published drama not found"});
-  if(action==="like") {
-   const {data:existing,error:readError}=await db.from("nexora_social_likes").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle();
-   if(readError) throw readError;
-   if(existing) { const {error}=await db.from("nexora_social_likes").delete().eq("user_id",userId).eq("series_id",seriesId); if(error) throw error; }
-   else { const {error}=await db.from("nexora_social_likes").insert({user_id:userId,series_id:seriesId}); if(error&&error.code!=="23505") throw error; }
-  } else if(action==="save") {
-   const {data:existing,error:readError}=await db.from("nexora_social_saves").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle();
-   if(readError) throw readError;
-   if(existing) { const {error}=await db.from("nexora_social_saves").delete().eq("user_id",userId).eq("series_id",seriesId); if(error) throw error; }
-   else { const {error}=await db.from("nexora_social_saves").insert({user_id:userId,series_id:seriesId}); if(error&&error.code!=="23505") throw error; }
+  if(action==="like" || action==="save") {
+   // Serialize each viewer/series/reaction toggle in PostgreSQL. A client-side
+   // read followed by insert/delete can race when a user taps rapidly or sends
+   // requests from multiple devices.
+   const {error}=await db.rpc("nexora_toggle_social_reaction",{
+    p_user_id:userId,
+    p_series_id:seriesId,
+    p_reaction:action
+   });
+   if(error) throw error;
   } else if(action==="comment") {
    const comment=String(body.comment||"").trim().slice(0,500);
    if(!comment) return reply(400,{error:"Comment cannot be empty"});
