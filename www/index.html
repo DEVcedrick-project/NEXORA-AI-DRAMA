@@ -2234,6 +2234,28 @@
     }
 
 
+    // Guest creation is shared by startup and native push. A single-flight
+    // coordinator prevents concurrent callers from creating competing anonymous UIDs.
+    let nexoraGuestSignInInFlight = null;
+    async function ensureFirebaseGuestSession(auth = runtime.fbAuth) {
+      if (!auth) return null;
+      if (auth.currentUser) return auth.currentUser;
+      if (nexoraGuestSignInInFlight) return await nexoraGuestSignInInFlight;
+
+      const attempt = (async () => {
+        await auth.authStateReady?.();
+        if (auth.currentUser) return auth.currentUser;
+        const credential = await signInAnonymously(auth);
+        return credential?.user || auth.currentUser || null;
+      })();
+      nexoraGuestSignInInFlight = attempt;
+      try {
+        return await attempt;
+      } finally {
+        if (nexoraGuestSignInInFlight === attempt) nexoraGuestSignInInFlight = null;
+      }
+    }
+
     // Keep the latest FCM token so account changes and app resumes can rebind this installation.
     let nexoraNativeFcmToken = "";
     let nexoraPushRegistrationInFlight = null;
@@ -2337,7 +2359,7 @@
         }
         await runtime.fbAuth?.authStateReady?.();
         if (!runtime.fbAuth?.currentUser) {
-          try { await signInAnonymously(runtime.fbAuth); } catch (authError) {
+          try { await ensureFirebaseGuestSession(runtime.fbAuth); } catch (authError) {
             console.warn("[NEXORA Push] Guest authentication is unavailable:", authError);
           }
         }
@@ -2530,7 +2552,7 @@
         if (!auth.currentUser) {
           try {
             if (window.__initial_auth_token) await signInWithCustomToken(auth, window.__initial_auth_token);
-            else await signInAnonymously(auth);
+            else await ensureFirebaseGuestSession(auth);
           } catch (authBootstrapError) {
             console.warn('[NEXORA Firebase] Guest sign-in unavailable; email/password auth remains initialized:', authBootstrapError);
           }
@@ -5205,11 +5227,11 @@
         // keep the user signed out and still show the email login/create-account
         // screen rather than trapping them in a failed switch-account action.
         try {
-          const guest = await signInAnonymously(runtime.fbAuth);
-          if (guest.user) {
-            state.firebase.authUid = guest.user.uid;
-            state.user.uid = guest.user.uid;
-            attachRealtimeListeners(runtime.fbDb, guest.user.uid);
+          const guestUser = await ensureFirebaseGuestSession(runtime.fbAuth);
+          if (guestUser) {
+            state.firebase.authUid = guestUser.uid;
+            state.user.uid = guestUser.uid;
+            attachRealtimeListeners(runtime.fbDb, guestUser.uid);
             // Move this installation off the account being signed out immediately.
             void registerNativePushDevice().catch(error => console.error('[NEXORA Push] Guest-session registration failed:', error));
           }
