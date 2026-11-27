@@ -145,6 +145,17 @@ assert(pushRetentionMigration.includes("interval '90 days'") &&
   "Push delivery retention must prune only terminal records older than 90 days in bounded service-role-only batches.");
 
 const socialFunction = fs.readFileSync("supabase/functions/nexora-social/index.ts", "utf8");
+const pushRegistrationFunction = fs.readFileSync("supabase/functions/nexora-push-register/index.ts", "utf8");
+for (const [name, fn] of [["social", socialFunction], ["push registration", pushRegistrationFunction]]) {
+  assert(fn.includes("MAX_APP_CHECK_TOKEN_LENGTH = 8192") &&
+    fn.includes("token.length > MAX_APP_CHECK_TOKEN_LENGTH"),
+    `The ${name} endpoint must reject oversized Firebase App Check tokens before JWT parsing.`);
+  assert(fn.includes("https://firebaseappcheck.googleapis.com/v1/jwks") &&
+    fn.includes("algorithms: [\"RS256\"]") &&
+    fn.includes("https://firebaseappcheck.googleapis.com/") &&
+    fn.includes("projects/"),
+    `The ${name} endpoint must verify App Check signatures and Firebase project claims.`);
+}
 assert(socialFunction.includes("A valid published drama ID is required"),
   "Social actions must reject malformed catalog IDs.");
 assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").maybeSingle()'),
