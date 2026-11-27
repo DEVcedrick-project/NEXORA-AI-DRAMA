@@ -30,7 +30,7 @@ async function checkAppCheck(req:Request):Promise<boolean> {
 function validClientIp(ip:string) {
  const value=ip.trim();
  if(value.length>45) return false;
- if(/^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(value)) return value.split(".").every(part=>Number(part)>=0&&Number(part)<=255);
+ if(/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value)) return value.split(".").every(part=>Number(part)>=0&&Number(part)<=255);
  if(value.toLowerCase().startsWith("::ffff:") && value.includes(".")) return validClientIp(value.slice(7));
  return value.includes(":") && /^[0-9a-fA-F:]+$/.test(value);
 }
@@ -41,12 +41,12 @@ async function trustedNetworkHash(req:Request):Promise<string|null> {
  const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(clientIp.toLowerCase()));
  return Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,"0")).join("");
 }
-function cleanName(value:unknown) { const name=String(value||"NEXORA Viewer").replace(/[<>\\u0000-\\u001f]/g,"").trim().slice(0,40); return name||"NEXORA Viewer"; }
+function cleanName(value:unknown) { const name=String(value||"NEXORA Viewer").replace(/[<>\u0000-\u001f]/g,"").trim().slice(0,40); return name||"NEXORA Viewer"; }
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS") return new Response("ok",{headers:cors});
  if(req.method!=="POST") return reply(405,{error:"POST required"});
  try {
-  const match=(req.headers.get("Authorization")||"").match(/^Bearer\\s+(.+)$/i);
+  const match=(req.headers.get("Authorization")||"").match(/^Bearer\s+(.+)$/i);
   if(!match) return reply(401,{error:"Firebase sign-in required"});
   const {payload}=await jwtVerify(match[1],JWKS,{issuer:`https://securetoken.google.com/${PROJECT_ID}`,audience:PROJECT_ID});
   const userId=String(payload.sub||"");
