@@ -73,6 +73,9 @@ jobs:
       - name: Validate Firebase Realtime Database security rules
         run: node scripts/validate-firebase-rules.mjs
 
+      - name: Validate client cloud security boundaries
+        run: node scripts/validate-client-cloud-boundaries.mjs
+
       - name: Bundle native notification bridges locally
         run: npm run build-native-plugins
 
