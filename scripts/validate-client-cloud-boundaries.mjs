@@ -115,6 +115,9 @@ assert(broadcastFunction.includes('.eq("app_id", APP_ID)') &&
 assert(broadcastFunction.includes("nexora_push_deliveries") &&
   broadcastFunction.includes('.eq("status", "pending")'),
   "Release broadcasts must track per-device delivery and skip completed devices.");
+assert(broadcastFunction.includes("collapse_key: eventKey") &&
+  broadcastFunction.includes("tag: eventKey"),
+  "Retries for one release event must coalesce while queued and replace duplicate Android tray notifications.");
 assert(broadcastFunction.includes('code === "UNREGISTERED"') &&
   !broadcastFunction.includes('code === "INVALID_ARGUMENT"'),
   "Only confirmed unregistered FCM tokens may be removed.");
