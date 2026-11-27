@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
     const { data: firstDevices, error: firstDeviceError } = await admin
       .from("nexora_push_devices").select("token")
       .eq("app_id", APP_ID).eq("platform", "android").not("user_id", "is", null)
-      .order("token", { ascending: true }).range(0, DEVICE_PAGE_SIZE - 1);
+      .order("token", { ascending: true }).limit(DEVICE_PAGE_SIZE);
     if (firstDeviceError) throw firstDeviceError;
     if (!firstDevices?.length) {
       return json({ ok: true, version, sent: 0, reason: "No eligible NEXORA AI DRAMA Android devices yet; retry after registration" });
@@ -61,7 +61,7 @@ Deno.serve(async (req: Request) => {
     // default row cap to unbounded selects; explicit ranges prevent silently
     // omitting devices once the audience grows beyond that cap.
     let devicePage = firstDevices;
-    let deviceOffset = 0;
+    let lastDeviceToken = "";
     while (devicePage?.length) {
       const progressRows = devicePage.map((device: { token: string }) => ({
         event_key: eventKey, token: device.token, status: "pending"
@@ -69,13 +69,13 @@ Deno.serve(async (req: Request) => {
       const { error: seedError } = await admin.from("nexora_push_deliveries")
         .upsert(progressRows, { onConflict: "event_key,token", ignoreDuplicates: true });
       if (seedError) throw seedError;
+      lastDeviceToken = devicePage[devicePage.length - 1].token;
       if (devicePage.length < DEVICE_PAGE_SIZE) break;
-      deviceOffset += DEVICE_PAGE_SIZE;
       const { data: nextPage, error: nextPageError } = await admin
         .from("nexora_push_devices").select("token")
         .eq("app_id", APP_ID).eq("platform", "android").not("user_id", "is", null)
-        .order("token", { ascending: true })
-        .range(deviceOffset, deviceOffset + DEVICE_PAGE_SIZE - 1);
+        .gt("token", lastDeviceToken)
+        .order("token", { ascending: true }).limit(DEVICE_PAGE_SIZE);
       if (nextPageError) throw nextPageError;
       devicePage = nextPage || [];
     }
