@@ -3083,13 +3083,7 @@
       });
       saveAppState();
       syncWalletUI();
-      if (state.firebase.connected && runtime.fbDb && state.firebase.authUid) {
-        update(ref(runtime.fbDb, `users/${state.firebase.authUid}/wallet`), {
-          purchasedCoins: state.purchasedCoins,
-          bonusCoins: state.bonusCoins
-        }).catch(() => {});
-      }
-      syncStateToSupabaseNow(false);
+      // Coin rewards remain local until a trusted server-side reward/ledger API exists.
     }
 
     function unlockEpisodeWithRewardedAd(seriesId, epNum) {
