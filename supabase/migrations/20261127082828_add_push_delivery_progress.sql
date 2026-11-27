@@ -2,7 +2,7 @@ create table if not exists public.nexora_push_deliveries (
   event_key text not null,
   token text not null,
   status text not null default 'pending'
-    check (status in ('pending', 'sent', 'invalid')),
+    check (status in ('pending', 'sending', 'sent', 'failed', 'invalid')),
   attempt_count integer not null default 0
     check (attempt_count >= 0),
   last_attempt_at timestamptz,
