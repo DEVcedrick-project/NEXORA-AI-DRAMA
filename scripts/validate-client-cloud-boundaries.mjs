@@ -163,6 +163,14 @@ for (const [name, fn] of [["social", socialFunction], ["push registration", push
     fn.includes("projects/"),
     `The ${name} endpoint must verify App Check signatures and Firebase project claims.`);
 }
+assert(socialFunction.includes("APP_CHECK_ALLOWED_APP_IDS") &&
+  socialFunction.includes("1:201389649043:web:fd6846443425fbe885f166") &&
+  socialFunction.includes("1:201389649043:android:4dd0433ed5959b5e85f166") &&
+  !socialFunction.includes("1:201389649043:android:9393d9ec1a9dba0b85f166"),
+  "Social App Check must allow only the NEXORA AI DRAMA web and Android app IDs, not NEXORA STUDIO.");
+assert(pushFunction.includes("APP_CHECK_ALLOWED_APP_ID") &&
+  pushFunction.includes("payload.sub === APP_CHECK_ALLOWED_APP_ID"),
+  "Push registration App Check must require the exact NEXORA AI DRAMA Android app ID.");
 assert(pushFunction.includes("NEXORA_APP_CHECK_ENFORCE") &&
   pushFunction.includes("attestation status"),
   "Push registration must remain monitor-only until the enforcement flag is deliberately enabled.");
