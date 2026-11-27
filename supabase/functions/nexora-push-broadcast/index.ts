@@ -72,10 +72,15 @@ Deno.serve(async (req: Request) => {
       // Persist "sending" before the network call. If the process dies or
       // the response is lost after FCM accepts the message, this row is
       // deliberately not retried automatically (unknown outcome).
-      const { error: attemptError } = await admin.from("nexora_push_deliveries")
+      const { data: attemptClaim, error: attemptError } = await admin.from("nexora_push_deliveries")
         .update({ status: "sending", attempt_count: Number(device.attempt_count || 0) + 1, last_attempt_at: attemptedAt, updated_at: attemptedAt })
-        .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
+        .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending")
+        .select("token").maybeSingle();
       if (attemptError) throw attemptError;
+      // A concurrent or recovered broadcaster may have claimed this row
+      // after our pending snapshot. Never call FCM unless this worker won
+      // the conditional pending -> sending transition.
+      if (!attemptClaim) continue;
 
       const response = await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`, {
         method: "POST",
