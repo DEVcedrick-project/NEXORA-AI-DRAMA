@@ -61,3 +61,16 @@ Do **not**:
 ## Scope
 
 Read-only inventory only. No database schema, migration records, data, RLS policies, secrets, device registrations, delivery statuses, or runtime settings were changed. No notifications were sent.
+
+
+## Historical Git recovery check (2026-11-28 follow-up)
+
+The migration-path commit history and historical trees were inspected. One of the two tracked migrations has an exact recoverable original:
+
+- The delivery-ledger migration was first added in commit `e4780b37f522df2762951d108fad07ffd20af8e5` as `20261127162400_add_push_delivery_progress.sql`.
+- In the next relevant commit, `d8dc9af9eee1b626ed9fafaa56b365b9b0e1a668`, it was renamed to `20261127082828_add_push_delivery_progress.sql` to match the applied Supabase version.
+- Commit `f1508e804470db59a5137ebff61db0bc96c94891` removed the mismatched timestamp copy.
+- The original SQL blob SHA is `2995769307442e8eea320223037fe68ebe598c29`. The renamed file in `main` has the same blob SHA, confirming byte-identical content.
+- The original migration creates the private per-device delivery ledger with the initial `pending/sent/invalid` status check and service-role-only table grants. The live database's expanded status set reflects later schema evolution, so this original file must remain historical and must not be edited to imitate the current schema.
+
+This recovery check does **not** recover the other 25 missing files. The inspected historical tree at the delivery-ledger commit also contained only this one migration file. No historical migration file has been restored or replayed as part of this follow-up. Continue searching other trusted authoring commits/artifacts for the remaining 25 exact SQL sources.
