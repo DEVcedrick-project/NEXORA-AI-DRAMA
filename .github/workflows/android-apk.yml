@@ -77,6 +77,34 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+      - name: Add resilient Maven Central mirror for Android builds
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path("android")
+          files = list(root.rglob("*.gradle"))
+          changed = 0
+          for path in files:
+              source = path.read_text()
+              if "mavenCentral()" not in source:
+                  continue
+              mirror = "maven { url 'https://maven-central.storage-download.googleapis.com/maven2/' }"
+              if mirror in source:
+                  continue
+              source = source.replace(
+                  "mavenCentral()",
+                  mirror + "\\n        mavenCentral()"
+              )
+              path.write_text(source)
+              changed += 1
+
+          if changed < 2:
+              raise SystemExit(
+                  f"Expected to add Maven Central mirror to at least two Gradle files; changed {changed}."
+              )
+          print(f"Added Google-hosted Maven Central fallback to {changed} Gradle files.")
+          PY
       - name: Install native in-app APK updater
         run: |
           python scripts/install-native-updater.py
