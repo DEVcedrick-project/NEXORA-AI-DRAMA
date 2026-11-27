@@ -46,4 +46,13 @@ assert(pushFunction.includes('audience: PROJECT_ID') && pushFunction.includes('i
 assert(pushFunction.includes("MAX_DEVICES_PER_USER = 5") && pushFunction.includes('.eq("user_id", userId)'),
   "Push registration must enforce the per-account device limit.");
 
-console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries and authenticated FCM device registration are enforced.");
+
+const socialFunction = fs.readFileSync("supabase/functions/nexora-social/index.ts", "utf8");
+assert(socialFunction.includes("A valid published drama ID is required"),
+  "Social actions must reject malformed catalog IDs.");
+assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").maybeSingle()'),
+  "Social actions must authorize the target against the published drama catalog.");
+assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
+  "Social actions must reject draft, hidden and nonexistent dramas.");
+
+console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");
