@@ -1185,6 +1185,9 @@
       lastContinueSaveMs: 0,
       socialLoadAt: {},
       socialLoadInFlight: {},
+      socialCommentsNextCursor: {},
+      socialCommentsHasMore: {},
+      socialCommentsLoading: {},
       socialRefreshTimer: null,
       lastAnimationErrorAt: 0,
       bootstrapStarted: false
@@ -2102,6 +2105,9 @@
       state.socialLikesCount = {};
       runtime.socialLoadAt = {};
       runtime.socialLoadInFlight = {};
+      runtime.socialCommentsNextCursor = {};
+      runtime.socialCommentsHasMore = {};
+      runtime.socialCommentsLoading = {};
       state.walletHistory = [
         { title: 'Welcome Bonus Gift', amount: '+60 Bonus Coins', type: 'credit', time: 'Today' }
       ];
@@ -4126,13 +4132,22 @@
       return result;
     }
 
-    function applyNexoraSocialSnapshot(result) {
+    function applyNexoraSocialSnapshot(result, appendComments = false) {
       const id = result?.seriesId;
       if (!id || (result.viewerId && runtime.fbAuth?.currentUser?.uid !== result.viewerId)) return;
       state.socialLikesCount[id] = Number(result.likesCount) || 0;
       state.likedSeries[id] = Boolean(result.liked);
       state.savedSeries = result.saved ? [...new Set([...state.savedSeries, id])] : state.savedSeries.filter(x => x !== id);
-      state.commentsBySeries[id] = Array.isArray(result.comments) ? result.comments : [];
+      const incomingComments = Array.isArray(result.comments) ? result.comments : [];
+      if (appendComments) {
+        const existing = state.commentsBySeries[id] || [];
+        const seen = new Set(existing.map(comment => comment.id));
+        state.commentsBySeries[id] = [...existing, ...incomingComments.filter(comment => !seen.has(comment.id))];
+      } else {
+        state.commentsBySeries[id] = incomingComments;
+      }
+      runtime.socialCommentsNextCursor[id] = result.nextCursor || null;
+      runtime.socialCommentsHasMore[id] = Boolean(result.hasMore);
       runtime.socialLoadAt[id] = Date.now();
       updateSeriesLikeUI(id);
       const count = document.getElementById(`comment-count-${id}`);
@@ -4530,9 +4545,35 @@
       const header = document.getElementById('comment-drawer-header');
       if (header) header.textContent = `${series.title} Comments (${comments.length})`;
       const listEl = document.getElementById('comment-list-container');
-      if (listEl) listEl.innerHTML = comments.length === 0
-        ? '<p class="text-xs text-zinc-500 text-center py-6">No comments yet. Be the first to react!</p>'
-        : comments.map(c => `<div class="p-3 rounded-2xl bg-black/50 border border-zinc-800/90 space-y-1"><div class="flex items-center justify-between"><span class="text-[11px] font-extrabold text-amber-300">@${escapeHtml(c.user || 'NEXORA Viewer')}</span><span class="text-[10px] text-zinc-500">${escapeHtml(c.time || '')}</span></div><p class="text-xs text-zinc-200 leading-snug">${escapeHtml(c.text || '')}</p></div>`).join('');
+      if (listEl) {
+        const commentMarkup = comments.length === 0
+          ? '<p class="text-xs text-zinc-500 text-center py-6">No comments yet. Be the first to react!</p>'
+          : comments.map(c => `<div class="p-3 rounded-2xl bg-black/50 border border-zinc-800/90 space-y-1"><div class="flex items-center justify-between"><span class="text-[11px] font-extrabold text-amber-300">@${escapeHtml(c.user || 'NEXORA Viewer')}</span><span class="text-[10px] text-zinc-500">${escapeHtml(c.time || '')}</span></div><p class="text-xs text-zinc-200 leading-snug">${escapeHtml(c.text || '')}</p></div>`).join('');
+        const loadMoreMarkup = runtime.socialCommentsHasMore[seriesId]
+          ? `<button type="button" onclick="loadMoreSocialComments()" ${runtime.socialCommentsLoading[seriesId] ? 'disabled' : ''} class="w-full py-3 rounded-xl border border-zinc-700 text-xs font-bold text-amber-300 disabled:opacity-50">${runtime.socialCommentsLoading[seriesId] ? 'Loading…' : 'Load older comments'}</button>`
+          : '';
+        listEl.innerHTML = commentMarkup + loadMoreMarkup;
+      }
+    }
+
+    async function loadMoreSocialComments() {
+      const seriesId = state.activeSeriesId;
+      const cursor = runtime.socialCommentsNextCursor[seriesId];
+      if (!seriesId || !cursor || runtime.socialCommentsLoading[seriesId]) return;
+      runtime.socialCommentsLoading[seriesId] = true;
+      renderSocialComments(seriesId);
+      try {
+        const result = await callNexoraSocial('read', seriesId, {
+          cursorCreatedAt: cursor.createdAt,
+          cursorId: cursor.id
+        });
+        applyNexoraSocialSnapshot(result, true);
+      } catch (error) {
+        showToast(error.message || 'Could not load older comments.');
+      } finally {
+        runtime.socialCommentsLoading[seriesId] = false;
+        renderSocialComments(seriesId);
+      }
     }
 
     function openCommentDrawer(seriesId) {
@@ -5535,6 +5576,7 @@
       openEpisodeDrawer,
       selectEpisodeFromDrawer,
       openCommentDrawer,
+      loadMoreSocialComments,
       submitNewComment,
       setDiscoverGenre,
       renderDiscoverView,
