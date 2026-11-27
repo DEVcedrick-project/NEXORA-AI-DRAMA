@@ -36,6 +36,29 @@ assert(!/\.from\(['"](?:user_wallets|unlocked_episodes)['"]\)/.test(walletSync),
 const signOut = block("async function handleSignOutAccount()", "function cycleUserAvatar()");
 assert(!/update\(ref\(/.test(signOut), "Account switching must not flush protected data from the client.");
 
+const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+const nativeEntry = fs.readFileSync("scripts/native-plugins-entry.js", "utf8");
+assert(packageJson.dependencies?.["@capacitor-firebase/app-check"] === "8.6.0",
+  "Native Firebase App Check must use the Capacitor 8-compatible pinned plugin.");
+assert(nativeEntry.includes('export { FirebaseAppCheck } from "@capacitor-firebase/app-check";'),
+  "The native App Check bridge must be included in the locally bundled plugin runtime.");
+const appCheckClient = block('async function getNexoraAppCheckToken()', 'const NEXORA_DEFAULT_CONFIG');
+assert(appCheckClient.includes("FirebaseAppCheck.initialize()") &&
+  appCheckClient.includes("FirebaseAppCheck.setTokenAutoRefreshEnabled({ isTokenAutoRefreshEnabled: true })") &&
+  appCheckClient.includes("FirebaseAppCheck.getToken()"),
+  "Native App Check must initialize Play Integrity, refresh tokens and retrieve a token.");
+assert(appCheckClient.includes("if (!window.Capacitor?.isNativePlatform?.()) return") &&
+  appCheckClient.includes('return ""') &&
+  appCheckClient.includes("continuing in monitor-only mode"),
+  "App Check must remain native-only and fail open while server enforcement is disabled.");
+assert(source.includes('...(appCheckToken ? { "x-firebase-appcheck": appCheckToken } : {})') &&
+  source.includes("...(appCheckToken ? { 'x-firebase-appcheck': appCheckToken } : {})"),
+  "Both push registration and social requests must attach an available App Check token without blocking legacy clients.");
+assert(source.includes('const appCheckToken = await getNexoraAppCheckToken();'),
+  "Push and social requests must request the current App Check token.");
+assert(source.includes("await firebaseUser.getIdToken()") && source.includes("await user.getIdToken()"),
+  "App Check integration must retain Firebase ID-token authentication.");
+
 const pushFunction = fs.readFileSync("supabase/functions/nexora-push-register/index.ts", "utf8");
 assert(source.includes('"Authorization": "Bearer " + idToken'),
   "FCM registration must send a Firebase ID token.");
