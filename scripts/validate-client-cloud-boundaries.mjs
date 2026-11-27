@@ -67,4 +67,14 @@ assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").mayb
 assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
   "Social actions must reject draft, hidden and nonexistent dramas.");
 
+const workflow = fs.readFileSync(".github/workflows/android-apk.yml", "utf8");
+const upgradeTest = workflow.slice(
+  workflow.indexOf("      - name: Test real in-place upgrade from the previous signed release"),
+  workflow.indexOf("      - name: Sign release AAB")
+);
+assert(upgradeTest.includes("github.ref == 'refs/heads/main'") &&
+  upgradeTest.includes("github.event_name == 'push'") &&
+  upgradeTest.includes("github.event_name == 'workflow_dispatch'"),
+  "The in-place upgrade test must run only for production release builds, not same-version pull requests.");
+
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries, atomic authenticated FCM registration, owned-device broadcasts, and published-only social access are enforced.");
