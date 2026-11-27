@@ -84,11 +84,11 @@ gradle_text = app_gradle.read_text()
 bom = 'implementation platform("com.google.firebase:firebase-bom:35.2.0")'
 dependency = 'implementation "com.google.firebase:firebase-appcheck-playintegrity"'
 if "firebase-appcheck-playintegrity" not in gradle_text:
-    match = re.search(r"dependencies\\s*\\{", gradle_text)
+    match = re.search(r"dependencies\s*\{", gradle_text)
     if not match:
         raise SystemExit("Could not find Android app dependencies block for Firebase App Check")
     insert_at = match.end()
-    gradle_text = gradle_text[:insert_at] + "\\n    " + bom + "\\n    " + dependency + gradle_text[insert_at:]
+    gradle_text = gradle_text[:insert_at] + "\n    " + bom + "\n    " + dependency + gradle_text[insert_at:]
     app_gradle.write_text(gradle_text)
 
 appcheck_plugin = package_dir / "NexoraAppCheckPlugin.java"
@@ -126,20 +126,20 @@ main_text = main.read_text()
 if "NexoraAppCheckPlugin" not in main_text:
     main_text = main_text.replace(
         "import com.devcedrick.nexoraaidrama.NexoraUpdaterPlugin;",
-        "import com.devcedrick.nexoraaidrama.NexoraUpdaterPlugin;\\nimport com.devcedrick.nexoraaidrama.NexoraAppCheckPlugin;"
+        "import com.devcedrick.nexoraaidrama.NexoraUpdaterPlugin;\nimport com.devcedrick.nexoraaidrama.NexoraAppCheckPlugin;"
     )
     main_text = main_text.replace(
         "registerPlugin(NexoraUpdaterPlugin.class);",
-        "registerPlugin(NexoraUpdaterPlugin.class);\\n        registerPlugin(NexoraAppCheckPlugin.class);"
+        "registerPlugin(NexoraUpdaterPlugin.class);\n        registerPlugin(NexoraAppCheckPlugin.class);"
     )
 if "PlayIntegrityAppCheckProviderFactory" not in main_text:
     main_text = main_text.replace(
         "import com.getcapacitor.BridgeActivity;",
-        "import com.getcapacitor.BridgeActivity;\\nimport com.google.firebase.FirebaseApp;\\nimport com.google.firebase.appcheck.FirebaseAppCheck;\\nimport com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory;"
+        "import com.getcapacitor.BridgeActivity;\nimport com.google.firebase.FirebaseApp;\nimport com.google.firebase.appcheck.FirebaseAppCheck;\nimport com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory;"
     )
     main_text = main_text.replace(
         "    public void onCreate(android.os.Bundle savedInstanceState) {",
-        "    public void onCreate(android.os.Bundle savedInstanceState) {\\n        FirebaseApp.initializeApp(this);\\n        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance());"
+        "    public void onCreate(android.os.Bundle savedInstanceState) {\n        FirebaseApp.initializeApp(this);\n        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance());"
     )
 main.write_text(main_text)
 
