@@ -47,11 +47,11 @@ jobs:
             exit 1
           fi
 
-          HTTP_STATUS="$(curl --silent --show-error --retry 3 --retry-delay 5 --retry-max-time 90 \\
-            --max-time 45 -o /tmp/nexora-push-response.json -w "%{http_code}" \\
-            -X POST "https://vureiymqoosubwubhvdu.supabase.co/functions/v1/nexora-push-broadcast" \\
-            -H "Content-Type: application/json" \\
-            -H "x-nexora-release-secret: $NEXORA_RELEASE_WEBHOOK_SECRET" \\
+          HTTP_STATUS="$(curl --silent --show-error --retry 3 --retry-delay 5 --retry-max-time 90 \
+            --max-time 45 -o /tmp/nexora-push-response.json -w "%{http_code}" \
+            -X POST "https://vureiymqoosubwubhvdu.supabase.co/functions/v1/nexora-push-broadcast" \
+            -H "Content-Type: application/json" \
+            -H "x-nexora-release-secret: $NEXORA_RELEASE_WEBHOOK_SECRET" \
             --data "{\"version\":\"$APP_VERSION\"}")"
 
           cat /tmp/nexora-push-response.json
