@@ -18,8 +18,7 @@
     "hls.js": "1.7.4",
     "lucide": "1.81.0",
     "@supabase/supabase-js": "2.119.2",
-    "firebase": "11.6.1",
-    "@capacitor-firebase/app-check": "8.6.0"
+    "firebase": "11.6.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0",
