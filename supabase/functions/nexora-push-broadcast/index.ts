@@ -8,6 +8,10 @@ const cors = {
 };
 
 Deno.serve(async (req: Request) => {
+  let claimAdmin: any = null;
+  let claimedEventKey = "";
+  let claimToken = "";
+  let deliveredCount = 0;
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST required" }, 405);
 
@@ -26,9 +30,8 @@ Deno.serve(async (req: Request) => {
     const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!url || !key) return json({ error: "Server configuration unavailable" }, 500);
     const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+    claimAdmin = admin;
     const eventKey = "app_update:" + version;
-    const { data: existing } = await admin.from("nexora_push_events").select("event_key").eq("event_key", eventKey).maybeSingle();
-    if (existing) return json({ ok: true, duplicate: true, sent: 0 });
 
     const serviceJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
     if (!serviceJson) return json({ error: "Firebase sender is not configured" }, 500);
@@ -40,9 +43,19 @@ Deno.serve(async (req: Request) => {
     const { data: devices, error: deviceError } = await admin.from("nexora_push_devices").select("token").not("user_id", "is", null);
     if (deviceError) throw deviceError;
     if (!devices?.length) {
-      // Do not record the release as delivered when there are no registered devices.
+      // Do not claim the release as delivered when there are no registered devices.
       return json({ ok: true, version, sent: 0, reason: "No registered Android devices yet; retry after registration" });
     }
+
+    claimToken = crypto.randomUUID();
+    const { data: claimed, error: claimError } = await admin.rpc("nexora_claim_push_event", {
+      p_event_key: eventKey,
+      p_claim_token: claimToken
+    });
+    if (claimError) throw claimError;
+    if (claimed !== true) return json({ ok: true, duplicate: true, sent: 0 });
+    claimedEventKey = eventKey;
+
     const accessToken = await getFirebaseAccessToken(account);
     let sent = 0;
     const invalid: string[] = [];
@@ -67,7 +80,7 @@ Deno.serve(async (req: Request) => {
         })
       });
       const result = await response.json().catch(() => ({}));
-      if (response.ok) sent++;
+      if (response.ok) { sent++; deliveredCount++; }
       else {
         const code = result?.error?.details?.find((item: any) => item?.errorCode)?.errorCode;
         if (code === "UNREGISTERED" || code === "INVALID_ARGUMENT") invalid.push(device.token);
@@ -78,10 +91,23 @@ Deno.serve(async (req: Request) => {
       const { error } = await admin.from("nexora_push_devices").delete().in("token", invalid);
       if (error) throw error;
     }
-    const { error: eventError } = await admin.from("nexora_push_events").insert({ event_key: eventKey, episode_id: "app_update" });
-    if (eventError && eventError.code !== "23505") throw eventError;
+    const { data: completed, error: completeError } = await admin.rpc("nexora_complete_push_event", {
+      p_event_key: eventKey,
+      p_claim_token: claimToken
+    });
+    if (completeError) throw completeError;
+    if (completed !== true) throw new Error("Could not finalize update notification event");
+    claimedEventKey = "";
     return json({ ok: true, version, sent, invalidTokensRemoved: invalid.length });
   } catch (error) {
+    // Release only when no FCM delivery succeeded. If any device received the
+    // notification, retain the claim to avoid duplicate broadcasts on retries.
+    if (claimAdmin && claimedEventKey && claimToken && deliveredCount === 0) {
+      await claimAdmin.rpc("nexora_release_push_event", {
+        p_event_key: claimedEventKey,
+        p_claim_token: claimToken
+      }).catch(() => {});
+    }
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
 });
