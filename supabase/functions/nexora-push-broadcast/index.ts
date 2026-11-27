@@ -40,9 +40,26 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Firebase service-account configuration is invalid" }, 500);
     }
 
-    const { data: devices, error: deviceError } = await admin.from("nexora_push_devices").select("token").not("user_id", "is", null);
-    if (deviceError) throw deviceError;
-    if (!devices?.length) {
+    // Supabase/PostgREST may cap a response at 1,000 rows. Fetch every
+    // registered token with a stable keyset cursor so large user bases are
+    // not silently skipped by the default row limit.
+    const devices: Array<{ token: string }> = [];
+    let lastToken = "";
+    while (true) {
+      let deviceQuery = admin.from("nexora_push_devices")
+        .select("token")
+        .not("user_id", "is", null)
+        .order("token", { ascending: true })
+        .limit(1000);
+      if (lastToken) deviceQuery = deviceQuery.gt("token", lastToken);
+      const { data: page, error: deviceError } = await deviceQuery;
+      if (deviceError) throw deviceError;
+      if (!page?.length) break;
+      devices.push(...page);
+      lastToken = page[page.length - 1].token;
+      if (page.length < 1000) break;
+    }
+    if (!devices.length) {
       // Do not claim the release as delivered when there are no registered devices.
       return json({ ok: true, version, sent: 0, reason: "No registered Android devices yet; retry after registration" });
     }
