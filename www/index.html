@@ -2120,7 +2120,7 @@
       // Never fall back to email: it is mutable and is not an authorization key.
       const saved = vault[uidKey]?.snapshot;
       if (!saved || typeof saved !== 'object') return false;
-       state.purchasedCoins = Math.max(0, Math.floor(Number(saved.purchasedCoins) || 0));
+      state.purchasedCoins = Math.max(0, Math.floor(Number(saved.purchasedCoins) || 0));
       state.bonusCoins = Math.max(0, Math.floor(Number(saved.bonusCoins) || 0));
       const exp = Number(saved.vipExpiresAt) || 0;
       state.vipExpiresAt = exp;
@@ -2173,7 +2173,7 @@
         state.likedSeries = {};
         state.commentsBySeries = {};
         state.socialLikesCount = {};
-         if (parsed.wte && typeof parsed.wte === 'object') {
+        if (parsed.wte && typeof parsed.wte === 'object') {
           state.wte = { ...state.wte, ...parsed.wte };
         }
         if (parsed.dailyCheckIn && typeof parsed.dailyCheckIn === 'object') {
