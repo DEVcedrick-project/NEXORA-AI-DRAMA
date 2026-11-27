@@ -1007,18 +1007,32 @@
     let nexoraAppCheckInitPromise = null;
     async function getNexoraAppCheckToken() {
       if (!window.Capacitor?.isNativePlatform?.()) return "";
+      let timeoutId;
       try {
         if (!nexoraAppCheckInitPromise) {
-          nexoraAppCheckInitPromise = (async () => {
+          const initialization = (async () => {
             await NexoraAppCheck.initialize();
           })();
+          nexoraAppCheckInitPromise = initialization.catch(error => {
+            nexoraAppCheckInitPromise = null;
+            throw error;
+          });
         }
-        await nexoraAppCheckInitPromise;
-        const result = await NexoraAppCheck.getToken();
-        return typeof result?.token === "string" ? result.token : "";
+        const tokenResult = await Promise.race([
+          (async () => {
+            await nexoraAppCheckInitPromise;
+            return await NexoraAppCheck.getToken();
+          })(),
+          new Promise(resolve => {
+            timeoutId = setTimeout(() => resolve(null), 2500);
+          })
+        ]);
+        return typeof tokenResult?.token === "string" ? tokenResult.token : "";
       } catch (error) {
         console.warn("[NEXORA App Check] Attestation token unavailable; continuing in monitor-only mode.", error);
         return "";
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
       }
     }
 
