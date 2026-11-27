@@ -1000,7 +1000,7 @@
     } from "/vendor/firebase.js";
     import { getDatabase, ref, get, onValue, update, serverTimestamp } from "/vendor/firebase.js";
     import { createClient } from "/vendor/supabase.js";
-    import { FirebaseAppCheck } from "/vendor/nexora-native-plugins.js";
+    import { NexoraAppCheck } from "/vendor/nexora-native-plugins.js";
 
     // Native Play Integrity-backed Firebase App Check. This is deliberately
     // best-effort while server enforcement remains in monitor-only mode.
@@ -1010,11 +1010,11 @@
       try {
         if (!nexoraAppCheckInitPromise) {
           nexoraAppCheckInitPromise = (async () => {
-            await FirebaseAppCheck.initialize({ isTokenAutoRefreshEnabled: true });
+            await NexoraAppCheck.initialize();
           })();
         }
         await nexoraAppCheckInitPromise;
-        const result = await FirebaseAppCheck.getToken();
+        const result = await NexoraAppCheck.getToken();
         return typeof result?.token === "string" ? result.token : "";
       } catch (error) {
         console.warn("[NEXORA App Check] Attestation token unavailable; continuing in monitor-only mode.", error);
