@@ -65,6 +65,14 @@ assert(pushFunction.includes('registration === "device_limit"') &&
   "Push registration must handle atomic device-limit and token-conflict outcomes.");
 assert(!pushFunction.includes(".upsert("),
   "Push registration must not bypass the atomic database registration RPC.");
+const pushCleanupMigration = fs.readFileSync("supabase/migrations/20261127170000_nexora_push_stale_device_cleanup.sql", "utf8");
+assert(pushCleanupMigration.includes("last_seen_at < pg_catalog.now() - interval '180 days'") &&
+  pushCleanupMigration.includes("token <> p_token") &&
+  pushCleanupMigration.includes("v_device_count >= 5"),
+  "Push registration must retire dormant devices before enforcing the five-device cap.");
+assert(pushCleanupMigration.includes("pg_advisory_xact_lock") &&
+  pushCleanupMigration.includes("token_conflict"),
+  "Stale-device cleanup must preserve atomic registration locks and cross-account token protection.");
 
 const pushClient = block("// Keep the latest FCM token", "// Native Android push notifications (FCM).");
 assert(pushClient.includes("for (let attempt = 0; attempt < 3; attempt++)"),
