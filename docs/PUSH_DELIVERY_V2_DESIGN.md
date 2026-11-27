@@ -96,3 +96,9 @@ All functions must use an empty `search_path`, schema-qualify objects, be SECURI
 7. Retain a rollback path that restores the v17 worker without dropping the additive schema.
 
 No schema changes or function deployments were performed as part of this design.
+
+## Migration-first compatibility safeguard
+
+The candidate migration also updates the existing `nexora_claim_push_event(text,text)` RPC in place so the currently deployed v17 worker writes the new `lease_expires_at` field using its existing 15-minute claim duration. Without this bridge, an active v1 worker could refresh `created_at` while leaving an old/expired lease timestamp behind, allowing a v2 worker to steal its claim. The bridge keeps v1 and v2 claim paths on the same lease field during the migration-first rollout. This is a candidate source change only; it has not been applied or exercised against a disposable database yet.
+
+A SQL contract assertion file is included at `supabase/tests/nexora_push_delivery_lease_v2.sql`. It checks schema presence, RPC existence, key ACLs, invoker/search-path posture, completion gating, and indexes after applying the candidate migration to a disposable Supabase project. It does not replace multi-session concurrency and worker integration tests.
