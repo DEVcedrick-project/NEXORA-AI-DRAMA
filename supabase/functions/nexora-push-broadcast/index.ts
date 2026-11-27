@@ -69,8 +69,11 @@ Deno.serve(async (req: Request) => {
     let invalidTokensRemoved = 0;
     for (const device of pending || []) {
       const attemptedAt = new Date().toISOString();
+      // Persist "sending" before the network call. If the process dies or
+      // the response is lost after FCM accepts the message, this row is
+      // deliberately not retried automatically (unknown outcome).
       const { error: attemptError } = await admin.from("nexora_push_deliveries")
-        .update({ attempt_count: Number(device.attempt_count || 0) + 1, last_attempt_at: attemptedAt, updated_at: attemptedAt })
+        .update({ status: "sending", attempt_count: Number(device.attempt_count || 0) + 1, last_attempt_at: attemptedAt, updated_at: attemptedAt })
         .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
       if (attemptError) throw attemptError;
 
@@ -102,21 +105,27 @@ Deno.serve(async (req: Request) => {
         const sentAt = new Date().toISOString();
         const { error: markSentError } = await admin.from("nexora_push_deliveries")
           .update({ status: "sent", sent_at: sentAt, updated_at: sentAt })
-          .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
+           .eq("event_key", eventKey).eq("token", device.token).eq("status", "sending");
         if (markSentError) throw markSentError;
       } else {
         const code = result?.error?.details?.find((item: any) => item?.errorCode)?.errorCode;
         if (code === "UNREGISTERED") {
           const { error: markInvalidError } = await admin.from("nexora_push_deliveries")
             .update({ status: "invalid", updated_at: new Date().toISOString() })
-            .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
+             .eq("event_key", eventKey).eq("token", device.token).eq("status", "sending");
           if (markInvalidError) throw markInvalidError;
           const { error: deleteError } = await admin.from("nexora_push_devices")
             .delete().eq("token", device.token).eq("app_id", APP_ID);
           if (deleteError) throw deleteError;
           invalidTokensRemoved++;
         } else {
-          throw new Error(`FCM send failed (${response.status}): ${JSON.stringify(result).slice(0, 400)}`);
+          // A concrete FCM rejection means this request was not accepted;
+          // return it to pending so a later run can retry safely.
+          const { error: retryError } = await admin.from("nexora_push_deliveries")
+            .update({ status: "pending", updated_at: new Date().toISOString() })
+            .eq("event_key", eventKey).eq("token", device.token).eq("status", "sending");
+          if (retryError) throw retryError;
+          throw new Error(`FCM send rejected (${response.status}): ${JSON.stringify(result).slice(0, 400)}`);
         }
       }
     }
