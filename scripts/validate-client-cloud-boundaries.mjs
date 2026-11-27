@@ -54,6 +54,11 @@ const appCheckClient = block('async function getNexoraAppCheckToken()', 'const N
 assert(appCheckClient.includes("NexoraAppCheck.initialize()") &&
   appCheckClient.includes("NexoraAppCheck.getToken()"),
   "The client must initialize the native bridge and retrieve App Check tokens.");
+assert(appCheckClient.includes("setTimeout(() => resolve(null), 2500)") &&
+  appCheckClient.includes("clearTimeout(timeoutId)"),
+  "App Check token lookup must be time-bounded so unavailable attestation cannot stall push or social requests.");
+assert(appCheckClient.includes("nexoraAppCheckInitPromise = null"),
+  "Failed App Check initialization must be retryable without reinstalling or signing out the user.");
 assert(appCheckClient.includes("if (!window.Capacitor?.isNativePlatform?.()) return") &&
   appCheckClient.includes('return ""') &&
   appCheckClient.includes("continuing in monitor-only mode"),
