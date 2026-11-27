@@ -2287,15 +2287,17 @@
         let lastError = null;
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
+            const appCheckToken = await getNexoraAppCheckToken();
+            const headers = {
+              "Content-Type": "application/json",
+              "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
+              "Authorization": "Bearer " + idToken,
+              "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
+            };
+            if (appCheckToken) headers["X-Firebase-AppCheck"] = appCheckToken;
             const response = await fetch(endpoint, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
-                "Authorization": "Bearer " + idToken,
-                ...(await getNexoraAppCheckToken() ? { "X-Firebase-AppCheck": await getNexoraAppCheckToken() } : {}),
-                "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
-              },
+              headers,
               body: JSON.stringify({
                 token: tokenValue,
                 app_version: APP_CURRENT_VERSION,
