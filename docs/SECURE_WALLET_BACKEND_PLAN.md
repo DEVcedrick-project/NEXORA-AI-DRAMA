@@ -5,13 +5,13 @@ Date: 2026-11-25
 
 ## Project boundary
 
-The only connected Supabase project currently visible is **NEXORA-STUDIO** (`gbpjixlubrmgzqflbkwz`). The viewer app uses it for the published drama catalog. Its configured catalog URL is present, but the separate wallet Supabase URL and key in the viewer app are empty by default.
+The dedicated **NEXORA-NEXORA-AI-DRAMA** Supabase project now exists (`vureiymqoosubwubhvdu`, region `ap-northeast-1`, status `ACTIVE_HEALTHY`). **NEXORA-STUDIO** (`gbpjixlubrmgzqflbkwz`) remains separate and is used only for the Studio product/source integrations. The viewer app reads its published catalog from the dedicated AI DRAMA project; the client wallet backend is not yet integrated.
 
 Do not put viewer wallet tables, wallet functions, or viewer-specific policies into NEXORA-STUDIO. Keep the studio catalog and existing Studio integrations isolated. The user's current payment instruction is no Xendit and no automatic Maya/GCash verification; this design does not enable checkout or payment fulfillment.
 
 ## Required dedicated backend
 
-Provision a separate Supabase project for NEXORA AI DRAMA wallet services (or use another explicitly approved trusted backend). No project was created because the organization and any recurring cost have not been approved.
+Provision a separate Supabase project for NEXORA AI DRAMA wallet services (or use another explicitly approved trusted backend). The dedicated project has since been provisioned. No wallet Edge Function, trusted wallet ledger, or Firebase-token-authenticated wallet API has yet been deployed.
 
 ## Authentication
 
@@ -55,10 +55,11 @@ Provision a separate Supabase project for NEXORA AI DRAMA wallet services (or us
 7. Run database advisors, negative authorization tests, replay tests and device tests.
 8. Rebuild signed APK/AAB only after all server and client tests pass.
 
-## Current verified findings
+## Current verified findings (2026-11-27)
 
-- NEXORA-STUDIO is the only Supabase project visible to the connected account and is healthy.
-- Its security advisor reports one warning: leaked-password protection is disabled. This was not changed because the project is NEXORA-STUDIO and changing Auth settings could affect the separate Studio product.
-- NEXORA AI DRAMA's configured Studio catalog uses the Studio project; its separate wallet Supabase URL/key are blank by default.
-- Existing local wallet state is not server-authoritative.
-- No backend deployment or live database modification was made as part of this plan.
+- The dedicated NEXORA-NEXORA-AI-DRAMA Supabase project is `ACTIVE_HEALTHY` and is separate from NEXORA-STUDIO.
+- The dedicated project contains `user_wallets` and `unlocked_episodes` with RLS enabled and explicit client-deny policies.
+- The viewer client has been changed to stop direct wallet/unlock reads and writes; its wallet and coin unlock state remains local-only until the trusted API is deployed.
+- The live security advisor now reports only the no-policy informational notice on `nexora_payment_orders`, which is outside this plan's scope.
+- Existing local wallet state is not server-authoritative and must not be imported as trusted balances without a verified migration policy.
+- No wallet API or ledger has yet been deployed. The separate project was inspected and its social-table deny policies were hardened, but no Studio project or Studio data was modified.
