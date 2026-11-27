@@ -74,6 +74,34 @@ assert(socialFunction.includes('db.rpc("nexora_create_social_comment"') &&
   socialFunction.includes('if(created!==true) return reply(429'),
   "Social comment rate limits must be enforced atomically in PostgreSQL.");
 
+const appCheckBridge = fs.readFileSync("scripts/install-native-updater.py", "utf8");
+const nativePlugins = fs.readFileSync("scripts/native-plugins-entry.js", "utf8");
+const appCheckShared = fs.readFileSync("supabase/functions/_shared/nexora-app-check.ts", "utf8");
+assert(appCheckBridge.includes("firebase-appcheck-playintegrity") &&
+  appCheckBridge.includes("PlayIntegrityAppCheckProviderFactory.getInstance()") &&
+  appCheckBridge.includes("NexoraAppCheckPlugin.class"),
+  "Android builds must initialize Play Integrity App Check and register its native token bridge.");
+assert(nativePlugins.includes('registerPlugin("NexoraAppCheck")') &&
+  source.includes('getNexoraAppCheckHeaders()') &&
+  source.includes('"X-Firebase-AppCheck": token'),
+  "Native app requests must attach Firebase App Check tokens when available.");
+assert(appCheckShared.includes("firebaseappcheck.googleapis.com/v1/jwks") &&
+  appCheckShared.includes('algorithms: ["RS256"]') &&
+  appCheckShared.includes("projects/") &&
+  appCheckShared.includes('payload.sub !== APP_ID'),
+  "Backend App Check verification must validate Firebase signature, issuer, audience, and app identity.");
+assert(appCheckShared.includes('NEXORA_APP_CHECK_ENFORCE') &&
+  appCheckShared.includes('=== "true"'),
+  "App Check enforcement must remain explicitly opt-in until Firebase Console registration and monitoring are complete.");
+for (const [path, code] of [
+  ["supabase/functions/nexora-push-register/index.ts", "x-firebase-appcheck"],
+  ["supabase/functions/nexora-social/index.ts", "x-firebase-appcheck"],
+]) {
+  const endpoint = fs.readFileSync(path, "utf8");
+  assert(endpoint.includes("verifyNexoraAppCheck") && endpoint.includes(code),
+    `${path} must accept and verify App Check tokens.`);
+}
+
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
 const publishedVersion = JSON.parse(fs.readFileSync("update.json", "utf8")).version;
 const versionParts = value => value.split(".").map(Number);
