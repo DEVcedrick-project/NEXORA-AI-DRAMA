@@ -1256,7 +1256,7 @@
       if (runtime.splashTimer) clearTimeout(runtime.splashTimer);
       runtime.splashTimer = setTimeout(() => {
         dismissSplashScreen();
-      }, 2800);
+      }, 2000);
     }
 
     function drawNexoraBrandArtwork(ctx, w, h, mode = 'icon') {
@@ -1359,13 +1359,13 @@
       const snippetEl = document.getElementById('capacitor-splash-snippet');
       if (snippetEl) {
         snippetEl.textContent = JSON.stringify({
-          appId: "com.nexora.aidrama",
+          appId: "com.devcedrick.nexoraaidrama",
           appName: "NEXORA AI DRAMA",
           webDir: "www",
           plugins: {
             SplashScreen: {
-              launchShowDuration: 2800,
-              backgroundColor: "#06060b",
+              launchShowDuration: 2000,
+              backgroundColor: "#090512",
               androidSplashResourceName: "splash",
               showSpinner: false
             }
@@ -5481,7 +5481,7 @@
       });
 
       // Keep the branded intro visible long enough for the logo and loading animation.
-      runtime.splashTimer = setTimeout(() => dismissSplashScreen(), 2800);
+      runtime.splashTimer = setTimeout(() => dismissSplashScreen(), 2000);
 
       // Ask for notification permission only after the first screen is visible,
       // so the Android permission dialog never interrupts the branded splash.
