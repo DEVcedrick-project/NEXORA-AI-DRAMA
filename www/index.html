@@ -1034,7 +1034,7 @@
       }
     };
 
-    const APP_CURRENT_VERSION = 'v2.6.39';
+    const APP_CURRENT_VERSION = 'v2.6.42';
     const APP_UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json';
     const APP_UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
     let updateCheckInFlight = null;
@@ -4214,12 +4214,16 @@
         const previousId = runtime.lastSettledFeedSeriesId || state.activeSeriesId;
         state.activeSeriesId = newId; runtime.lastSettledFeedSeriesId = newId;
         if (previousId && previousId !== newId) runtime.feedSwipeCount = (runtime.feedSwipeCount || 0) + 1;
-        const shouldShowSwipeAd = runtime.feedSwipeCount >= 2;
-        if (shouldShowSwipeAd) runtime.feedSwipeCount = 0;
-        const canShowSwipeAd = shouldShowSwipeAd && !isVipEntitled() && runtime.interstitialReady
+        // VIP viewers never receive interstitials. For everyone else, keep the
+        // two-swipe threshold pending until an ad is actually ready to display.
+        if (isVipEntitled()) runtime.feedSwipeCount = 0;
+        const swipeAdDue = !isVipEntitled() && runtime.feedSwipeCount >= 2;
+        const canShowSwipeAd = swipeAdDue && runtime.interstitialReady
           && !runtime.interstitialInFlight && !runtime.adInFlight;
         if (canShowSwipeAd) {
-          // Hold the incoming episode until the interstitial is dismissed.
+          // Consume the threshold only when the ad can really be presented.
+          // If AdMob has no fill yet, the due ad remains queued for a later swipe.
+          runtime.feedSwipeCount = 0;
           runtime.isPaused = true;
           const adTask = showInterstitialIfReady('feed-swipe', { pausePlayback: true });
           mountActiveEpisodeMedia(newId); void adTask;
