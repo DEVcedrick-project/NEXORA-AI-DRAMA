@@ -123,6 +123,8 @@ jobs:
       - name: Install native in-app APK updater
         run: |
           python scripts/install-native-updater.py
+      - name: Install native Firebase App Check Play Integrity bridge
+        run: python scripts/install-native-app-check.py
       - name: Configure NEXORA AI DRAMA Firebase Android app
         run: |
           test -s google-services.json
