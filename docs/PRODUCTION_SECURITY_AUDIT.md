@@ -29,16 +29,35 @@ Scope: Android packaging/updater, Firebase, Supabase catalog/social/push, playba
 - Explicit deny-all policies were added to social likes, saves, and comments; the Firebase-token-verifying `nexora-social` Edge Function continues to access them with server credentials. The live security advisor now reports only one informational no-policy notice on `nexora_payment_orders`, which is outside this audit scope. Do not add client access to that table as part of this work.
 - Performance advisor reported one unused social-saves index. No index was removed without workload evidence.
 
+### Published catalog and social access
+
+- Live catalog inspection confirmed 2 published dramas and 28 published episodes; all 28 video URLs and all populated thumbnail URLs use HTTPS.
+- The viewer previously interpolated the genre field directly into an inline JavaScript handler and trusted catalog IDs/media URLs. The client now accepts only UUID drama IDs, bounded integer episode numbers, HTTPS media URLs without embedded credentials, and escaped/encoded genre text. CI now includes a regression validator for these boundaries.
+- The privileged `nexora-social` Edge Function previously accepted arbitrary series IDs without checking that the target was published. It now validates UUID format and confirms the drama exists with `status='published'` before any social read/write. The function is deployed at version 5 and its source is now tracked in this repository.
+- Live RLS inspection confirms public SELECT access is limited to published catalog rows and client access to social, push, wallet and unlock tables is denied. Privileged server functions therefore remain responsible for all social and push writes.
+
 ### Push notifications
 
 - The project has active `nexora-push-register`, `nexora-push-broadcast`, `nexora-social`, and `studio-content-sync` Edge Functions.
 - The broadcast function requires a server-side release secret and Firebase service-account JSON. Secret presence and real FCM delivery were not verified in this audit.
-- New registrations now require a Firebase ID token whose signature, issuer, audience and expiry are verified; the Firebase UID is stored with the device and registration is capped at five devices per account. A CI smoke test rejects missing and invalid tokens. Firebase App Check attestation is still not configured, and the two legacy device rows remain unlinked until clients re-register. Real foreground/background notification delivery and tap routing still need device testing.
+- New registrations require a Firebase ID token whose signature, issuer, audience and expiry are verified; the Firebase UID is stored with the device and registration is capped at five devices per account. Registration now rejects a token already associated with a different account unless the same installation is switching accounts. The live function is deployed at version 9 and CI checks the ownership guard.
+- Live database inspection currently shows 1 registered device row without a Firebase UID. It is a legacy registration and is not linked to an authenticated account yet; a fresh app registration is needed to associate it.
+- Firebase App Check / Play Integrity attestation and request rate limiting are still not configured. Real foreground/background delivery and tap routing still need physical-device testing.
 - Physical foreground/background notification delivery and tap routing still need device testing.
+
+### Additional runtime and supply-chain findings
+
+- The app currently loads Tailwind from its browser CDN and Lucide from an unpinned `@latest` URL at runtime; Google Fonts and HLS.js are also remote. There is no Content Security Policy or Subresource Integrity in the HTML. A cold launch or playback can therefore depend on network/CDN availability, and unpinned third-party code is a supply-chain exposure. Bundle/pin runtime assets locally and add a tested restrictive CSP before treating offline startup as reliable.
+- The repository has no `package-lock.json`, while CI runs `npm install` against caret-ranged dependencies. This makes dependency resolution less reproducible between builds. Generate and commit a lockfile, then use `npm ci`.
+- The Android workflow previously used `cancel-in-progress: true`, so successive pushes cancelled an active emulator/release verification. This is now disabled to let a running verification finish; GitHub still keeps only one pending run per concurrency group, so avoid rapid batches of commits.
+- A complete account deletion path is still absent: the viewer contains sign-out but no Firebase account deletion call or public deletion-request page.
+- Coin balances, rewarded-ad rewards and episode unlock state remain local-device state, not server-authoritative. This is not a subscription finding; it is an integrity and cross-device persistence limitation. Do not represent local rewards as secure or transferable.
+- The Supabase performance advisor currently reports two informational unused indexes: `nexora_social_saves_user_idx` and `nexora_push_devices_user_id_idx`. Do not drop either without workload evidence; the device index may become useful as registration grows.
 
 ### Android updater and release workflow
 
 - The in-place upgrade shell test was moved to a standalone Bash script because the emulator runner evaluates shell script lines separately.
+- The shell sentinel-write and V3 signing-certificate fingerprint parsing defects are corrected. Workflow run 45930027241 completed successfully. The subsequent catalog/push security hardening has a new CI verification queued; do not treat those newest changes as release-verified until that run succeeds.
 - The test validates official manifest URL/checksum, package ID, semantic version increase, APK signatures, matching signing certificate, install-over-install behavior, app UID, and an app-specific external-storage sentinel.
 - The sentinel does not directly prove private WebView localStorage retention; add an app-level data continuity test for that.
 - Workflow run 45926173884 failed before emulator testing because Maven Central returned HTTP 429 for multiple Gradle dependencies. A Google-hosted Maven Central mirror fallback has now been added to generated Android Gradle repositories. The follow-up CI run must confirm the fix.
