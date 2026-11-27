@@ -43,14 +43,20 @@ assert(pushFunction.includes("jwtVerify") && pushFunction.includes("securetoken.
   "Push registration must cryptographically verify Firebase ID tokens.");
 assert(pushFunction.includes('audience: PROJECT_ID') && pushFunction.includes('issuer: `https://securetoken.google.com/${PROJECT_ID}`'),
   "Push registration must validate the Firebase token issuer and audience.");
-assert(pushFunction.includes("MAX_DEVICES_PER_USER = 5") && pushFunction.includes('.eq("user_id", userId)'),
-  "Push registration must enforce the per-account device limit.");
-assert(pushFunction.includes('.select("token,user_id,install_id")'),
-  "Push registration must inspect the existing FCM token owner and install identity.");
-assert(pushFunction.includes("existing?.user_id && existing.user_id !== userId && existing.install_id !== installId"),
-  "An FCM token must not be reassigned across unrelated accounts.");
-assert(pushFunction.includes("existing?.user_id !== userId && (count ?? 0) >= MAX_DEVICES_PER_USER"),
-  "The device cap must also apply when a token changes account ownership.");
+assert(pushFunction.includes("MAX_DEVICES_PER_USER = 5"),
+  "Push registration must keep the five-device account limit.");
+assert(pushFunction.includes('admin.rpc("nexora_register_push_device"'),
+  "Push registration must use the atomic database registration RPC.");
+assert(pushFunction.includes("p_token: token") &&
+  pushFunction.includes("p_user_id: userId") &&
+  pushFunction.includes("p_app_version: version") &&
+  pushFunction.includes("p_install_id: installId"),
+  "The atomic registration RPC must receive the verified Firebase identity and validated device metadata.");
+assert(pushFunction.includes('registration === "device_limit"') &&
+  pushFunction.includes('registration === "token_conflict"'),
+  "Push registration must handle atomic device-limit and token-conflict outcomes.");
+assert(!pushFunction.includes(".upsert("),
+  "Push registration must not bypass the atomic database registration RPC.");
 
 
 const socialFunction = fs.readFileSync("supabase/functions/nexora-social/index.ts", "utf8");
