@@ -83,7 +83,8 @@ Deno.serve(async (req: Request) => {
       if (response.ok) { sent++; deliveredCount++; }
       else {
         const code = result?.error?.details?.find((item: any) => item?.errorCode)?.errorCode;
-        if (code === "UNREGISTERED" || code === "INVALID_ARGUMENT") invalid.push(device.token);
+        if (code === "UNREGISTERED") invalid.push(device.token);
+        else throw new Error(`FCM send failed (${response.status}): ${JSON.stringify(result).slice(0, 400)}`);
         else throw new Error(`FCM send failed (${response.status}): ${JSON.stringify(result).slice(0, 400)}`);
       }
     }
