@@ -2270,11 +2270,21 @@
               installId = crypto.randomUUID();
               localStorage.setItem("nexora_push_install_id", installId);
             }
+            if (!await ensureFirebaseAuthReady()) {
+              throw new Error("Firebase authentication is not ready for secure push registration.");
+            }
+            await runtime.fbAuth?.authStateReady?.();
+            const firebaseUser = runtime.fbAuth?.currentUser;
+            if (!firebaseUser) {
+              throw new Error("Sign in to Firebase before registering this device for notifications.");
+            }
+            const idToken = await firebaseUser.getIdToken();
             const endpoint = NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register";
             const response = await fetch(endpoint, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                "Authorization": "Bearer " + idToken,
                 "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
               },
               body: JSON.stringify({
