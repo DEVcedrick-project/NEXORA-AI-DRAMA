@@ -7,7 +7,7 @@ function reply(status:number, body:Record<string,unknown>, extraHeaders:Record<s
 function validClientIp(ip:string) {
  const value=ip.trim();
  if(value.length>45) return false;
- if(/^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(value)) return value.split(".").every(part=>Number(part)>=0&&Number(part)<=255);
+ if(/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value)) return value.split(".").every(part=>Number(part)>=0&&Number(part)<=255);
  if(value.toLowerCase().startsWith("::ffff:") && value.includes(".")) return validClientIp(value.slice(7));
  return value.includes(":") && /^[0-9a-fA-F:]+$/.test(value);
 }
