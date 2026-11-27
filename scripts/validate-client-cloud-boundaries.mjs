@@ -67,6 +67,17 @@ assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").mayb
 assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
   "Social actions must reject draft, hidden and nonexistent dramas.");
 
+const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const publishedVersion = JSON.parse(fs.readFileSync("update.json", "utf8")).version;
+const versionParts = value => value.split(".").map(Number);
+const [currentMajor, currentMinor, currentPatch] = versionParts(packageVersion);
+const [publishedMajor, publishedMinor, publishedPatch] = versionParts(publishedVersion);
+const currentVersionCode = currentMajor * 1000000 + currentMinor * 1000 + currentPatch;
+const publishedVersionCode = publishedMajor * 1000000 + publishedMinor * 1000 + publishedPatch;
+assert(Number.isSafeInteger(currentVersionCode) && Number.isSafeInteger(publishedVersionCode) &&
+  currentVersionCode > publishedVersionCode,
+  `The next release version (${packageVersion}) must be strictly newer than the published version (${publishedVersion}).`);
+
 const workflow = fs.readFileSync(".github/workflows/android-apk.yml", "utf8");
 const upgradeTest = workflow.slice(
   workflow.indexOf("      - name: Test real in-place upgrade from the previous signed release"),
