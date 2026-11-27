@@ -1,13 +1,17 @@
+import { enforceNexoraAppCheck, verifyNexoraAppCheck } from "../_shared/nexora-app-check.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 const PROJECT_ID = "nexora-ai-drama";
 const JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"));
-const cors = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
+const cors = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info, x-firebase-appcheck","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
 function reply(status:number, body:Record<string,unknown>) { return new Response(JSON.stringify(body),{status,headers:cors}); }
 function cleanName(value:unknown) { const name=String(value||"NEXORA Viewer").replace(/[<>\u0000-\u001f]/g,"").trim().slice(0,40); return name||"NEXORA Viewer"; }
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS") return new Response("ok",{headers:cors});
  if(req.method!=="POST") return reply(405,{error:"POST required"});
+ const appCheckStatus=await verifyNexoraAppCheck(req);
+ if(enforceNexoraAppCheck(appCheckStatus)) return reply(401,{error:"A valid NEXORA app attestation is required"});
+ if(appCheckStatus!=="valid") console.info("[NEXORA App Check] Social request attestation status:",appCheckStatus);
  try {
   const match=(req.headers.get("Authorization")||"").match(/^Bearer\s+(.+)$/i);
   if(!match) return reply(401,{error:"Firebase sign-in required"});
