@@ -1179,7 +1179,9 @@
       catalogError: '',
       resetConfirmStep: false,
       splashDismissed: false,
+      splashStartedAt: Date.now(),
       splashTimer: null,
+      splashMinTimer: null,
       activeLiveNotif: null,
       liveNotifTimer: null,
       lastContinueSaveMs: 0,
@@ -1218,10 +1220,31 @@
     // =========================================================================
     function dismissSplashScreen() {
       if (runtime.splashDismissed) return;
+
+      // Never flash the splash away during an unusually fast bootstrap failure.
+      // Keep a short minimum visible duration, while the normal path still exits
+      // on its existing two-second timer.
+      const minimumVisibleMs = 1600;
+      const elapsedMs = Date.now() - (runtime.splashStartedAt || Date.now());
+      const remainingMs = minimumVisibleMs - elapsedMs;
+      if (remainingMs > 0) {
+        if (!runtime.splashMinTimer) {
+          runtime.splashMinTimer = setTimeout(() => {
+            runtime.splashMinTimer = null;
+            dismissSplashScreen();
+          }, remainingMs);
+        }
+        return;
+      }
+
       runtime.splashDismissed = true;
       if (runtime.splashTimer) {
         clearTimeout(runtime.splashTimer);
         runtime.splashTimer = null;
+      }
+      if (runtime.splashMinTimer) {
+        clearTimeout(runtime.splashMinTimer);
+        runtime.splashMinTimer = null;
       }
       const splash = document.getElementById('nexora-splash-screen');
       if (!splash) return;
@@ -1239,6 +1262,11 @@
       const splash = document.getElementById('nexora-splash-screen');
       if (!splash) return;
       runtime.splashDismissed = false;
+      runtime.splashStartedAt = Date.now();
+      if (runtime.splashMinTimer) {
+        clearTimeout(runtime.splashMinTimer);
+        runtime.splashMinTimer = null;
+      }
       splash.classList.remove('hidden');
       splash.classList.remove('is-exiting');
       splash.style.pointerEvents = 'auto';
