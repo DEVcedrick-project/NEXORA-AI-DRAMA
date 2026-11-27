@@ -13,7 +13,6 @@ Deno.serve(async (req: Request) => {
   let claimedEventKey = "";
   let claimToken = "";
   let deliveredThisAttempt = 0;
-  let fcmRequestStarted = false;
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST required" }, 405);
 
@@ -70,65 +69,63 @@ Deno.serve(async (req: Request) => {
     let invalidTokensRemoved = 0;
     for (const device of pending || []) {
       const attemptedAt = new Date().toISOString();
+      // Persist "sending" before the network call. If the process dies or
+      // the response is lost after FCM accepts the message, this row is
+      // deliberately not retried automatically (unknown outcome).
       const { error: attemptError } = await admin.from("nexora_push_deliveries")
-        .update({ attempt_count: Number(device.attempt_count || 0) + 1, last_attempt_at: attemptedAt, updated_at: attemptedAt })
+        .update({ status: "sending", attempt_count: Number(device.attempt_count || 0) + 1, last_attempt_at: attemptedAt, updated_at: attemptedAt })
         .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
       if (attemptError) throw attemptError;
 
-      let response: Response;
-      let result: any = {};
-      fcmRequestStarted = true;
-      try {
-        response = await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ message: {
-            token: device.token,
-            notification: {
-              title: "NEXORA AI DRAMA update available",
-              body: `Version ${version} is ready. Tap to check for the update.`
-            },
-            data: {
-              type: "app_update", version,
-              updateUrl: "https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json"
-            },
-            android: { priority: "HIGH", notification: { channel_id: "nexora_updates", sound: "default" } }
-          }})
-        });
-      } catch (_networkError) {
-        const { error: unknownError } = await admin.from("nexora_push_deliveries")
-          .update({ status: "unknown", last_error_code: "TRANSPORT_ERROR", updated_at: new Date().toISOString() })
-          .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
-        if (unknownError) throw unknownError;
-        throw new Error("FCM request outcome is unknown; automatic retry was withheld to avoid duplicate delivery");
-      }
-      result = await response.json().catch(() => ({}));
+      const response = await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ message: {
+          token: device.token,
+          notification: {
+            title: "NEXORA AI DRAMA update available",
+            body: `Version ${version} is ready. Tap to check for the update.`
+          },
+          data: {
+            type: "app_update", version,
+            updateUrl: "https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json"
+          },
+          // Keep retries for one release update coalesced while queued and
+          // replace an earlier copy in the Android notification tray.
+          android: {
+            priority: "HIGH",
+            collapse_key: eventKey,
+            notification: { channel_id: "nexora_updates", sound: "default", tag: eventKey }
+          }
+        }})
+      });
+      const result = await response.json().catch(() => ({}));
       if (response.ok) {
         deliveredThisAttempt++;
         const sentAt = new Date().toISOString();
         const { error: markSentError } = await admin.from("nexora_push_deliveries")
-          .update({ status: "sent", sent_at: sentAt, response_status: response.status, last_error_code: null, updated_at: sentAt })
-          .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
+          .update({ status: "sent", sent_at: sentAt, updated_at: sentAt })
+           .eq("event_key", eventKey).eq("token", device.token).eq("status", "sending");
         if (markSentError) throw markSentError;
       } else {
         const code = result?.error?.details?.find((item: any) => item?.errorCode)?.errorCode;
         if (code === "UNREGISTERED") {
           const { error: markInvalidError } = await admin.from("nexora_push_deliveries")
-            .update({ status: "invalid", response_status: response.status, last_error_code: "UNREGISTERED", updated_at: new Date().toISOString() })
-            .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
+            .update({ status: "invalid", updated_at: new Date().toISOString() })
+             .eq("event_key", eventKey).eq("token", device.token).eq("status", "sending");
           if (markInvalidError) throw markInvalidError;
           const { error: deleteError } = await admin.from("nexora_push_devices")
             .delete().eq("token", device.token).eq("app_id", APP_ID);
           if (deleteError) throw deleteError;
           invalidTokensRemoved++;
         } else {
-          const ambiguous = response.status >= 500;
-          const safeCode = typeof code === "string" && /^[A-Z0-9_]{1,64}$/.test(code) ? code : `HTTP_${response.status}`;
-          const { error: markError } = await admin.from("nexora_push_deliveries")
-            .update({ status: ambiguous ? "unknown" : "failed", response_status: response.status, last_error_code: safeCode, updated_at: new Date().toISOString() })
-            .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
-          if (markError) throw markError;
-          if (ambiguous) throw new Error("FCM returned a server error; delivery outcome is unknown and was not retried");
+          // A concrete FCM rejection means this request was not accepted;
+          // return it to pending so a later run can retry safely.
+          const { error: retryError } = await admin.from("nexora_push_deliveries")
+            .update({ status: "pending", updated_at: new Date().toISOString() })
+            .eq("event_key", eventKey).eq("token", device.token).eq("status", "sending");
+          if (retryError) throw retryError;
+          throw new Error(`FCM send rejected (${response.status}): ${JSON.stringify(result).slice(0, 400)}`);
         }
       }
     }
@@ -144,7 +141,7 @@ Deno.serve(async (req: Request) => {
     claimedEventKey = "";
     return json({ ok: true, version, sent: sentTotal || 0, sentThisAttempt: deliveredThisAttempt, invalidTokensRemoved });
   } catch (error) {
-    if (claimAdmin && claimedEventKey && claimToken && deliveredThisAttempt === 0 && !fcmRequestStarted) {
+    if (claimAdmin && claimedEventKey && claimToken && deliveredThisAttempt === 0) {
       await claimAdmin.rpc("nexora_release_push_event", {
         p_event_key: claimedEventKey, p_claim_token: claimToken
       }).catch(() => {});
