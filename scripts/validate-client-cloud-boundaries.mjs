@@ -60,7 +60,7 @@ assert(broadcastFunction.includes('.from("nexora_push_devices").select("token").
   "Update broadcasts must never target unowned or unauthenticated device registrations.");
 assert(broadcastFunction.includes('admin.rpc("nexora_claim_push_event"') &&
   broadcastFunction.includes('admin.rpc("nexora_complete_push_event"') &&
-  broadcastFunction.includes('admin.rpc("nexora_release_push_event"'),
+  broadcastFunction.includes('claimAdmin.rpc("nexora_release_push_event"'),
   "Update broadcasts must use atomic claims, completion, and safe pre-delivery release.");
 
 const socialFunction = fs.readFileSync("supabase/functions/nexora-social/index.ts", "utf8");
