@@ -2284,6 +2284,7 @@
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
                 "Authorization": "Bearer " + idToken,
                 "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
               },
