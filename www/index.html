@@ -2968,11 +2968,11 @@
       }
 
       if (fbLive || sbLive) {
-        const modeText = fbLive && sbLive ? 'Cloud Live' : (fbLive ? 'Firebase' : 'Supabase');
+        const modeText = fbLive ? 'Firebase Profile' : 'Supabase';
         if (pill) pill.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-[9px] font-bold text-emerald-300 transition shrink-0';
         if (dot) dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
         if (label) label.textContent = modeText;
-        if (desc) desc.textContent = `${modeText} • UID: ${state.user.uid.slice(0, 12)}...`;
+        if (desc) desc.textContent = `${modeText} • UID: ${state.user.uid.slice(0, 12)}... • Wallet local`;
       } else {
         if (pill) pill.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-[9px] font-bold text-amber-300 transition shrink-0';
         if (dot) dot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400';
