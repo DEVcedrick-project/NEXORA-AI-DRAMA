@@ -53,6 +53,10 @@ assert(pushFunction.includes("existing?.user_id !== userId && (count ?? 0) >= MA
   "The device cap must also apply when a token changes account ownership.");
 
 
+const broadcastFunction = fs.readFileSync("supabase/functions/nexora-push-broadcast/index.ts", "utf8");
+assert(broadcastFunction.includes('.from("nexora_push_devices").select("token").not("user_id", "is", null)'),
+  "Update broadcasts must never target unowned or unauthenticated device registrations.");
+
 const socialFunction = fs.readFileSync("supabase/functions/nexora-social/index.ts", "utf8");
 assert(socialFunction.includes("A valid published drama ID is required"),
   "Social actions must reject malformed catalog IDs.");
