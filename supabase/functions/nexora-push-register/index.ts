@@ -1,3 +1,4 @@
+import { enforceNexoraAppCheck, verifyNexoraAppCheck } from "../_shared/nexora-app-check.ts";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -9,7 +10,7 @@ const FIREBASE_JWKS = createRemoteJWKSet(
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-nexora-app-id",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-nexora-app-id, x-firebase-appcheck",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json",
 };
@@ -17,6 +18,13 @@ const cors = {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST required" }, 405);
+  const appCheckStatus = await verifyNexoraAppCheck(req);
+  if (enforceNexoraAppCheck(appCheckStatus)) {
+    return json({ error: "A valid NEXORA app attestation is required" }, 401);
+  }
+  if (appCheckStatus !== "valid") {
+    console.info("[NEXORA App Check] Push registration attestation status:", appCheckStatus);
+  }
 
   const appId = req.headers.get("x-nexora-app-id") || "";
   if (appId !== "com.devcedrick.nexoraaidrama") {
