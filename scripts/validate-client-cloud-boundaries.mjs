@@ -118,9 +118,10 @@ const upgradeTest = workflow.slice(
   workflow.indexOf("      - name: Test real in-place upgrade from the previous signed release"),
   workflow.indexOf("      - name: Sign release AAB")
 );
-assert(upgradeTest.includes("github.ref == 'refs/heads/main'") &&
+assert(upgradeTest.includes("github.event_name == 'pull_request'") &&
+  upgradeTest.includes("github.ref == 'refs/heads/main'") &&
   upgradeTest.includes("github.event_name == 'push'") &&
   upgradeTest.includes("github.event_name == 'workflow_dispatch'"),
-  "The in-place upgrade test must run only for production release builds, not same-version pull requests.");
+  "The in-place upgrade test must run for signed pull-request builds and production releases.");
 
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries, atomic authenticated FCM registration, owned-device broadcasts, and published-only social access are enforced.");
