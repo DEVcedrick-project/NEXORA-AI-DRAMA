@@ -23,6 +23,46 @@ create index if not exists nexora_push_deliveries_sending_age_v2_idx
   on public.nexora_push_deliveries (event_key, updated_at, token)
   where status = 'sending';
 
+-- Keep the currently deployed v1 worker safe during the additive migration-first rollout.
+-- Its existing RPC name now writes the lease column, so v1 claims cannot be stolen by v2.
+create or replace function public.nexora_claim_push_event(
+  p_event_key text,
+  p_claim_token text
+)
+returns boolean
+language plpgsql
+security invoker
+set search_path = ''
+as $function$
+declare
+  claimed text;
+begin
+  if p_event_key is null or pg_catalog.length(p_event_key) = 0
+     or pg_catalog.length(p_event_key) > 128
+     or p_claim_token is null or pg_catalog.length(p_claim_token) < 16
+     or pg_catalog.length(p_claim_token) > 128 then
+    raise exception 'invalid_event_claim' using errcode = '22023';
+  end if;
+
+  insert into public.nexora_push_events (
+    event_key, episode_id, claim_token, lease_expires_at
+  )
+  values (
+    p_event_key, 'app_update', p_claim_token,
+    pg_catalog.now() + interval '15 minutes'
+  )
+  on conflict (event_key) do update
+    set claim_token = excluded.claim_token,
+        lease_expires_at = excluded.lease_expires_at,
+        created_at = pg_catalog.now()
+    where public.nexora_push_events.claim_token is not null
+      and public.nexora_push_events.lease_expires_at <= pg_catalog.now()
+  returning event_key into claimed;
+
+  return claimed is not null;
+end;
+$function$;
+
 create or replace function public.nexora_claim_push_event_v2(
   p_event_key text,
   p_claim_token text,
