@@ -73,6 +73,14 @@ assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Pub
 assert(socialFunction.includes('db.rpc("nexora_create_social_comment"') &&
   socialFunction.includes('if(created!==true) return reply(429'),
   "Social comment rate limits must be enforced atomically in PostgreSQL.");
+assert(socialFunction.includes('db.rpc("nexora_toggle_social_reaction"') &&
+  !/from\("nexora_social_(?:likes|saves)"\)\.(?:select|insert|delete)/.test(socialFunction),
+  "Social like and save toggles must use atomic PostgreSQL operations, not client-side read/write sequences.");
+const reactionMigration = fs.readFileSync("supabase/migrations/202611270004_atomic_social_reactions.sql", "utf8");
+assert(reactionMigration.includes("pg_advisory_xact_lock") &&
+  reactionMigration.includes("nexora_toggle_social_reaction") &&
+  reactionMigration.includes("to service_role"),
+  "Social reaction toggles must be serialized and service-role-only.");
 
 const appCheckBridge = fs.readFileSync("scripts/install-native-updater.py", "utf8");
 const nativePlugins = fs.readFileSync("scripts/native-plugins-entry.js", "utf8");
