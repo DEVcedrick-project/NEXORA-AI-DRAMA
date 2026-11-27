@@ -7,6 +7,7 @@ const APP_CHECK_ALLOWED_APP_IDS = new Set([
  "1:201389649043:android:4dd0433ed5959b5e85f166"
 ]);
 const MAX_APP_CHECK_TOKEN_LENGTH = 8192;
+const SOCIAL_COMMENT_PAGE_SIZE = 30;
 const JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"));
 const APP_CHECK_JWKS = createRemoteJWKSet(new URL("https://firebaseappcheck.googleapis.com/v1/jwks"));
 const cors = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info, x-firebase-appcheck","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
@@ -62,6 +63,15 @@ Deno.serve(async(req:Request)=>{
   if(!userId||userId.length>128) return reply(401,{error:"Invalid Firebase user"});
   if(!await checkAppCheck(req)) return reply(401,{error:"A valid app attestation is required"});
   const body=await req.json(), action=String(body.action||""), seriesId=String(body.seriesId||"").trim();
+  const cursorCreatedAt=body.cursorCreatedAt==null?"":String(body.cursorCreatedAt);
+  const cursorId=body.cursorId==null?"":String(body.cursorId);
+  const hasCursor=Boolean(cursorCreatedAt||cursorId);
+  if(hasCursor && (action!=="read" || !cursorCreatedAt || !cursorId ||
+    !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(cursorCreatedAt) ||
+    !Number.isFinite(Date.parse(cursorCreatedAt)) ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cursorId))) {
+   return reply(400,{error:"Invalid comment pagination cursor"});
+  }
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(seriesId)) {
    return reply(400,{error:"A valid published drama ID is required"});
   }
@@ -95,13 +105,22 @@ Deno.serve(async(req:Request)=>{
    if(error) throw error;
    if(created!==true) return reply(429,{error:"Please wait before posting another comment."},{"Retry-After":"60"});
   }
+  let commentsQuery=db.from("nexora_social_comments").select("id,user_id,display_name,body,created_at")
+   .eq("series_id",seriesId).order("created_at",{ascending:false}).order("id",{ascending:false})
+   .limit(SOCIAL_COMMENT_PAGE_SIZE+1);
+  if(hasCursor) commentsQuery=commentsQuery.or(`created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`);
   const [likes,ownLike,ownSave,comments]=await Promise.all([
    db.from("nexora_social_likes").select("user_id",{count:"exact",head:true}).eq("series_id",seriesId),
    db.from("nexora_social_likes").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle(),
    db.from("nexora_social_saves").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle(),
-   db.from("nexora_social_comments").select("id,user_id,display_name,body,created_at").eq("series_id",seriesId).order("created_at",{ascending:false}).limit(100)
+   commentsQuery
   ]);
   for(const result of [likes,ownLike,ownSave,comments]) if(result.error) throw result.error;
-  return reply(200,{seriesId,viewerId:userId,likesCount:likes.count||0,liked:Boolean(ownLike.data),saved:Boolean(ownSave.data),comments:(comments.data||[]).map(item=>({id:item.id,userId:item.user_id,user:item.display_name,text:item.body,createdAt:item.created_at,time:new Date(item.created_at).toLocaleString("en",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"})+" UTC"}))});
+  const commentRows=comments.data||[];
+  const hasMoreComments=commentRows.length>SOCIAL_COMMENT_PAGE_SIZE;
+  const pageComments=commentRows.slice(0,SOCIAL_COMMENT_PAGE_SIZE);
+  const lastComment=pageComments[pageComments.length-1];
+  const nextCursor=hasMoreComments&&lastComment?{createdAt:lastComment.created_at,id:lastComment.id}:null;
+  return reply(200,{seriesId,viewerId:userId,likesCount:likes.count||0,liked:Boolean(ownLike.data),saved:Boolean(ownSave.data),comments:pageComments.map(item=>({id:item.id,userId:item.user_id,user:item.display_name,text:item.body,createdAt:item.created_at,time:new Date(item.created_at).toLocaleString("en",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"})+" UTC"})),hasMoreComments,nextCursor});
  } catch(error) { console.error("[nexora-social] request failed",error); return reply(500,{error:"Could not complete social action"}); }
 });
