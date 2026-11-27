@@ -5138,6 +5138,8 @@
             state.firebase.authUid = guest.user.uid;
             state.user.uid = guest.user.uid;
             attachRealtimeListeners(runtime.fbDb, guest.user.uid);
+            // Move this installation off the account being signed out immediately.
+            void registerNativePushDevice().catch(error => console.error('[NEXORA Push] Guest-session registration failed:', error));
           }
         } catch (guestError) {
           console.warn('[NEXORA] Guest session unavailable; email account switching remains available:', guestError);
