@@ -110,6 +110,28 @@ assert(!socialFunction.includes("recentCount") &&
   !socialFunction.includes('db.from("nexora_social_comments").insert'),
   "The Edge Function must not bypass atomic comment-rate-limit enforcement.");
 
+assert(socialFunction.includes("SOCIAL_COMMENT_PAGE_SIZE = 30") &&
+  socialFunction.includes(".limit(SOCIAL_COMMENT_PAGE_SIZE+1)") &&
+  socialFunction.includes('.order("created_at",{ascending:false}).order("id",{ascending:false})'),
+  "Social comment reads must use a bounded 30-item page with deterministic newest-first ordering.");
+assert(socialFunction.includes("cursorCreatedAt") && socialFunction.includes("cursorId") &&
+  socialFunction.includes("created_at.lt.") && socialFunction.includes("id.lt.") &&
+  socialFunction.includes("Invalid comment pagination cursor"),
+  "Social comment pagination must validate and apply a stable keyset cursor.");
+assert(socialFunction.includes("hasMoreComments,nextCursor"),
+  "Social comment responses must expose continuation metadata.");
+const socialClientPagination = block("function renderSocialComments(seriesId)", "function openCommentDrawer(seriesId)");
+assert(socialClientPagination.includes("Load older comments") &&
+  socialClientPagination.includes("loadOlderSocialComments") &&
+  socialClientPagination.includes("socialCommentHasMore"),
+  "The comment drawer must expose a guarded Load older comments action.");
+const olderComments = block("async function loadOlderSocialComments(id)", "function setupFeedIntersectionObserver()");
+assert(olderComments.includes("cursorCreatedAt: cursor.createdAt") &&
+  olderComments.includes("cursorId: cursor.id") &&
+  olderComments.includes("new Set(existing.map(comment => comment.id))") &&
+  olderComments.includes("state.commentsBySeries[id] = [...existing, ...older]"),
+  "Older comment pages must use the cursor and append deduplicated rows without replacing the current page.");
+
 assert(socialFunction.includes("APP_CHECK_JWKS") &&
   socialFunction.includes("firebaseappcheck.googleapis.com/v1/jwks") &&
   socialFunction.includes("NEXORA_APP_CHECK_ENFORCE") &&
@@ -118,9 +140,9 @@ assert(socialFunction.includes("APP_CHECK_JWKS") &&
 assert(socialFunction.includes("x-firebase-appcheck") &&
   socialFunction.includes("APP_CHECK_PROJECT_NUMBER"),
   "Social API must accept and validate project-scoped Firebase App Check tokens.");
-assert(socialFunction.includes('subject!==APP_CHECK_APP_ID') &&
+assert(socialFunction.includes("APP_CHECK_ALLOWED_APP_IDS.has(subject)") &&
   socialFunction.includes('1:201389649043:android:4dd0433ed5959b5e85f166'),
-  "Social API must bind App Check tokens to the NEXORA AI DRAMA Android app, not other Firebase apps in the project.");
+  "Social API must bind App Check tokens to the explicitly allowed NEXORA AI DRAMA app IDs.");
 assert(source.includes("PlayIntegrityAppCheckProviderFactory") === false,
   "Web source must not import native-only Play Integrity SDK classes.");
 const socialClient = block("async function getNexoraAppCheckToken()", "function applyNexoraSocialSnapshot(");
