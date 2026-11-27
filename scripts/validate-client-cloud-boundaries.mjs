@@ -48,7 +48,7 @@ assert(pushFunction.includes("MAX_DEVICES_PER_USER = 5") && pushFunction.include
 assert(!pushFunction.includes('.from("nexora_push_devices")'),
   "Push registration must not perform a non-atomic read/count/write sequence.");
 
-const registrationMigration = fs.readFileSync("supabase/migrations/202611270001_atomic_push_device_registration.sql", "utf8");
+const registrationMigration = fs.readFileSync("supabase/migrations/20261127031947_atomic_push_device_registration.sql", "utf8");
 assert(registrationMigration.includes("pg_advisory_xact_lock") && registrationMigration.includes("hashtextextended"),
   "Push device registration must serialize per-user and per-token claims.");
 assert(registrationMigration.includes("revoke all on function public.nexora_register_push_device") &&
@@ -76,7 +76,7 @@ assert(socialFunction.includes('db.rpc("nexora_create_social_comment"') &&
 assert(socialFunction.includes('db.rpc("nexora_toggle_social_reaction"') &&
   !/from\("nexora_social_(?:likes|saves)"\)\.(?:select|insert|delete)/.test(socialFunction),
   "Social like and save toggles must use atomic PostgreSQL operations, not client-side read/write sequences.");
-const reactionMigration = fs.readFileSync("supabase/migrations/202611270004_atomic_social_reactions.sql", "utf8");
+const reactionMigration = fs.readFileSync("supabase/migrations/20261127041718_atomic_social_reactions.sql", "utf8");
 assert(reactionMigration.includes("pg_advisory_xact_lock") &&
   reactionMigration.includes("nexora_toggle_social_reaction") &&
   reactionMigration.includes("to service_role"),
