@@ -279,7 +279,7 @@ jobs:
               raise SystemExit(f"Current app version {current} is older than published version {previous}.")
           available = current > previous
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"available={'true' if available else 'false'}\\n")
+              output.write(f"available={'true' if available else 'false'}\n")
           print("A new release is available." if available else "No version change: build checks will run, but upgrade test and release publishing are skipped.")
           PY
 
