@@ -1,6 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const APP_ID = "com.devcedrick.nexoraaidrama";
+const DEVICE_PAGE_SIZE = 500;
+const DELIVERY_BATCH_SIZE = 100;
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "content-type, x-nexora-release-secret",
@@ -38,11 +40,12 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Firebase service-account configuration is invalid" }, 500);
     }
 
-    const { data: devices, error: deviceError } = await admin
+    const { data: firstDevices, error: firstDeviceError } = await admin
       .from("nexora_push_devices").select("token")
-      .eq("app_id", APP_ID).eq("platform", "android").not("user_id", "is", null);
-    if (deviceError) throw deviceError;
-    if (!devices?.length) {
+      .eq("app_id", APP_ID).eq("platform", "android").not("user_id", "is", null)
+      .order("token", { ascending: true }).limit(DEVICE_PAGE_SIZE);
+    if (firstDeviceError) throw firstDeviceError;
+    if (!firstDevices?.length) {
       return json({ ok: true, version, sent: 0, reason: "No eligible NEXORA AI DRAMA Android devices yet; retry after registration" });
     }
 
@@ -54,20 +57,39 @@ Deno.serve(async (req: Request) => {
     if (claimed !== true) return json({ ok: true, duplicate: true, sent: 0 });
     claimedEventKey = eventKey;
 
-    const progressRows = devices.map((device: { token: string }) => ({
-      event_key: eventKey, token: device.token, status: "pending"
-    }));
-    const { error: seedError } = await admin.from("nexora_push_deliveries")
-      .upsert(progressRows, { onConflict: "event_key,token", ignoreDuplicates: true });
-    if (seedError) throw seedError;
-
-    const { data: pending, error: pendingError } = await admin.from("nexora_push_deliveries")
-      .select("token,attempt_count").eq("event_key", eventKey).eq("status", "pending");
-    if (pendingError) throw pendingError;
+    // Seed every registered device in bounded pages. Supabase applies a
+    // default row cap to unbounded selects; explicit ranges prevent silently
+    // omitting devices once the audience grows beyond that cap.
+    let devicePage = firstDevices;
+    let lastDeviceToken = "";
+    while (devicePage?.length) {
+      const progressRows = devicePage.map((device: { token: string }) => ({
+        event_key: eventKey, token: device.token, status: "pending"
+      }));
+      const { error: seedError } = await admin.from("nexora_push_deliveries")
+        .upsert(progressRows, { onConflict: "event_key,token", ignoreDuplicates: true });
+      if (seedError) throw seedError;
+      lastDeviceToken = devicePage[devicePage.length - 1].token;
+      if (devicePage.length < DEVICE_PAGE_SIZE) break;
+      const { data: nextPage, error: nextPageError } = await admin
+        .from("nexora_push_devices").select("token")
+        .eq("app_id", APP_ID).eq("platform", "android").not("user_id", "is", null)
+        .gt("token", lastDeviceToken)
+        .order("token", { ascending: true }).limit(DEVICE_PAGE_SIZE);
+      if (nextPageError) throw nextPageError;
+      devicePage = nextPage || [];
+    }
 
     const accessToken = await getFirebaseAccessToken(account);
     let invalidTokensRemoved = 0;
-    for (const device of pending || []) {
+    let pendingBatch: { token: string; attempt_count: number }[] = [];
+    do {
+      const { data, error: pendingError } = await admin.from("nexora_push_deliveries")
+        .select("token,attempt_count").eq("event_key", eventKey).eq("status", "pending")
+        .order("token", { ascending: true }).limit(DELIVERY_BATCH_SIZE);
+      if (pendingError) throw pendingError;
+      pendingBatch = data || [];
+      for (const device of pendingBatch) {
       const attemptedAt = new Date().toISOString();
       const { error: attemptError } = await admin.from("nexora_push_deliveries")
         .update({ attempt_count: Number(device.attempt_count || 0) + 1, last_attempt_at: attemptedAt, updated_at: attemptedAt })
@@ -113,7 +135,8 @@ Deno.serve(async (req: Request) => {
           throw new Error(`FCM send failed (${response.status}): ${JSON.stringify(result).slice(0, 400)}`);
         }
       }
-    }
+      }
+    } while (pendingBatch.length === DELIVERY_BATCH_SIZE);
 
     const { count: sentTotal, error: countError } = await admin.from("nexora_push_deliveries")
       .select("token", { count: "exact", head: true }).eq("event_key", eventKey).eq("status", "sent");

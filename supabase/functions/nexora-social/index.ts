@@ -1,5 +1,6 @@
 const PROJECT_NUMBER = "201389649043";
 const APP_ID = "1:201389649043:android:4dd0433ed5959b5e85f166";
+const MAX_APP_CHECK_TOKEN_LENGTH = 8192;
 const APP_CHECK_JWKS = createRemoteJWKSet(
   new URL("https://firebaseappcheck.googleapis.com/v1/jwks"),
   { cacheMaxAge: 6 * 60 * 60 * 1000 },
@@ -10,6 +11,7 @@ type NexoraAppCheckStatus = "valid" | "missing" | "invalid";
 async function verifyNexoraAppCheck(request: Request): Promise<NexoraAppCheckStatus> {
   const token = (request.headers.get("x-firebase-appcheck") || "").trim();
   if (!token) return "missing";
+  if (token.length > MAX_APP_CHECK_TOKEN_LENGTH) return "invalid";
   try {
     const { payload, protectedHeader } = await jwtVerify(token, APP_CHECK_JWKS, {
       algorithms: ["RS256"],
@@ -72,17 +74,17 @@ Deno.serve(async(req:Request)=>{
   const userId=String(payload.sub||"");
   if(!userId||userId.length>128) return reply(401,{error:"Invalid Firebase user"});
   const body=await readJsonLimited(req), action=String(body.action||""), seriesId=String(body.seriesId||"").trim();
-  if(action==="read") {
-   const rateUrl=Deno.env.get("SUPABASE_URL"), rateKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-   if(!rateUrl||!rateKey) return reply(503,{error:"Social service is temporarily unavailable"});
-   const rateDb=createClient(rateUrl,rateKey,{auth:{persistSession:false,autoRefreshToken:false}});
-   const {data:allowed,error:rateError}=await rateDb.rpc("nexora_check_social_read_rate_limit",{p_user_id:userId});
-   if(rateError) {
-    console.error("[nexora-social] read rate-limit check failed",rateError.code||"unknown");
-    return reply(503,{error:"Social reads are temporarily unavailable"});
-   }
-   if(allowed!==true) return new Response(JSON.stringify({error:"Too many social refresh requests. Please try again in one minute."}),{status:429,headers:{...cors,"Retry-After":"60"}});
+  // Every action returns the social summary and performs database reads, so
+  // apply the per-user request budget to reads, reactions and comments alike.
+  const rateUrl=Deno.env.get("SUPABASE_URL"), rateKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if(!rateUrl||!rateKey) return reply(503,{error:"Social service is temporarily unavailable"});
+  const rateDb=createClient(rateUrl,rateKey,{auth:{persistSession:false,autoRefreshToken:false}});
+  const {data:allowed,error:rateError}=await rateDb.rpc("nexora_check_social_read_rate_limit",{p_user_id:userId});
+  if(rateError) {
+   console.error("[nexora-social] request rate-limit check failed",rateError.code||"unknown");
+   return reply(503,{error:"Social requests are temporarily unavailable"});
   }
+  if(allowed!==true) return new Response(JSON.stringify({error:"Too many social requests. Please try again in one minute."}),{status:429,headers:{...cors,"Retry-After":"60"}});
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(seriesId)) {
    return reply(400,{error:"A valid published drama ID is required"});
   }
@@ -126,7 +128,7 @@ Deno.serve(async(req:Request)=>{
   const cursorCreatedAt=typeof body.cursorCreatedAt==="string"?body.cursorCreatedAt:"";
   const cursorId=typeof body.cursorId==="string"?body.cursorId:"";
   if(Boolean(cursorCreatedAt)!==Boolean(cursorId)) return reply(400,{error:"Invalid comment pagination cursor"});
-  if(cursorCreatedAt && (!Number.isFinite(Date.parse(cursorCreatedAt)) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cursorId))) return reply(400,{error:"Invalid comment pagination cursor"});
+  if(cursorCreatedAt && (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(cursorCreatedAt) || !Number.isFinite(Date.parse(cursorCreatedAt)) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cursorId))) return reply(400,{error:"Invalid comment pagination cursor"});
   const [likes,ownLike,ownSave]=await Promise.all([
    db.from("nexora_social_likes").select("user_id",{count:"exact",head:true}).eq("series_id",seriesId),
    db.from("nexora_social_likes").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle(),

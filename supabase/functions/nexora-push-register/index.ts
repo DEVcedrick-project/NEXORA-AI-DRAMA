@@ -7,6 +7,7 @@ const MAX_DEVICES_PER_USER = 5;
 const MAX_BODY_BYTES = 8192;
 const PROJECT_NUMBER = "201389649043";
 const FIREBASE_APP_ID = "1:201389649043:android:4dd0433ed5959b5e85f166";
+const MAX_APP_CHECK_TOKEN_LENGTH = 8192;
 const APP_CHECK_JWKS = createRemoteJWKSet(
   new URL("https://firebaseappcheck.googleapis.com/v1/jwks"),
   { cacheMaxAge: 6 * 60 * 60 * 1000 },
@@ -15,6 +16,7 @@ type AppCheckStatus = "valid" | "missing" | "invalid";
 async function verifyAppCheck(req: Request): Promise<AppCheckStatus> {
   const token = (req.headers.get("x-firebase-appcheck") || "").trim();
   if (!token) return "missing";
+  if (token.length > MAX_APP_CHECK_TOKEN_LENGTH) return "invalid";
   try {
     const { payload, protectedHeader } = await jwtVerify(token, APP_CHECK_JWKS, {
       algorithms: ["RS256"],

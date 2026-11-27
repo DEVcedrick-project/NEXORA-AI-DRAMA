@@ -1,0 +1,70 @@
+name: Retry NEXORA AI DRAMA push deliveries
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexora-ai-drama-push-delivery-retry
+  cancel-in-progress: false
+
+jobs:
+  retry-pending-deliveries:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout published update manifest
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Read current published app version
+        id: version
+        run: |
+          python - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          manifest = json.loads(Path("update.json").read_text())
+          version = manifest.get("version", "")
+          if not isinstance(version, str) or not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              raise SystemExit("update.json does not contain a valid published semantic version")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"value={version}\n")
+          print(f"Retrying pending notifications for published version {version}")
+          PY
+
+      - name: Retry pending FCM deliveries
+        env:
+          NEXORA_RELEASE_WEBHOOK_SECRET: ${{ secrets.NEXORA_RELEASE_WEBHOOK_SECRET }}
+          APP_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          set -euo pipefail
+          if [ -z "$NEXORA_RELEASE_WEBHOOK_SECRET" ]; then
+            echo "::error::NEXORA_RELEASE_WEBHOOK_SECRET is missing; cannot retry push deliveries."
+            exit 1
+          fi
+
+          HTTP_STATUS="$(curl --silent --show-error --retry 3 --retry-delay 5 --retry-max-time 90 \
+            --max-time 45 -o /tmp/nexora-push-response.json -w "%{http_code}" \
+            -X POST "https://vureiymqoosubwubhvdu.supabase.co/functions/v1/nexora-push-broadcast" \
+            -H "Content-Type: application/json" \
+            -H "x-nexora-release-secret: $NEXORA_RELEASE_WEBHOOK_SECRET" \
+            --data "{\"version\":\"$APP_VERSION\"}")"
+
+          cat /tmp/nexora-push-response.json
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::Push delivery retry failed with HTTP $HTTP_STATUS."
+            exit 1
+          fi
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("/tmp/nexora-push-response.json").read_text())
+          if result.get("ok") is not True:
+              raise SystemExit("Push broadcaster did not confirm a successful or safely skipped retry.")
+          print("Push broadcaster confirmed the retry attempt.")
+          PY

@@ -36,6 +36,41 @@ assert(!/\.from\(['"](?:user_wallets|unlocked_episodes)['"]\)/.test(walletSync),
 const signOut = block("async function handleSignOutAccount()", "function cycleUserAvatar()");
 assert(!/update\(ref\(/.test(signOut), "Account switching must not flush protected data from the client.");
 
+const nativeEntry = fs.readFileSync("scripts/native-plugins-entry.js", "utf8");
+const nativeAppCheck = fs.readFileSync("scripts/android/NexoraAppCheckPlugin.java", "utf8");
+const appCheckInstaller = fs.readFileSync("scripts/install-native-app-check.py", "utf8");
+assert(!JSON.parse(fs.readFileSync("package.json", "utf8")).dependencies?.["@capacitor-firebase/app-check"],
+  "The native bridge must not force an incompatible Firebase JavaScript SDK upgrade.");
+assert(nativeEntry.includes('export const NexoraAppCheck = registerPlugin("NexoraAppCheck");'),
+  "The local Capacitor runtime must register the native App Check bridge.");
+assert(nativeAppCheck.includes("PlayIntegrityAppCheckProviderFactory.getInstance()") &&
+  nativeAppCheck.includes("setTokenAutoRefreshEnabled(true)") &&
+  nativeAppCheck.includes("getAppCheckToken(false)"),
+  "The native Android bridge must use Play Integrity, auto-refresh and return App Check tokens.");
+assert(appCheckInstaller.includes("firebase-appcheck-playintegrity:19.0.1") &&
+  appCheckInstaller.includes("registerPlugin(NexoraAppCheckPlugin.class)"),
+  "The Android build must install the native Play Integrity SDK and register its Capacitor bridge.");
+const appCheckClient = block('async function getNexoraAppCheckToken()', 'const NEXORA_DEFAULT_CONFIG');
+assert(appCheckClient.includes("NexoraAppCheck.initialize()") &&
+  appCheckClient.includes("NexoraAppCheck.getToken()"),
+  "The client must initialize the native bridge and retrieve App Check tokens.");
+assert(appCheckClient.includes("setTimeout(() => resolve(null), 2500)") &&
+  appCheckClient.includes("clearTimeout(timeoutId)"),
+  "App Check token lookup must be time-bounded so unavailable attestation cannot stall push or social requests.");
+assert(appCheckClient.includes("nexoraAppCheckInitPromise = null"),
+  "Failed App Check initialization must be retryable without reinstalling or signing out the user.");
+assert(appCheckClient.includes("if (!window.Capacitor?.isNativePlatform?.()) return") &&
+  appCheckClient.includes('return ""') &&
+  appCheckClient.includes("continuing in monitor-only mode"),
+  "App Check must remain native-only and fail open while server enforcement is disabled.");
+assert(source.includes('...(appCheckToken ? { "x-firebase-appcheck": appCheckToken } : {})') &&
+  source.includes("...(appCheckToken ? { 'x-firebase-appcheck': appCheckToken } : {})"),
+  "Both push registration and social requests must attach an available App Check token without blocking legacy clients.");
+assert(source.includes('const appCheckToken = await getNexoraAppCheckToken();'),
+  "Push and social requests must request the current App Check token.");
+assert(source.includes("await firebaseUser.getIdToken()") && source.includes("await user.getIdToken()"),
+  "App Check integration must retain Firebase ID-token authentication.");
+
 const pushFunction = fs.readFileSync("supabase/functions/nexora-push-register/index.ts", "utf8");
 assert(source.includes('"Authorization": "Bearer " + idToken'),
   "FCM registration must send a Firebase ID token.");
@@ -85,13 +120,54 @@ assert(broadcastFunction.includes("nexora_push_deliveries") &&
 assert(broadcastFunction.includes('code === "UNREGISTERED"') &&
   !broadcastFunction.includes('code === "INVALID_ARGUMENT"'),
   "Only confirmed unregistered FCM tokens may be removed.");
+assert(broadcastFunction.includes("DEVICE_PAGE_SIZE = 500") &&
+  broadcastFunction.includes('.gt("token", lastDeviceToken)') &&
+  broadcastFunction.includes("DELIVERY_BATCH_SIZE = 100") &&
+  broadcastFunction.includes(".limit(DELIVERY_BATCH_SIZE)"),
+  "Push broadcasts must page device registration and pending delivery reads instead of silently stopping at the database row cap.");
+
+const pushRetryWorkflow = fs.readFileSync(".github/workflows/retry-push-delivery.yml", "utf8");
+assert(pushRetryWorkflow.includes("cron: '*/30 * * * *'") &&
+  pushRetryWorkflow.includes("workflow_dispatch") &&
+  pushRetryWorkflow.includes("NEXORA_RELEASE_WEBHOOK_SECRET") &&
+  pushRetryWorkflow.includes("update.json") &&
+  pushRetryWorkflow.includes("--retry 3"),
+  "Pending push deliveries must have a bounded scheduled/manual retry workflow using the published version and server secret.");
+
+const pushRetentionMigration = fs.readFileSync(
+  "supabase/migrations/20261127143000_prune_terminal_push_delivery_history.sql", "utf8"
+);
+assert(pushRetentionMigration.includes("interval '90 days'") &&
+  pushRetentionMigration.includes("status in ('sent', 'invalid')") &&
+  pushRetentionMigration.includes("p_batch_size > 5000") &&
+  pushRetentionMigration.includes("for update skip locked") &&
+  pushRetentionMigration.includes("to service_role"),
+  "Push delivery retention must prune only terminal records older than 90 days in bounded service-role-only batches.");
 
 const socialFunction = fs.readFileSync("supabase/functions/nexora-social/index.ts", "utf8");
+const pushRegistrationFunction = fs.readFileSync("supabase/functions/nexora-push-register/index.ts", "utf8");
+for (const [name, fn] of [["social", socialFunction], ["push registration", pushRegistrationFunction]]) {
+  assert(fn.includes("MAX_APP_CHECK_TOKEN_LENGTH = 8192") &&
+    fn.includes("token.length > MAX_APP_CHECK_TOKEN_LENGTH"),
+    `The ${name} endpoint must reject oversized Firebase App Check tokens before JWT parsing.`);
+  assert(fn.includes("https://firebaseappcheck.googleapis.com/v1/jwks") &&
+    fn.includes("algorithms: [\"RS256\"]") &&
+    fn.includes("https://firebaseappcheck.googleapis.com/") &&
+    fn.includes("projects/"),
+    `The ${name} endpoint must verify App Check signatures and Firebase project claims.`);
+}
 assert(socialFunction.includes("A valid published drama ID is required"),
   "Social actions must reject malformed catalog IDs.");
 assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").maybeSingle()'),
   "Social actions must authorize the target against the published drama catalog.");
 assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
   "Social actions must reject draft, hidden and nonexistent dramas.");
+assert(socialFunction.includes('nexora_check_social_read_rate_limit') &&
+  !/if\s*\(action\s*===\s*["']read["']\)\s*\{[\s\S]*?nexora_check_social_read_rate_limit/.test(socialFunction),
+  "Every social action must pass through the per-user request rate limiter, not only feed reads.");
+assert(socialFunction.includes('status:429') && socialFunction.includes('"Retry-After":"60"'),
+  "Social rate limiting must return HTTP 429 with a one-minute Retry-After header.");
+assert(socialFunction.includes("!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(cursorCreatedAt)"),
+  "Comment pagination cursors must use strict ISO timestamps before entering the PostgREST filter.");
 
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");
