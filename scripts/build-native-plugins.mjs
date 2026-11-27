@@ -41,3 +41,21 @@ if (lucideStats.size < 20_000) {
 }
 console.log(`Bundled local Lucide runtime (${lucideStats.size} bytes).`);
 console.log("Bundled Capacitor push and local notification bridges for offline-safe APK startup.");
+
+// Bundle the pinned Supabase client as a local ESM asset. The app imports
+// this file from its existing module, preserving its createClient API.
+await build({
+  entryPoints: ["scripts/supabase-runtime-entry.js"],
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: "es2020",
+  outfile: "www/vendor/supabase.js",
+  legalComments: "none",
+  sourcemap: false,
+});
+const supabaseStats = await stat("www/vendor/supabase.js");
+if (supabaseStats.size < 50_000) {
+  throw new Error(`Bundled Supabase client is unexpectedly small (${supabaseStats.size} bytes).`);
+}
+console.log(`Bundled local Supabase client (${supabaseStats.size} bytes).`);

@@ -91,6 +91,9 @@ jobs:
       - name: Verify locally bundled Lucide runtime
         run: node scripts/validate-lucide-runtime.mjs
 
+      - name: Verify locally bundled Supabase runtime
+        run: node scripts/validate-supabase-runtime.mjs
+
       - name: Generate Android project and sync web assets
         run: |
           npx cap add android
