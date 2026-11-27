@@ -107,4 +107,18 @@ assert(!socialFunction.includes("recentCount") &&
   !socialFunction.includes('db.from("nexora_social_comments").insert'),
   "The Edge Function must not bypass atomic comment-rate-limit enforcement.");
 
+assert(socialFunction.includes("APP_CHECK_JWKS") &&
+  socialFunction.includes("firebaseappcheck.googleapis.com/v1/jwks") &&
+  socialFunction.includes("NEXORA_APP_CHECK_ENFORCE") &&
+  socialFunction.includes("compatibility mode"),
+  "Social API must verify Firebase App Check tokens in shadow mode before enforcement.");
+assert(socialFunction.includes("x-firebase-appcheck") &&
+  socialFunction.includes("APP_CHECK_PROJECT_NUMBER"),
+  "Social API must accept and validate project-scoped Firebase App Check tokens.");
+const socialClient = block("async function getNexoraAppCheckToken()", "function applyNexoraSocialSnapshot(");
+assert(socialClient.includes("window.NexoraAppCheck") &&
+  socialClient.includes("X-Firebase-AppCheck") &&
+  socialClient.includes("if (appCheckToken)"),
+  "Social client must attach a native App Check token when available without blocking legacy clients.");
+
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");
