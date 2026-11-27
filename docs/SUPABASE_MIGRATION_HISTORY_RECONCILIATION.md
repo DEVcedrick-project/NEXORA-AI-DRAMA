@@ -114,3 +114,14 @@ Further read-only comparison against the live database confirms:
 - Candidate `20261127190000_nexora_push_ambiguous_delivery_state.sql` changes the delivery status constraint to `pending/sending/sent/invalid/failed` and documents ambiguous `sending` outcomes. Both the live check constraint and the live column comment match this candidate.
 
 The corresponding applied migration versions are recorded as `20261127150042`, `20261127151611`, and `20261127152344`, respectively, so the candidate filenames still do not match the migration ledger versions. Function/schema equivalence is strong corroborating evidence of deployed content, but it does not establish the exact historical version-to-file mapping. **These three files remain un-restored pending an authoritative Git rename/commit or deployment record that maps each exact SQL blob to its applied version.** No SQL was executed and no production changes were made.
+
+
+## Additional unregister-function privilege check
+
+A read-only privilege check of the live `nexora_unregister_push_device(text,text)` function found:
+
+- It is `SECURITY DEFINER`, owned by `postgres`, with `search_path=public`.
+- Its function ACL grants execute only to `service_role` (and the owner); there is no execute grant to `anon` or `authenticated`.
+- The `public` schema does not grant `CREATE` to `anon`, `authenticated`, or `service_role`; only `postgres` has `CREATE` in the inspected role set.
+
+This reduces the immediate public-schema object-shadowing concern for the current privilege configuration, but the non-empty search path remains a hardening opportunity. Do not alter the live function as part of historical recovery. Any future hardening should be a separately reviewed forward-only migration that preserves the service-role-only execution contract and verifies all referenced objects are schema-qualified. No production change was made.
