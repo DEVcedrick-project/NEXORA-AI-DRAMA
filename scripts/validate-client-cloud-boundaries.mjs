@@ -47,7 +47,7 @@ assert(pushFunction.includes(String.raw`/\\s/.test(token)`) === false,
   "FCM token whitespace validation must use the whitespace character class, not a literal backslash.");
 assert(pushFunction.includes("!/^[A-Za-z0-9:_-]+$/.test(token)"),
   "FCM registration must allow only valid token characters, rejecting whitespace and other invalid characters.");
-assert(pushFunction.includes(String.raw`/^v?\d+\.\d+\.\d+$/`),
+assert(pushFunction.includes(String.raw`/^v?\d{1,6}\.\d{1,6}\.\d{1,6}$/`),
   "FCM registration must accept semantic app versions.");
 assert(pushFunction.includes('audience: PROJECT_ID') && pushFunction.includes('issuer: `https://securetoken.google.com/${PROJECT_ID}`'),
   "Push registration must validate the Firebase token issuer and audience.");
