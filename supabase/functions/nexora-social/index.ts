@@ -1,5 +1,6 @@
 const PROJECT_NUMBER = "201389649043";
 const APP_ID = "1:201389649043:android:4dd0433ed5959b5e85f166";
+const MAX_APP_CHECK_TOKEN_LENGTH = 8192;
 const APP_CHECK_JWKS = createRemoteJWKSet(
   new URL("https://firebaseappcheck.googleapis.com/v1/jwks"),
   { cacheMaxAge: 6 * 60 * 60 * 1000 },
@@ -10,6 +11,7 @@ type NexoraAppCheckStatus = "valid" | "missing" | "invalid";
 async function verifyNexoraAppCheck(request: Request): Promise<NexoraAppCheckStatus> {
   const token = (request.headers.get("x-firebase-appcheck") || "").trim();
   if (!token) return "missing";
+  if (token.length > MAX_APP_CHECK_TOKEN_LENGTH) return "invalid";
   try {
     const { payload, protectedHeader } = await jwtVerify(token, APP_CHECK_JWKS, {
       algorithms: ["RS256"],
