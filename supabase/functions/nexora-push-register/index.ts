@@ -24,7 +24,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const authorization = req.headers.get("authorization") || "";
-  const match = authorization.match(/^Bearer\\s+(.+)$/i);
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
   if (!match) return json({ error: "Firebase authentication required" }, 401);
 
   let userId = "";
@@ -47,10 +47,10 @@ Deno.serve(async (req: Request) => {
     const version = typeof body?.app_version === "string" ? body.app_version.trim() : "";
     const installId = typeof body?.install_id === "string" ? body.install_id.trim() : "";
 
-    if (token.length < 80 || token.length > 4096 || /\\s/.test(token)) {
+    if (token.length < 80 || token.length > 4096 || /\s/.test(token)) {
       return json({ error: "Invalid FCM registration token" }, 400);
     }
-    if (!/^v?\\d+\\.\\d+\\.\\d+$/.test(version)) {
+    if (!/^v?\d+\.\d+\.\d+$/.test(version)) {
       return json({ error: "Invalid app version" }, 400);
     }
     if (!/^[0-9a-f-]{36}$/i.test(installId)) {
