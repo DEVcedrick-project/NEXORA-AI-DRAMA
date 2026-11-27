@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
 const migrationFiles = fs.readdirSync("supabase/migrations").filter(name => name.endsWith(".sql"));
-assert(migrationFiles.length > 0 && migrationFiles.every(name => /^\\d{14}_[a-z0-9_]+\\.sql$/.test(name)),
+assert(migrationFiles.length > 0 && migrationFiles.every(name => /^\d{14}_[a-z0-9_]+\.sql$/.test(name)),
   "Every Supabase migration must use the canonical 14-digit timestamp filename format.");
 
 const source = fs.readFileSync("www/index.html", "utf8");
