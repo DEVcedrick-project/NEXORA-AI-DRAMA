@@ -21,20 +21,20 @@ for (const forbidden of ["wallet:", "vipStatus:", "unlockedEpisodes:"]) {
 }
 
 const rewardCredit = block("function creditCoins(", "function unlockEpisodeWithRewardedAd(");
-assert(!/update\(ref\([^)]*wallet/.test(rewardCredit), "Client coin rewards must not write Firebase wallet balances.");
+assert(!/update\\(ref\\([^)]*wallet/.test(rewardCredit), "Client coin rewards must not write Firebase wallet balances.");
 
 const rewardedUnlock = block("function unlockEpisodeWithRewardedAd(", "function unlockEpisodeWithCoins(");
-assert(!/update\(ref\(/.test(rewardedUnlock), "Rewarded-ad callbacks must not write server entitlements.");
+assert(!/update\\(ref\\(/.test(rewardedUnlock), "Rewarded-ad callbacks must not write server entitlements.");
 
 const coinUnlock = block("function unlockEpisodeWithCoins(", "function syncWalletUI(");
-assert(!/update\(ref\(/.test(coinUnlock), "Coin unlocks must not write server wallet or entitlement records.");
+assert(!/update\\(ref\\(/.test(coinUnlock), "Coin unlocks must not write server wallet or entitlement records.");
 
 const walletSync = block("async function syncStateToSupabaseNow(", "function getCapacitorAdMobPlugin()");
-assert(!/\.from\(['"](?:user_wallets|unlocked_episodes)['"]\)/.test(walletSync),
+assert(!/\\.from\\(['"](?:user_wallets|unlocked_episodes)['"]\\)/.test(walletSync),
   "The public Supabase client must not read or write protected wallet tables.");
 
 const signOut = block("async function handleSignOutAccount()", "function cycleUserAvatar()");
-assert(!/update\(ref\(/.test(signOut), "Account switching must not flush protected data from the client.");
+assert(!/update\\(ref\\(/.test(signOut), "Account switching must not flush protected data from the client.");
 
 const pushFunction = fs.readFileSync("supabase/functions/nexora-push-register/index.ts", "utf8");
 assert(source.includes('"Authorization": "Bearer " + idToken'),
@@ -43,15 +43,17 @@ assert(pushFunction.includes("jwtVerify") && pushFunction.includes("securetoken.
   "Push registration must cryptographically verify Firebase ID tokens.");
 assert(pushFunction.includes('audience: PROJECT_ID') && pushFunction.includes('issuer: `https://securetoken.google.com/${PROJECT_ID}`'),
   "Push registration must validate the Firebase token issuer and audience.");
-assert(pushFunction.includes("MAX_DEVICES_PER_USER = 5") && pushFunction.includes('.eq("user_id", userId)'),
-  "Push registration must enforce the per-account device limit.");
-assert(pushFunction.includes('.select("token,user_id,install_id")'),
-  "Push registration must inspect the existing FCM token owner and install identity.");
-assert(pushFunction.includes("existing?.user_id && existing.user_id !== userId && existing.install_id !== installId"),
-  "An FCM token must not be reassigned across unrelated accounts.");
-assert(pushFunction.includes("existing?.user_id !== userId && (count ?? 0) >= MAX_DEVICES_PER_USER"),
-  "The device cap must also apply when a token changes account ownership.");
+assert(pushFunction.includes("MAX_DEVICES_PER_USER = 5") && pushFunction.includes('admin.rpc("nexora_register_push_device"'),
+  "Push registration must enforce its device cap through the atomic database RPC.");
+assert(!pushFunction.includes('.from("nexora_push_devices")'),
+  "Push registration must not perform a non-atomic read/count/write sequence.");
 
+const registrationMigration = fs.readFileSync("supabase/migrations/202611270001_atomic_push_device_registration.sql", "utf8");
+assert(registrationMigration.includes("pg_advisory_xact_lock") && registrationMigration.includes("hashtextextended"),
+  "Push device registration must serialize per-user and per-token claims.");
+assert(registrationMigration.includes("revoke all on function public.nexora_register_push_device") &&
+  registrationMigration.includes("to service_role"),
+  "Only the trusted service role may execute the push registration RPC.");
 
 const broadcastFunction = fs.readFileSync("supabase/functions/nexora-push-broadcast/index.ts", "utf8");
 assert(broadcastFunction.includes('.from("nexora_push_devices").select("token").not("user_id", "is", null)'),
@@ -65,4 +67,4 @@ assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").mayb
 assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
   "Social actions must reject draft, hidden and nonexistent dramas.");
 
-console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");
+console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries, atomic authenticated FCM registration, owned-device broadcasts, and published-only social access are enforced.");
