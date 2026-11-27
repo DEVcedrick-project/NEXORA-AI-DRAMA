@@ -80,22 +80,29 @@ Deno.serve(async (req: Request) => {
       fcmRequestStarted = true;
       try {
         response = await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ message: {
-          token: device.token,
-          notification: {
-            title: "NEXORA AI DRAMA update available",
-            body: `Version ${version} is ready. Tap to check for the update.`
-          },
-          data: {
-            type: "app_update", version,
-            updateUrl: "https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json"
-          },
-          android: { priority: "HIGH", notification: { channel_id: "nexora_updates", sound: "default" } }
-        }})
-      });
-      const result = await response.json().catch(() => ({}));
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ message: {
+            token: device.token,
+            notification: {
+              title: "NEXORA AI DRAMA update available",
+              body: `Version ${version} is ready. Tap to check for the update.`
+            },
+            data: {
+              type: "app_update", version,
+              updateUrl: "https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json"
+            },
+            android: { priority: "HIGH", notification: { channel_id: "nexora_updates", sound: "default" } }
+          }})
+        });
+      } catch (_networkError) {
+        const { error: unknownError } = await admin.from("nexora_push_deliveries")
+          .update({ status: "unknown", last_error_code: "TRANSPORT_ERROR", updated_at: new Date().toISOString() })
+          .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
+        if (unknownError) throw unknownError;
+        throw new Error("FCM request outcome is unknown; automatic retry was withheld to avoid duplicate delivery");
+      }
+      result = await response.json().catch(() => ({}));
       if (response.ok) {
         deliveredThisAttempt++;
         const sentAt = new Date().toISOString();
@@ -115,7 +122,13 @@ Deno.serve(async (req: Request) => {
           if (deleteError) throw deleteError;
           invalidTokensRemoved++;
         } else {
-          throw new Error(`FCM send failed (${response.status}): ${JSON.stringify(result).slice(0, 400)}`);
+          const ambiguous = response.status >= 500;
+          const safeCode = typeof code === "string" && /^[A-Z0-9_]{1,64}$/.test(code) ? code : `HTTP_${response.status}`;
+          const { error: markError } = await admin.from("nexora_push_deliveries")
+            .update({ status: ambiguous ? "unknown" : "failed", response_status: response.status, last_error_code: safeCode, updated_at: new Date().toISOString() })
+            .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
+          if (markError) throw markError;
+          if (ambiguous) throw new Error("FCM returned a server error; delivery outcome is unknown and was not retried");
         }
       }
     }
