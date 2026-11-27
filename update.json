@@ -1,7 +1,7 @@
 {
-  "version": "2.6.41",
-  "title": "NEXORA AI DRAMA v2.6.41",
+  "version": "2.6.42",
+  "title": "NEXORA AI DRAMA v2.6.42",
   "notes": "Adds official APK SHA-256 verification and full archive integrity checks before Android installation.",
-  "sha256": "8e251b15f8dd1e0d2b7757e11ca1fed8b8253adcef97ca4871edd555493bb724",
-  "downloadUrl": "https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v2.6.41/NEXORA-AI-DRAMA-release.apk"
+  "sha256": "7ebe7973569f6f84d9b04b4ad2ff2dbbbcd30c2d6f991e5afe4fabc0c4202835",
+  "downloadUrl": "https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/download/v2.6.42/NEXORA-AI-DRAMA-release.apk"
 }
