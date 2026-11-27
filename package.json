@@ -7,7 +7,7 @@
     "cap:sync": "npm run build-native-plugins && npx cap sync android",
     "cap:open": "npx cap open android",
     "build-native-plugins": "node scripts/build-native-plugins.mjs",
-    "test:app-check": "deno test supabase/functions/nexora-push-register/app-check_test.ts"
+    "test:app-check": "node --experimental-strip-types --test scripts/test-app-check-enforcement.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
