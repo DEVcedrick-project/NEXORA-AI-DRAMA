@@ -1010,8 +1010,7 @@
       try {
         if (!nexoraAppCheckInitPromise) {
           nexoraAppCheckInitPromise = (async () => {
-            await FirebaseAppCheck.initialize();
-            await FirebaseAppCheck.setTokenAutoRefreshEnabled({ isTokenAutoRefreshEnabled: true });
+            await FirebaseAppCheck.initialize({ isTokenAutoRefreshEnabled: true });
           })();
         }
         await nexoraAppCheckInitPromise;
