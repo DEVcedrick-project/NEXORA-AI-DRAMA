@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
         .select("token", { count: "exact", head: true })
         .eq("user_id", userId),
       admin.from("nexora_push_devices")
-        .select("token")
+        .select("token,user_id,install_id")
         .eq("token", token)
         .maybeSingle(),
     ]);
@@ -80,6 +80,11 @@ Deno.serve(async (req: Request) => {
     }
     if (!existing && (count ?? 0) >= MAX_DEVICES_PER_USER) {
       return json({ error: `A maximum of ${MAX_DEVICES_PER_USER} devices can be registered per account` }, 429);
+    }
+    // A stolen/guessed FCM token must not be silently reassigned to another
+    // Firebase account. Permit account switching only from the same install.
+    if (existing?.user_id && existing.user_id !== userId && existing.install_id !== installId) {
+      return json({ error: "This notification token is already linked to another account" }, 409);
     }
 
     const now = new Date().toISOString();
