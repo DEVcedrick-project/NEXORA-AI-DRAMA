@@ -1000,6 +1000,28 @@
     } from "/vendor/firebase.js";
     import { getDatabase, ref, get, onValue, update, serverTimestamp } from "/vendor/firebase.js";
     import { createClient } from "/vendor/supabase.js";
+    import { FirebaseAppCheck } from "/vendor/nexora-native-plugins.js";
+
+    // Native Play Integrity-backed Firebase App Check. This is deliberately
+    // best-effort while server enforcement remains in monitor-only mode.
+    let nexoraAppCheckInitPromise = null;
+    async function getNexoraAppCheckToken() {
+      if (!window.Capacitor?.isNativePlatform?.()) return "";
+      try {
+        if (!nexoraAppCheckInitPromise) {
+          nexoraAppCheckInitPromise = (async () => {
+            await FirebaseAppCheck.initialize();
+            await FirebaseAppCheck.setTokenAutoRefreshEnabled({ isTokenAutoRefreshEnabled: true });
+          })();
+        }
+        await nexoraAppCheckInitPromise;
+        const result = await FirebaseAppCheck.getToken();
+        return typeof result?.token === "string" ? result.token : "";
+      } catch (error) {
+        console.warn("[NEXORA App Check] Attestation token unavailable; continuing in monitor-only mode.", error);
+        return "";
+      }
+    }
 
     // =========================================================================
     // PRE-CONFIGURED DEFAULT KEYS (PASTE YOUR PRODUCTION KEYS HERE FOR APK)
@@ -2287,6 +2309,7 @@
           installId = crypto.randomUUID();
           localStorage.setItem("nexora_push_install_id", installId);
         }
+        const appCheckToken = await getNexoraAppCheckToken();
         let idToken = await firebaseUser.getIdToken();
         const endpoint = NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register";
         let refreshedAfter401 = false;
@@ -2299,7 +2322,8 @@
                 "Content-Type": "application/json",
                 "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
                 "Authorization": "Bearer " + idToken,
-                "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
+                "x-nexora-app-id": "com.devcedrick.nexoraaidrama",
+                ...(appCheckToken ? { "x-firebase-appcheck": appCheckToken } : {})
               },
               body: JSON.stringify({
                 token: tokenValue,
@@ -4122,9 +4146,10 @@
       if (!user || (user.isAnonymous && action !== 'read')) throw new Error('Sign in to like, comment or save posts.');
       const cfg = NEXORA_DEFAULT_CONFIG.studioCatalog;
       const token = await user.getIdToken();
+      const appCheckToken = await getNexoraAppCheckToken();
       const response = await fetch(`${cfg.url}/functions/v1/nexora-social`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': cfg.publishableKey, 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', 'apikey': cfg.publishableKey, 'Authorization': `Bearer ${token}`, ...(appCheckToken ? { 'x-firebase-appcheck': appCheckToken } : {}) },
         body: JSON.stringify({ action, seriesId, displayName: user.displayName || state.user.name, ...extra })
       });
       const result = await response.json().catch(() => ({}));
