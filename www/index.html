@@ -2237,6 +2237,20 @@
     async function initNativePushNotifications() {
       try {
         if (!window.Capacitor?.isNativePlatform?.()) return false;
+        if (!await ensureFirebaseAuthReady()) {
+          console.warn("[NEXORA Push] Firebase Authentication is unavailable; secure device registration was skipped.");
+          return false;
+        }
+        await runtime.fbAuth?.authStateReady?.();
+        if (!runtime.fbAuth?.currentUser) {
+          try { await signInAnonymously(runtime.fbAuth); } catch (authError) {
+            console.warn("[NEXORA Push] Guest authentication is unavailable:", authError);
+          }
+        }
+        if (!runtime.fbAuth?.currentUser) {
+          console.warn("[NEXORA Push] No Firebase user is available; secure device registration was skipped.");
+          return false;
+        }
         const { PushNotifications, LocalNotifications } = await import("./vendor/nexora-native-plugins.js");
         const permission = await PushNotifications.checkPermissions();
         let receive = permission.receive;
