@@ -2532,6 +2532,21 @@
         runtime.fbApp = app;
         runtime.fbAuth = auth;
 
+        // Install native Play Integrity attestation before Firebase-backed app flows.
+        // Failure is non-fatal until the App Check rollout is enabled for all users.
+        if (window.Capacitor?.isNativePlatform?.() && !runtime.appCheckInitAttempted) {
+          runtime.appCheckInitAttempted = true;
+          try {
+            const { FirebaseAppCheck } = await import('./vendor/nexora-native-plugins.js');
+            await FirebaseAppCheck.initialize({ isTokenAutoRefreshEnabled: true });
+            runtime.appCheckInitialized = true;
+            console.info('[NEXORA App Check] Native Play Integrity provider initialized.');
+          } catch (appCheckError) {
+            runtime.appCheckInitialized = false;
+            console.warn('[NEXORA App Check] Native provider unavailable; legacy compatibility remains active:', appCheckError);
+          }
+        }
+
         // Keep registered users signed in across app closes and Android restarts.
         // Wait for Firebase to restore its persisted session before creating a guest.
         try {
@@ -4112,13 +4127,11 @@
     }
 
     async function getNexoraAppCheckToken() {
-      // Native Capacitor Play Integrity integration can expose this small bridge.
-      // Older APKs and browser previews safely continue without an App Check header.
-      const bridge = window.NexoraAppCheck;
-      if (!bridge || typeof bridge.getToken !== 'function') return '';
+      if (!window.Capacitor?.isNativePlatform?.() || !runtime.appCheckInitialized) return '';
       try {
-        const result = await bridge.getToken();
-        return typeof result === 'string' ? result : String(result?.token || '');
+        const { FirebaseAppCheck } = await import('./vendor/nexora-native-plugins.js');
+        const result = await FirebaseAppCheck.getToken({ forceRefresh: false });
+        return String(result?.token || '');
       } catch (error) {
         console.warn('[NEXORA App Check] Token unavailable; compatibility mode remains active:', error);
         return '';
