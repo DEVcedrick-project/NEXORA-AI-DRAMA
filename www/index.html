@@ -2254,6 +2254,59 @@
     }
 
 
+    // Keep the latest FCM token so account changes can rebind this installation
+    // without asking Android to register for push a second time.
+    let nexoraNativeFcmToken = "";
+    let nexoraPushRegistrationInFlight = null;
+
+    async function registerNativePushDevice(tokenValue = nexoraNativeFcmToken) {
+      if (!tokenValue || !window.Capacitor?.isNativePlatform?.()) return false;
+      if (nexoraPushRegistrationInFlight) {
+        await nexoraPushRegistrationInFlight;
+      }
+      const registration = (async () => {
+        if (!await ensureFirebaseAuthReady()) {
+          throw new Error("Firebase authentication is not ready for secure push registration.");
+        }
+        await runtime.fbAuth?.authStateReady?.();
+        const firebaseUser = runtime.fbAuth?.currentUser;
+        if (!firebaseUser) {
+          console.info("[NEXORA Push] No signed-in Firebase identity; device registration will wait.");
+          return false;
+        }
+        let installId = localStorage.getItem("nexora_push_install_id");
+        if (!installId) {
+          installId = crypto.randomUUID();
+          localStorage.setItem("nexora_push_install_id", installId);
+        }
+        const idToken = await firebaseUser.getIdToken();
+        const endpoint = NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register";
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
+            "Authorization": "Bearer " + idToken,
+            "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
+          },
+          body: JSON.stringify({
+            token: tokenValue,
+            app_version: APP_CURRENT_VERSION,
+            install_id: installId
+          })
+        });
+        if (!response.ok) throw new Error("Token registration returned HTTP " + response.status);
+        console.info("[NEXORA Push] Device registered for the current Firebase account.");
+        return true;
+      })();
+      nexoraPushRegistrationInFlight = registration;
+      try {
+        return await registration;
+      } finally {
+        if (nexoraPushRegistrationInFlight === registration) nexoraPushRegistrationInFlight = null;
+      }
+    }
+
     // Native Android push notifications (FCM). The native plugin is bundled by
     // Capacitor during CI; this guarded dynamic import keeps the web build usable.
     async function initNativePushNotifications() {
@@ -2300,38 +2353,9 @@
         }
 
         await PushNotifications.addListener("registration", async (token) => {
+          nexoraNativeFcmToken = String(token?.value || "");
           try {
-            let installId = localStorage.getItem("nexora_push_install_id");
-            if (!installId) {
-              installId = crypto.randomUUID();
-              localStorage.setItem("nexora_push_install_id", installId);
-            }
-            if (!await ensureFirebaseAuthReady()) {
-              throw new Error("Firebase authentication is not ready for secure push registration.");
-            }
-            await runtime.fbAuth?.authStateReady?.();
-            const firebaseUser = runtime.fbAuth?.currentUser;
-            if (!firebaseUser) {
-              throw new Error("Sign in to Firebase before registering this device for notifications.");
-            }
-            const idToken = await firebaseUser.getIdToken();
-            const endpoint = NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register";
-            const response = await fetch(endpoint, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
-                "Authorization": "Bearer " + idToken,
-                "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
-              },
-              body: JSON.stringify({
-                token: token.value,
-                app_version: APP_CURRENT_VERSION,
-                install_id: installId
-              })
-            });
-            if (!response.ok) throw new Error("Token registration returned HTTP " + response.status);
-            console.info("[NEXORA Push] Device registered for notifications.");
+            await registerNativePushDevice(nexoraNativeFcmToken);
           } catch (error) {
             console.error("[NEXORA Push] Device registration failed:", error);
           }
@@ -4951,6 +4975,8 @@
         const created = await createUserWithEmailAndPassword(runtime.fbAuth, email, password);
         credUser = created.user;
         if (!credUser) throw new Error('Firebase did not return a registered user.');
+        // Rebind the already-issued FCM token from the guest UID to this account.
+        void registerNativePushDevice().catch(error => console.error('[NEXORA Push] Account-change registration failed:', error));
         // Account creation/linking is authoritative. A profile-name update is optional:
         // do not report registration as failed after Firebase has already created the account.
         try {
@@ -5000,6 +5026,8 @@
         try {
           const res = await signInWithEmailAndPassword(runtime.fbAuth, email, password);
           const u = res.user;
+          // Rebind the existing installation token to the newly authenticated account.
+          void registerNativePushDevice().catch(error => console.error('[NEXORA Push] Account-change registration failed:', error));
           // Report only after Firebase confirms a successful interactive email login.
           void reportNexoraAuthEvent('login');
           // Preserve the account being left, then load only the target account's
