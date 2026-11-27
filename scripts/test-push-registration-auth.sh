@@ -9,7 +9,7 @@ check_unauthorized() {
   local auth_header="${1:-}"
   local output status
   output="$(mktemp)"
-  local args=(--silent --show-error --max-time 25 --output "$output" --write-out "%{http_code}"
+  local args=(--silent --show-error --connect-timeout 10 --max-time 45 --retry 3 --retry-all-errors --retry-delay 5 --output "$output" --write-out "%{http_code}"
     --request POST "$ENDPOINT"
     --header "Content-Type: application/json"
     --header "apikey: $API_KEY"

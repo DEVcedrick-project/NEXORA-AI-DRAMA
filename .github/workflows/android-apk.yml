@@ -85,6 +85,9 @@ jobs:
       - name: Bundle native notification bridges locally
         run: npm run build-native-plugins
 
+      - name: Verify bundled HLS playback runtime
+        run: node scripts/validate-playback-assets.mjs
+
       - name: Generate Android project and sync web assets
         run: |
           npx cap add android
