@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 const PROJECT_ID = "nexora-ai-drama";
 const APP_CHECK_PROJECT_NUMBER = "201389649043";
+const APP_CHECK_APP_ID = "1:201389649043:android:4dd0433ed5959b5e85f166";
 const APP_CHECK_ALLOWED_APP_IDS = new Set([
  "1:201389649043:web:fd6846443425fbe885f166",
  "1:201389649043:android:4dd0433ed5959b5e85f166"
