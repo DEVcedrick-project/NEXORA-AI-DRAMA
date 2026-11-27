@@ -13,6 +13,7 @@ Deno.serve(async (req: Request) => {
   let claimedEventKey = "";
   let claimToken = "";
   let deliveredThisAttempt = 0;
+  let fcmRequestStarted = false;
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST required" }, 405);
 
@@ -74,7 +75,11 @@ Deno.serve(async (req: Request) => {
         .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
       if (attemptError) throw attemptError;
 
-      const response = await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`, {
+      let response: Response;
+      let result: any = {};
+      fcmRequestStarted = true;
+      try {
+        response = await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ message: {
@@ -95,14 +100,14 @@ Deno.serve(async (req: Request) => {
         deliveredThisAttempt++;
         const sentAt = new Date().toISOString();
         const { error: markSentError } = await admin.from("nexora_push_deliveries")
-          .update({ status: "sent", sent_at: sentAt, updated_at: sentAt })
+          .update({ status: "sent", sent_at: sentAt, response_status: response.status, last_error_code: null, updated_at: sentAt })
           .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
         if (markSentError) throw markSentError;
       } else {
         const code = result?.error?.details?.find((item: any) => item?.errorCode)?.errorCode;
         if (code === "UNREGISTERED") {
           const { error: markInvalidError } = await admin.from("nexora_push_deliveries")
-            .update({ status: "invalid", updated_at: new Date().toISOString() })
+            .update({ status: "invalid", response_status: response.status, last_error_code: "UNREGISTERED", updated_at: new Date().toISOString() })
             .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
           if (markInvalidError) throw markInvalidError;
           const { error: deleteError } = await admin.from("nexora_push_devices")
@@ -126,7 +131,7 @@ Deno.serve(async (req: Request) => {
     claimedEventKey = "";
     return json({ ok: true, version, sent: sentTotal || 0, sentThisAttempt: deliveredThisAttempt, invalidTokensRemoved });
   } catch (error) {
-    if (claimAdmin && claimedEventKey && claimToken && deliveredThisAttempt === 0) {
+    if (claimAdmin && claimedEventKey && claimToken && deliveredThisAttempt === 0 && !fcmRequestStarted) {
       await claimAdmin.rpc("nexora_release_push_event", {
         p_event_key: claimedEventKey, p_claim_token: claimToken
       }).catch(() => {});
