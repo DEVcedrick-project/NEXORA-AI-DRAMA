@@ -94,7 +94,8 @@ assert(pushFunction.includes('Deno.env.get("NEXORA_APP_CHECK_ENFORCE") === "true
   pushFunction.includes("isAppCheckAllowed(appCheckStatus, appCheckEnforcementEnabled)"),
   "Push registration must reject missing or invalid App Check tokens when enforcement is enabled.");
 assert(appCheckModule.includes('return "missing"') &&
-  appCheckModule.includes('? "valid" : "invalid"') &&
+  appCheckModule.includes('? "valid"') &&
+  appCheckModule.includes(': "invalid"') &&
   appCheckModule.includes('status === "valid"'),
   "App Check verification must distinguish missing, valid and invalid tokens.");
 for (const expectedTest of [
