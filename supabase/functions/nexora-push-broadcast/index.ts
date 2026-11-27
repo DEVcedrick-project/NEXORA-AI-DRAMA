@@ -87,7 +87,13 @@ Deno.serve(async (req: Request) => {
             type: "app_update", version,
             updateUrl: "https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json"
           },
-          android: { priority: "HIGH", notification: { channel_id: "nexora_updates", sound: "default" } }
+          // Keep retries for one release update coalesced while queued and
+          // replace an earlier copy in the Android notification tray.
+          android: {
+            priority: "HIGH",
+            collapse_key: eventKey,
+            notification: { channel_id: "nexora_updates", sound: "default", tag: eventKey }
+          }
         }})
       });
       const result = await response.json().catch(() => ({}));
