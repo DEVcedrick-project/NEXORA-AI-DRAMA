@@ -29,10 +29,10 @@ jobs:
           from pathlib import Path
           manifest = json.loads(Path("update.json").read_text())
           version = manifest.get("version", "")
-          if not isinstance(version, str) or not re.fullmatch(r"\\d+\\.\\d+\\.\\d+", version):
+          if not isinstance(version, str) or not re.fullmatch(r"\d+\.\d+\.\d+", version):
               raise SystemExit("update.json does not contain a valid published semantic version")
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"value={version}\\n")
+              output.write(f"value={version}\n")
           print(f"Retrying pending notifications for published version {version}")
           PY
 
@@ -52,7 +52,7 @@ jobs:
             -X POST "https://vureiymqoosubwubhvdu.supabase.co/functions/v1/nexora-push-broadcast" \\
             -H "Content-Type: application/json" \\
             -H "x-nexora-release-secret: $NEXORA_RELEASE_WEBHOOK_SECRET" \\
-            --data "{\\"version\\":\\"$APP_VERSION\\"}")"
+            --data "{\"version\":\"$APP_VERSION\"}")"
 
           cat /tmp/nexora-push-response.json
           if [ "$HTTP_STATUS" != "200" ]; then
