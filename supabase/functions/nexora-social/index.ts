@@ -34,6 +34,31 @@ const JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/service_acco
 const cors = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info, x-firebase-appcheck","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
 function reply(status:number, body:Record<string,unknown>) { return new Response(JSON.stringify(body),{status,headers:cors}); }
 function cleanName(value:unknown) { const name=String(value||"NEXORA Viewer").replace(/[<>\u0000-\u001f]/g,"").trim().slice(0,40); return name||"NEXORA Viewer"; }
+async function readJsonLimited(req:Request,maxBytes=8192):Promise<Record<string,unknown>> {
+ const contentType=(req.headers.get("content-type")||"").split(";")[0].trim().toLowerCase();
+ if(contentType!=="application/json") throw new Error("content_type_required");
+ const declared=Number(req.headers.get("content-length")||"0");
+ if(Number.isFinite(declared)&&declared>maxBytes) throw new Error("body_too_large");
+ if(!req.body) throw new Error("empty_body");
+ const reader=req.body.getReader();
+ const chunks:Uint8Array[]=[];
+ let total=0;
+ try {
+  while(true) {
+   const {done,value}=await reader.read();
+   if(done) break;
+   total+=value.byteLength;
+   if(total>maxBytes) { await reader.cancel(); throw new Error("body_too_large"); }
+   chunks.push(value);
+  }
+ } finally { reader.releaseLock(); }
+ const bytes=new Uint8Array(total);
+ let offset=0;
+ for(const chunk of chunks) { bytes.set(chunk,offset); offset+=chunk.byteLength; }
+ const parsed=JSON.parse(new TextDecoder().decode(bytes));
+ if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)) throw new Error("invalid_json_object");
+ return parsed as Record<string,unknown>;
+}
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS") return new Response("ok",{headers:cors});
  if(req.method!=="POST") return reply(405,{error:"POST required"});
@@ -46,7 +71,18 @@ Deno.serve(async(req:Request)=>{
   const {payload}=await jwtVerify(match[1],JWKS,{issuer:`https://securetoken.google.com/${PROJECT_ID}`,audience:PROJECT_ID});
   const userId=String(payload.sub||"");
   if(!userId||userId.length>128) return reply(401,{error:"Invalid Firebase user"});
-  const body=await req.json(), action=String(body.action||""), seriesId=String(body.seriesId||"").trim();
+  const body=await readJsonLimited(req), action=String(body.action||""), seriesId=String(body.seriesId||"").trim();
+  if(action==="read") {
+   const rateUrl=Deno.env.get("SUPABASE_URL"), rateKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+   if(!rateUrl||!rateKey) return reply(503,{error:"Social service is temporarily unavailable"});
+   const rateDb=createClient(rateUrl,rateKey,{auth:{persistSession:false,autoRefreshToken:false}});
+   const {data:allowed,error:rateError}=await rateDb.rpc("nexora_check_social_read_rate_limit",{p_user_id:userId});
+   if(rateError) {
+    console.error("[nexora-social] read rate-limit check failed",rateError.code||"unknown");
+    return reply(503,{error:"Social reads are temporarily unavailable"});
+   }
+   if(allowed!==true) return new Response(JSON.stringify({error:"Too many social refresh requests. Please try again in one minute."}),{status:429,headers:{...cors,"Retry-After":"60"}});
+  }
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(seriesId)) {
    return reply(400,{error:"A valid published drama ID is required"});
   }
@@ -87,13 +123,34 @@ Deno.serve(async(req:Request)=>{
    if(error) throw error;
    if(created!==true) return reply(429,{error:"Please wait before posting another comment"});
   }
-  const [likes,ownLike,ownSave,comments]=await Promise.all([
+  const cursorCreatedAt=typeof body.cursorCreatedAt==="string"?body.cursorCreatedAt:"";
+  const cursorId=typeof body.cursorId==="string"?body.cursorId:"";
+  if(Boolean(cursorCreatedAt)!==Boolean(cursorId)) return reply(400,{error:"Invalid comment pagination cursor"});
+  if(cursorCreatedAt && (!Number.isFinite(Date.parse(cursorCreatedAt)) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cursorId))) return reply(400,{error:"Invalid comment pagination cursor"});
+  const [likes,ownLike,ownSave]=await Promise.all([
    db.from("nexora_social_likes").select("user_id",{count:"exact",head:true}).eq("series_id",seriesId),
    db.from("nexora_social_likes").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle(),
-   db.from("nexora_social_saves").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle(),
-   db.from("nexora_social_comments").select("id,user_id,display_name,body,created_at").eq("series_id",seriesId).order("created_at",{ascending:false}).limit(100)
+   db.from("nexora_social_saves").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle()
   ]);
-  for(const result of [likes,ownLike,ownSave,comments]) if(result.error) throw result.error;
-  return reply(200,{seriesId,viewerId:userId,likesCount:likes.count||0,liked:Boolean(ownLike.data),saved:Boolean(ownSave.data),comments:(comments.data||[]).map(item=>({id:item.id,userId:item.user_id,user:item.display_name,text:item.body,createdAt:item.created_at,time:new Date(item.created_at).toLocaleString("en",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"})+" UTC"}))});
- } catch(error) { console.error("[nexora-social] request failed",error); return reply(500,{error:"Could not complete social action"}); }
+  for(const result of [likes,ownLike,ownSave]) if(result.error) throw result.error;
+  let commentsQuery=db.from("nexora_social_comments").select("id,user_id,display_name,body,created_at")
+   .eq("series_id",seriesId).order("created_at",{ascending:false}).order("id",{ascending:false}).limit(21);
+  if(cursorCreatedAt) commentsQuery=commentsQuery.or(`created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`);
+  const {data:commentRows,error:commentsError}=await commentsQuery;
+  if(commentsError) throw commentsError;
+  const rows=commentRows||[];
+  const hasMore=rows.length>20;
+  const page=rows.slice(0,20);
+  const last=page[page.length-1];
+  return reply(200,{seriesId,viewerId:userId,likesCount:likes.count||0,liked:Boolean(ownLike.data),saved:Boolean(ownSave.data),
+   comments:page.map(item=>({id:item.id,userId:item.user_id,user:item.display_name,text:item.body,createdAt:item.created_at,time:new Date(item.created_at).toLocaleString("en",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"})+" UTC"})),
+   hasMore,nextCursor:hasMore&&last?{createdAt:last.created_at,id:last.id}:null});
+ } catch(error) {
+  console.error("[nexora-social] request failed",error);
+  const message=error instanceof Error?error.message:"";
+  if(message==="body_too_large") return reply(413,{error:"Request body is too large"});
+  if(message==="content_type_required") return reply(415,{error:"Content-Type application/json is required"});
+  if(message==="empty_body"||message==="invalid_json_object"||error instanceof SyntaxError) return reply(400,{error:"A valid JSON object is required"});
+  return reply(500,{error:"Could not complete social action"});
+ }
 });
