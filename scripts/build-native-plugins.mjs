@@ -59,3 +59,21 @@ if (supabaseStats.size < 50_000) {
   throw new Error(`Bundled Supabase client is unexpectedly small (${supabaseStats.size} bytes).`);
 }
 console.log(`Bundled local Supabase client (${supabaseStats.size} bytes).`);
+
+// Bundle the pinned Firebase modular SDK locally. Authentication and realtime
+// database imports share one browser ESM bundle and no longer require gstatic.
+await build({
+  entryPoints: ["scripts/firebase-runtime-entry.js"],
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: "es2020",
+  outfile: "www/vendor/firebase.js",
+  legalComments: "none",
+  sourcemap: false,
+});
+const firebaseStats = await stat("www/vendor/firebase.js");
+if (firebaseStats.size < 100_000) {
+  throw new Error(`Bundled Firebase SDK is unexpectedly small (${firebaseStats.size} bytes).`);
+}
+console.log(`Bundled local Firebase SDK (${firebaseStats.size} bytes).`);

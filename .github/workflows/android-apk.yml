@@ -94,6 +94,9 @@ jobs:
       - name: Verify locally bundled Supabase runtime
         run: node scripts/validate-supabase-runtime.mjs
 
+      - name: Verify locally bundled Firebase runtime
+        run: node scripts/validate-firebase-runtime.mjs
+
       - name: Generate Android project and sync web assets
         run: |
           npx cap add android

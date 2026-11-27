@@ -983,7 +983,7 @@
   <!-- APPLICATION LOGIC, OTA SYSTEM & FIREBASE + SUPABASE + ADMOB ENGINE      -->
   <!-- ======================================================================= -->
   <script type="module">
-    import { initializeApp, getApps, deleteApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { initializeApp, getApps, deleteApp } from "/vendor/firebase.js";
     import {
       getAuth,
       browserLocalPersistence,
@@ -997,8 +997,8 @@
       updateProfile,
       sendPasswordResetEmail,
       signOut
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getDatabase, ref, get, onValue, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+    } from "/vendor/firebase.js";
+    import { getDatabase, ref, get, onValue, update, serverTimestamp } from "/vendor/firebase.js";
     import { createClient } from "/vendor/supabase.js";
 
     // =========================================================================
