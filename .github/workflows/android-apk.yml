@@ -29,7 +29,8 @@ on:
 
 concurrency:
   group: nexora-ai-drama-android-${{ github.ref }}
-  cancel-in-progress: false
+  # Cancel superseded PR builds, but never interrupt a production release build.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: write
