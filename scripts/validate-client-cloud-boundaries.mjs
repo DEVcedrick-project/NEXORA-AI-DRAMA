@@ -126,6 +126,24 @@ assert(broadcastFunction.includes("DEVICE_PAGE_SIZE = 500") &&
   broadcastFunction.includes(".limit(DELIVERY_BATCH_SIZE)"),
   "Push broadcasts must page device registration and pending delivery reads instead of silently stopping at the database row cap.");
 
+const pushRetryWorkflow = fs.readFileSync(".github/workflows/retry-push-delivery.yml", "utf8");
+assert(pushRetryWorkflow.includes("cron: '*/30 * * * *'") &&
+  pushRetryWorkflow.includes("workflow_dispatch") &&
+  pushRetryWorkflow.includes("NEXORA_RELEASE_WEBHOOK_SECRET") &&
+  pushRetryWorkflow.includes("update.json") &&
+  pushRetryWorkflow.includes("--retry 3"),
+  "Pending push deliveries must have a bounded scheduled/manual retry workflow using the published version and server secret.");
+
+const pushRetentionMigration = fs.readFileSync(
+  "supabase/migrations/20261127143000_prune_terminal_push_delivery_history.sql", "utf8"
+);
+assert(pushRetentionMigration.includes("interval '90 days'") &&
+  pushRetentionMigration.includes("status in ('sent', 'invalid')") &&
+  pushRetentionMigration.includes("p_batch_size > 5000") &&
+  pushRetentionMigration.includes("for update skip locked") &&
+  pushRetentionMigration.includes("to service_role"),
+  "Push delivery retention must prune only terminal records older than 90 days in bounded service-role-only batches.");
+
 const socialFunction = fs.readFileSync("supabase/functions/nexora-social/index.ts", "utf8");
 assert(socialFunction.includes("A valid published drama ID is required"),
   "Social actions must reject malformed catalog IDs.");
