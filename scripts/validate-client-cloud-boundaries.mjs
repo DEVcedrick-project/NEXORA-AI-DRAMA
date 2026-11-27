@@ -93,5 +93,17 @@ assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").mayb
   "Social actions must authorize the target against the published drama catalog.");
 assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
   "Social actions must reject draft, hidden and nonexistent dramas.");
+assert(socialFunction.includes('nexora_check_social_request_rate_limit') &&
+  socialFunction.includes('p_network_hash:networkHash') &&
+  socialFunction.includes('p_action:action'),
+  "Social requests must enforce per-user and per-network limits for every action.");
+assert(socialFunction.includes('cf-connecting-ip') &&
+  socialFunction.includes('x-forwarded-for') &&
+  socialFunction.includes('HMAC') &&
+  socialFunction.includes('nexora-social-network-v1:'),
+  "Social network buckets must use a server-keyed hash of the gateway-provided client address.");
+assert(socialFunction.includes('trusted_network_address_unavailable') === false &&
+  socialFunction.includes('trusted_client_network_address_unavailable'),
+  "Social requests must fail closed when no trusted client network address is available.");
 
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");
