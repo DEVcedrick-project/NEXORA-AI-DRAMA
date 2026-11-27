@@ -126,4 +126,20 @@ assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").mayb
 assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
   "Social actions must reject draft, hidden and nonexistent dramas.");
 
+
+const googleServices = JSON.parse(fs.readFileSync("google-services.json", "utf8"));
+const androidFirebaseClient = googleServices.client?.find(
+  (client) => client.client_info?.android_client_info?.package_name === "com.devcedrick.nexoraaidrama",
+);
+assert(googleServices.project_info?.project_id === "nexora-ai-drama" &&
+  googleServices.project_info?.project_number === "201389649043",
+  "Google Services project identity must match the NEXORA AI DRAMA Firebase project.");
+assert(androidFirebaseClient?.client_info?.mobilesdk_app_id === "1:201389649043:android:4dd0433ed5959b5e85f166",
+  "Google Services Android App ID must match the App Check verifier identity.");
+assert(pushFunction.includes('const PROJECT_NUMBER = "201389649043"') &&
+  pushFunction.includes('const FIREBASE_APP_ID = "1:201389649043:android:4dd0433ed5959b5e85f166"'),
+  "The App Check verifier project number and Android app ID must remain aligned with google-services.json.");
+assert(appCheckTests.includes('const ANDROID_APP_ID = "1:201389649043:android:4dd0433ed5959b5e85f166"'),
+  "App Check tests must use the registered NEXORA AI DRAMA Android Firebase App ID.");
+
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");
