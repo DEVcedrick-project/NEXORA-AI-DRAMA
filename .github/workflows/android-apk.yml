@@ -70,6 +70,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+      - name: Validate Firebase Realtime Database security rules
+        run: node scripts/validate-firebase-rules.mjs
+
       - name: Bundle native notification bridges locally
         run: npm run build-native-plugins
 
@@ -94,7 +97,7 @@ jobs:
                   continue
               source = source.replace(
                   "mavenCentral()",
-                  mirror + "\\n        mavenCentral()"
+                  mirror + "\n        mavenCentral()"
               )
               path.write_text(source)
               changed += 1
