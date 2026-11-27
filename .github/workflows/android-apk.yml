@@ -73,6 +73,10 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+      # Keep native App Check allow/deny regression coverage ahead of Android packaging.
+      - name: Test Firebase App Check enforcement behavior
+        run: npm run test:app-check
+
       - name: Validate Firebase Realtime Database security rules
         run: node scripts/validate-firebase-rules.mjs
 

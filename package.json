@@ -6,7 +6,8 @@
   "scripts": {
     "cap:sync": "npm run build-native-plugins && npx cap sync android",
     "cap:open": "npx cap open android",
-    "build-native-plugins": "node scripts/build-native-plugins.mjs"
+    "build-native-plugins": "node scripts/build-native-plugins.mjs",
+    "test:app-check": "node --experimental-strip-types --test scripts/test-app-check-enforcement.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
@@ -18,7 +19,8 @@
     "hls.js": "1.7.4",
     "lucide": "1.81.0",
     "@supabase/supabase-js": "2.119.2",
-    "firebase": "11.6.1"
+    "firebase": "12.6.0",
+    "@capacitor-firebase/app-check": "8.6.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0",

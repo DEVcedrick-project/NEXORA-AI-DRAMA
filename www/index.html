@@ -2287,6 +2287,12 @@
           installId = crypto.randomUUID();
           localStorage.setItem("nexora_push_install_id", installId);
         }
+        const { FirebaseAppCheck } = await import("./vendor/nexora-native-plugins.js");
+        const appCheckResult = await FirebaseAppCheck.getToken({ forceRefresh: false });
+        const appCheckToken = String(appCheckResult?.token || "").trim();
+        if (!appCheckToken) {
+          throw new Error("Firebase App Check did not return a native attestation token.");
+        }
         let idToken = await firebaseUser.getIdToken();
         const endpoint = NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register";
         let refreshedAfter401 = false;
@@ -2299,7 +2305,8 @@
                 "Content-Type": "application/json",
                 "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
                 "Authorization": "Bearer " + idToken,
-                "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
+                "x-nexora-app-id": "com.devcedrick.nexoraaidrama",
+                "x-firebase-appcheck": appCheckToken
               },
               body: JSON.stringify({
                 token: tokenValue,
@@ -2357,6 +2364,9 @@
     async function initNativePushNotifications() {
       try {
         if (!window.Capacitor?.isNativePlatform?.()) return false;
+        const { FirebaseAppCheck } = await import("./vendor/nexora-native-plugins.js");
+        await FirebaseAppCheck.initialize();
+        await FirebaseAppCheck.setTokenAutoRefreshEnabled({ enabled: true });
         if (!await ensureFirebaseAuthReady()) {
           console.warn("[NEXORA Push] Firebase Authentication is unavailable; secure device registration was skipped.");
           return false;

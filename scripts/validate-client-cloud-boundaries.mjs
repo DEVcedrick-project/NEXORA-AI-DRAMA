@@ -75,6 +75,38 @@ assert(pushClient.includes('window.addEventListener("online", recover)') &&
   pushClient.includes('document.addEventListener("visibilitychange", recover)'),
   "FCM registration must recover after network reconnection and app resume.");
 
+const appCheckModule = fs.readFileSync("supabase/functions/nexora-push-register/app-check.ts", "utf8");
+const appCheckTests = fs.readFileSync("supabase/functions/nexora-push-register/app-check_test.ts", "utf8");
+const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+const nativePluginEntry = fs.readFileSync("scripts/native-plugins-entry.js", "utf8");
+assert(packageJson.dependencies["@capacitor-firebase/app-check"] === "8.6.0" &&
+  packageJson.dependencies.firebase === "12.6.0",
+  "Capacitor 8 App Check must use its compatible plugin and Firebase JavaScript SDK versions.");
+assert(nativePluginEntry.includes('export { FirebaseAppCheck } from "@capacitor-firebase/app-check";'),
+  "The native App Check plugin must be included in the local Capacitor bundle.");
+assert(source.includes("await FirebaseAppCheck.initialize()") &&
+  source.includes("await FirebaseAppCheck.setTokenAutoRefreshEnabled({ enabled: true })"),
+  "Native App Check must initialize and enable automatic token refresh.");
+assert(source.includes('FirebaseAppCheck.getToken({ forceRefresh: false })') &&
+  source.includes('"x-firebase-appcheck": appCheckToken'),
+  "Push registration must retrieve a native App Check token and send it to the backend.");
+assert(pushFunction.includes('Deno.env.get("NEXORA_APP_CHECK_ENFORCE") === "true"') &&
+  pushFunction.includes("isAppCheckAllowed(appCheckStatus, appCheckEnforcementEnabled)"),
+  "Push registration must reject missing or invalid App Check tokens when enforcement is enabled.");
+assert(appCheckModule.includes('return "missing"') &&
+  appCheckModule.includes('? "valid"') &&
+  appCheckModule.includes(': "invalid"') &&
+  appCheckModule.includes('status === "valid"'),
+  "App Check verification must distinguish missing, valid and invalid tokens.");
+for (const expectedTest of [
+  "valid NEXORA Android App Check token passes with enforcement enabled",
+  "missing App Check token is rejected when enforcement is enabled",
+  "invalid App Check signature is rejected when enforcement is enabled",
+  "token for a different Firebase app is rejected",
+]) {
+  assert(appCheckTests.includes(expectedTest), `Missing App Check enforcement test: ${expectedTest}`);
+}
+
 const broadcastFunction = fs.readFileSync("supabase/functions/nexora-push-broadcast/index.ts", "utf8");
 assert(broadcastFunction.includes('.eq("app_id", APP_ID)') &&
   broadcastFunction.includes('.eq("platform", "android")'),
@@ -93,5 +125,21 @@ assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").mayb
   "Social actions must authorize the target against the published drama catalog.");
 assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
   "Social actions must reject draft, hidden and nonexistent dramas.");
+
+
+const googleServices = JSON.parse(fs.readFileSync("google-services.json", "utf8"));
+const androidFirebaseClient = googleServices.client?.find(
+  (client) => client.client_info?.android_client_info?.package_name === "com.devcedrick.nexoraaidrama",
+);
+assert(googleServices.project_info?.project_id === "nexora-ai-drama" &&
+  googleServices.project_info?.project_number === "201389649043",
+  "Google Services project identity must match the NEXORA AI DRAMA Firebase project.");
+assert(androidFirebaseClient?.client_info?.mobilesdk_app_id === "1:201389649043:android:4dd0433ed5959b5e85f166",
+  "Google Services Android App ID must match the App Check verifier identity.");
+assert(pushFunction.includes('const PROJECT_NUMBER = "201389649043"') &&
+  pushFunction.includes('const FIREBASE_APP_ID = "1:201389649043:android:4dd0433ed5959b5e85f166"'),
+  "The App Check verifier project number and Android app ID must remain aligned with google-services.json.");
+assert(appCheckTests.includes('const ANDROID_APP_ID = "1:201389649043:android:4dd0433ed5959b5e85f166"'),
+  "App Check tests must use the registered NEXORA AI DRAMA Android Firebase App ID.");
 
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");

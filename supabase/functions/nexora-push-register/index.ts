@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isAppCheckAllowed, verifyAppCheckToken } from "./app-check.ts";
 
 const PROJECT_ID = "nexora-ai-drama";
 const APP_ID = "com.devcedrick.nexoraaidrama";
@@ -11,20 +12,15 @@ const APP_CHECK_JWKS = createRemoteJWKSet(
   new URL("https://firebaseappcheck.googleapis.com/v1/jwks"),
   { cacheMaxAge: 6 * 60 * 60 * 1000 },
 );
-type AppCheckStatus = "valid" | "missing" | "invalid";
-async function verifyAppCheck(req: Request): Promise<AppCheckStatus> {
+async function verifyAppCheck(req: Request) {
   const token = (req.headers.get("x-firebase-appcheck") || "").trim();
-  if (!token) return "missing";
-  try {
-    const { payload, protectedHeader } = await jwtVerify(token, APP_CHECK_JWKS, {
+  return await verifyAppCheckToken(token, FIREBASE_APP_ID, async (value) => {
+    return await jwtVerify(value, APP_CHECK_JWKS, {
       algorithms: ["RS256"],
       issuer: `https://firebaseappcheck.googleapis.com/${PROJECT_NUMBER}`,
       audience: `projects/${PROJECT_NUMBER}`,
     });
-    return protectedHeader.typ === "JWT" && payload.sub === FIREBASE_APP_ID ? "valid" : "invalid";
-  } catch {
-    return "invalid";
-  }
+  });
 }
 const FIREBASE_JWKS = createRemoteJWKSet(
   new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com")
@@ -42,7 +38,8 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST required" }, 405);
   const appCheckStatus = await verifyAppCheck(req);
-  if (Deno.env.get("NEXORA_APP_CHECK_ENFORCE") === "true" && appCheckStatus !== "valid") {
+  const appCheckEnforcementEnabled = Deno.env.get("NEXORA_APP_CHECK_ENFORCE") === "true";
+  if (!isAppCheckAllowed(appCheckStatus, appCheckEnforcementEnabled)) {
     return json({ error: "A valid NEXORA app attestation is required" }, 401);
   }
   if (appCheckStatus !== "valid") {
