@@ -66,6 +66,9 @@ assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").mayb
   "Social actions must authorize the target against the published drama catalog.");
 assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
   "Social actions must reject draft, hidden and nonexistent dramas.");
+assert(socialFunction.includes('db.rpc("nexora_create_social_comment"') &&
+  socialFunction.includes('if(created!==true) return reply(429'),
+  "Social comment rate limits must be enforced atomically in PostgreSQL.");
 
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
 const publishedVersion = JSON.parse(fs.readFileSync("update.json", "utf8")).version;
