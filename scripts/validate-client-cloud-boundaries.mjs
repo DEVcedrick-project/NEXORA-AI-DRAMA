@@ -74,6 +74,9 @@ assert(pushClient.includes("firebaseUser.getIdToken(true)"),
 assert(pushClient.includes('window.addEventListener("online", recover)') &&
   pushClient.includes('document.addEventListener("visibilitychange", recover)'),
   "FCM registration must recover after network reconnection and app resume.");
+assert(pushClient.includes("getNexoraAppCheckToken") &&
+  pushClient.includes('headers["X-Firebase-AppCheck"] = appCheckToken'),
+  "Push registration must attach a native App Check token when available.");
 
 const broadcastFunction = fs.readFileSync("supabase/functions/nexora-push-broadcast/index.ts", "utf8");
 assert(broadcastFunction.includes('.eq("app_id", APP_ID)') &&
@@ -116,7 +119,7 @@ assert(socialFunction.includes("x-firebase-appcheck") &&
   socialFunction.includes("APP_CHECK_PROJECT_NUMBER"),
   "Social API must accept and validate project-scoped Firebase App Check tokens.");
 const socialClient = block("async function getNexoraAppCheckToken()", "function applyNexoraSocialSnapshot(");
-assert(socialClient.includes("window.NexoraAppCheck") &&
+assert(socialClient.includes("FirebaseAppCheck.getToken") &&
   socialClient.includes("X-Firebase-AppCheck") &&
   socialClient.includes("if (appCheckToken)"),
   "Social client must attach a native App Check token when available without blocking legacy clients.");
