@@ -1185,6 +1185,9 @@
       lastContinueSaveMs: 0,
       socialLoadAt: {},
       socialLoadInFlight: {},
+      socialCommentCursors: {},
+      socialCommentHasMore: {},
+      socialCommentLoading: {},
       socialRefreshTimer: null,
       lastAnimationErrorAt: 0,
       bootstrapStarted: false
@@ -4173,6 +4176,8 @@
       state.likedSeries[id] = Boolean(result.liked);
       state.savedSeries = result.saved ? [...new Set([...state.savedSeries, id])] : state.savedSeries.filter(x => x !== id);
       state.commentsBySeries[id] = Array.isArray(result.comments) ? result.comments : [];
+      runtime.socialCommentCursors[id] = result.nextCursor || null;
+      runtime.socialCommentHasMore[id] = result.hasMoreComments === true;
       runtime.socialLoadAt[id] = Date.now();
       updateSeriesLikeUI(id);
       const count = document.getElementById(`comment-count-${id}`);
@@ -4197,6 +4202,42 @@
         });
       runtime.socialLoadInFlight[id] = task;
       return task;
+    }
+
+    async function loadOlderSocialComments(id) {
+      const cursor = runtime.socialCommentCursors[id];
+      if (!id || !cursor || runtime.socialCommentLoading[id] || runtime.socialCommentHasMore[id] !== true) return;
+      runtime.socialCommentLoading[id] = true;
+      renderSocialComments(id);
+      try {
+        const result = await callNexoraSocial('read', id, {
+          cursorCreatedAt: cursor.createdAt,
+          cursorId: cursor.id
+        });
+        if (result?.seriesId !== id ||
+            (result.viewerId && runtime.fbAuth?.currentUser?.uid !== result.viewerId)) return;
+        const existing = state.commentsBySeries[id] || [];
+        const seen = new Set(existing.map(comment => comment.id));
+        const older = (Array.isArray(result.comments) ? result.comments : [])
+          .filter(comment => comment?.id && !seen.has(comment.id));
+        state.commentsBySeries[id] = [...existing, ...older];
+        runtime.socialCommentCursors[id] = result.nextCursor || null;
+        runtime.socialCommentHasMore[id] = result.hasMoreComments === true;
+        state.socialLikesCount[id] = Number(result.likesCount) || 0;
+        state.likedSeries[id] = Boolean(result.liked);
+        state.savedSeries = result.saved
+          ? [...new Set([...state.savedSeries, id])]
+          : state.savedSeries.filter(seriesId => seriesId !== id);
+        updateSeriesLikeUI(id);
+        const count = document.getElementById(`comment-count-${id}`);
+        if (count) count.textContent = String(state.commentsBySeries[id].length);
+      } catch (error) {
+        console.warn('[NEXORA social] Older comments failed to load:', error);
+        showToast(error.message || 'Could not load older comments. Please try again.');
+      } finally {
+        runtime.socialCommentLoading[id] = false;
+        if (state.activeSeriesId === id) renderSocialComments(id);
+      }
     }
 
     function setupFeedIntersectionObserver() {
@@ -4570,9 +4611,16 @@
       const header = document.getElementById('comment-drawer-header');
       if (header) header.textContent = `${series.title} Comments (${comments.length})`;
       const listEl = document.getElementById('comment-list-container');
-      if (listEl) listEl.innerHTML = comments.length === 0
+      if (!listEl) return;
+      const commentMarkup = comments.length === 0
         ? '<p class="text-xs text-zinc-500 text-center py-6">No comments yet. Be the first to react!</p>'
         : comments.map(c => `<div class="p-3 rounded-2xl bg-black/50 border border-zinc-800/90 space-y-1"><div class="flex items-center justify-between"><span class="text-[11px] font-extrabold text-amber-300">@${escapeHtml(c.user || 'NEXORA Viewer')}</span><span class="text-[10px] text-zinc-500">${escapeHtml(c.time || '')}</span></div><p class="text-xs text-zinc-200 leading-snug">${escapeHtml(c.text || '')}</p></div>`).join('');
+      const hasMore = runtime.socialCommentHasMore[seriesId] === true;
+      const loading = runtime.socialCommentLoading[seriesId] === true;
+      const olderButton = hasMore
+        ? `<button type="button" onclick="loadOlderSocialComments(${escapeInlineJsString(seriesId)})" ${loading ? 'disabled' : ''} class="w-full py-2.5 rounded-xl border border-zinc-700 text-xs font-bold text-zinc-300 disabled:opacity-50">${loading ? 'Loading older comments…' : 'Load older comments'}</button>`
+        : '';
+      listEl.innerHTML = commentMarkup + olderButton;
     }
 
     function openCommentDrawer(seriesId) {
