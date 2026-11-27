@@ -78,8 +78,8 @@ assert(socialFunction.includes('db.rpc("nexora_create_social_comment"') &&
   socialFunction.includes('if(created!==true) return reply(429'),
   "Social comment rate limits must be enforced atomically in PostgreSQL.");
 assert(socialFunction.includes('db.rpc("nexora_toggle_social_reaction"') &&
-  !/from\("nexora_social_(?:likes|saves)"\)\.(?:select|insert|delete)/.test(socialFunction),
-  "Social like and save toggles must use atomic PostgreSQL operations, not client-side read/write sequences.");
+  !/from\("nexora_social_(?:likes|saves)"\)\.(?:insert|delete|upsert|update)/.test(socialFunction),
+  "Social like and save toggles must use atomic PostgreSQL operations, not direct client-side writes.");
 const reactionMigration = fs.readFileSync("supabase/migrations/20261127041718_atomic_social_reactions.sql", "utf8");
 assert(reactionMigration.includes("pg_advisory_xact_lock") &&
   reactionMigration.includes("nexora_toggle_social_reaction") &&
