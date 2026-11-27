@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const PROJECT_ID = "nexora-ai-drama";
 const APP_CHECK_PROJECT_NUMBER = "201389649043";
+const APP_CHECK_ALLOWED_APP_ID = "1:201389649043:android:4dd0433ed5959b5e85f166";
 const MAX_APP_CHECK_TOKEN_LENGTH = 8192;
 const APP_CHECK_JWKS = createRemoteJWKSet(
   new URL("https://firebaseappcheck.googleapis.com/v1/jwks"),
@@ -21,7 +22,7 @@ async function verifyAppCheck(req: Request): Promise<"valid" | "missing" | "inva
       audience: `projects/${APP_CHECK_PROJECT_NUMBER}`,
     });
     const subject = String(payload.sub || "");
-    return protectedHeader.typ === "JWT" && subject.startsWith(`1:${APP_CHECK_PROJECT_NUMBER}:`)
+    return protectedHeader.typ === "JWT" && subject === APP_CHECK_ALLOWED_APP_ID
       ? "valid"
       : "invalid";
   } catch {
