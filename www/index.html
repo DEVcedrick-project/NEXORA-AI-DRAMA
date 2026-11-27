@@ -986,6 +986,7 @@
     import { initializeApp, getApps, deleteApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import {
       getAuth,
+      onAuthStateChanged,
       browserLocalPersistence,
       setPersistence,
       signInAnonymously,
@@ -2261,6 +2262,8 @@
     let nexoraNativeFcmToken = "";
     let nexoraPushRegistrationInFlight = null;
     let nexoraPushRecoveryListenersInstalled = false;
+    let nexoraPushAuthObserverInstalled = false;
+    let nexoraPushLastObservedUid = null;
 
     async function registerNativePushDevice(tokenValue = nexoraNativeFcmToken) {
       if (!tokenValue || !window.Capacitor?.isNativePlatform?.()) return false;
@@ -2279,12 +2282,17 @@
           console.info("[NEXORA Push] No signed-in Firebase identity; device registration will wait.");
           return false;
         }
+        const registrationUid = firebaseUser.uid;
         let installId = localStorage.getItem("nexora_push_install_id");
         if (!installId) {
           installId = crypto.randomUUID();
           localStorage.setItem("nexora_push_install_id", installId);
         }
         let idToken = await firebaseUser.getIdToken();
+        if (runtime.fbAuth?.currentUser?.uid !== registrationUid) {
+          console.info("[NEXORA Push] Account changed before registration; discarding stale attempt.");
+          return false;
+        }
         const endpoint = NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register";
         let refreshedAfter401 = false;
         let lastError = null;
@@ -2298,6 +2306,10 @@
               "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
             };
             if (appCheckToken) headers["X-Firebase-AppCheck"] = appCheckToken;
+            if (runtime.fbAuth?.currentUser?.uid !== registrationUid) {
+              console.info("[NEXORA Push] Account changed during registration; stopping stale request retries.");
+              return false;
+            }
             const response = await fetch(endpoint, {
               method: "POST",
               headers,
@@ -2350,6 +2362,22 @@
       window.addEventListener("online", recover);
       document.addEventListener("visibilitychange", recover);
       window.addEventListener("focus", recover);
+
+      // Firebase auth can change outside the explicit login/logout handlers
+      // (session restore, credential replacement, or another auth flow). Observe
+      // it once so the latest FCM token is retried for the active identity.
+      if (!nexoraPushAuthObserverInstalled && runtime.fbAuth) {
+        nexoraPushAuthObserverInstalled = true;
+        onAuthStateChanged(runtime.fbAuth, (user) => {
+          const nextUid = user?.uid || null;
+          if (nextUid === nexoraPushLastObservedUid) return;
+          nexoraPushLastObservedUid = nextUid;
+          if (!nextUid || !nexoraNativeFcmToken || document.hidden) return;
+          void registerNativePushDevice().catch(error => {
+            console.warn("[NEXORA Push] Auth-change registration recovery failed:", error);
+          });
+        });
+      }
     }
 
     // Native Android push notifications (FCM). The native plugin is bundled by
