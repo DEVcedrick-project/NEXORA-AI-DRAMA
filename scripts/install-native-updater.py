@@ -84,13 +84,13 @@ gradle_text = app_gradle.read_text()
 bom = 'implementation platform("com.google.firebase:firebase-bom:35.2.0")'
 dependency = 'implementation "com.google.firebase:firebase-appcheck-playintegrity"'
 if "firebase-appcheck-playintegrity" not in gradle_text:
-    match = re.search(r"(?m)^\\s*dependencies\\s*\\{", gradle_text)
+    match = re.search(r"(?m)^\s*dependencies\s*\{", gradle_text)
     if match:
         insert_at = match.end()
-        gradle_text = gradle_text[:insert_at] + "\\n    " + bom + "\\n    " + dependency + gradle_text[insert_at:]
+        gradle_text = gradle_text[:insert_at] + "\n    " + bom + "\n    " + dependency + gradle_text[insert_at:]
     else:
         # Some Capacitor templates omit an app-level dependency block entirely.
-        gradle_text += "\\n\\ndependencies {\\n    " + bom + "\\n    " + dependency + "\\n}\\n"
+        gradle_text += "\n\ndependencies {\n    " + bom + "\n    " + dependency + "\n}\n"
     app_gradle.write_text(gradle_text)
 
 appcheck_plugin = package_dir / "NexoraAppCheckPlugin.java"
