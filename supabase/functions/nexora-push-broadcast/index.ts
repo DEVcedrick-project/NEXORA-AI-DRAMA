@@ -39,9 +39,12 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: devices, error: deviceError } = await admin
-      .from("nexora_push_devices").select("token")
+      .from("nexora_push_devices").select("token,user_id")
       .eq("app_id", APP_ID).eq("platform", "android").not("user_id", "is", null);
     if (deviceError) throw deviceError;
+    const deviceOwners = new Map(
+      (devices || []).map((device: { token: string; user_id: string }) => [device.token, device.user_id]),
+    );
     if (!devices?.length) {
       return json({ ok: true, version, sent: 0, reason: "No eligible NEXORA AI DRAMA Android devices yet; retry after registration" });
     }
@@ -105,9 +108,13 @@ Deno.serve(async (req: Request) => {
             .update({ status: "invalid", updated_at: new Date().toISOString() })
             .eq("event_key", eventKey).eq("token", device.token).eq("status", "pending");
           if (markInvalidError) throw markInvalidError;
-          const { error: deleteError } = await admin.from("nexora_push_devices")
-            .delete().eq("token", device.token).eq("app_id", APP_ID);
-          if (deleteError) throw deleteError;
+          const registeredUserId = deviceOwners.get(device.token);
+          if (registeredUserId) {
+            const { error: deleteError } = await admin.from("nexora_push_devices")
+              .delete().eq("token", device.token).eq("app_id", APP_ID)
+              .eq("user_id", registeredUserId);
+            if (deleteError) throw deleteError;
+          }
           invalidTokensRemoved++;
         } else {
           throw new Error(`FCM send failed (${response.status}): ${JSON.stringify(result).slice(0, 400)}`);
