@@ -44,14 +44,16 @@ Deno.serve(async(req:Request)=>{
   } else if(action==="comment") {
    const comment=String(body.comment||"").trim().slice(0,500);
    if(!comment) return reply(400,{error:"Comment cannot be empty"});
-   const since=new Date(Date.now()-60_000).toISOString();
-   const {count:recentCount,error:rateError}=await db.from("nexora_social_comments").select("id",{count:"exact",head:true}).eq("user_id",userId).gte("created_at",since);
-   if(rateError) throw rateError;
-   if((recentCount||0)>=5) return reply(429,{error:"Please wait before posting another comment"});
    const email=typeof payload.email==="string"?payload.email:"";
    const safeName=payload.name || (email?email.split("@")[0]:"NEXORA Viewer");
-   const {error}=await db.from("nexora_social_comments").insert({user_id:userId,display_name:cleanName(safeName),series_id:seriesId,body:comment});
+   const {data:created,error}=await db.rpc("nexora_create_social_comment",{
+    p_user_id:userId,
+    p_display_name:cleanName(safeName),
+    p_series_id:seriesId,
+    p_body:comment
+   });
    if(error) throw error;
+   if(created!==true) return reply(429,{error:"Please wait before posting another comment"});
   }
   const [likes,ownLike,ownSave,comments]=await Promise.all([
    db.from("nexora_social_likes").select("user_id",{count:"exact",head:true}).eq("series_id",seriesId),
