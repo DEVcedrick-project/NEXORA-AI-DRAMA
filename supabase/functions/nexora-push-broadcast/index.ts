@@ -135,6 +135,7 @@ Deno.serve(async (req: Request) => {
           throw new Error(`FCM send failed (${response.status}): ${JSON.stringify(result).slice(0, 400)}`);
         }
       }
+      }
     } while (pendingBatch.length === DELIVERY_BATCH_SIZE);
 
     const { count: sentTotal, error: countError } = await admin.from("nexora_push_deliveries")
