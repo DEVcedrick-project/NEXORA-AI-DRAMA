@@ -41,6 +41,14 @@ assert(source.includes('"Authorization": "Bearer " + idToken'),
   "FCM registration must send a Firebase ID token.");
 assert(pushFunction.includes("jwtVerify") && pushFunction.includes("securetoken.google.com/"),
   "Push registration must cryptographically verify Firebase ID tokens.");
+assert(pushFunction.includes(String.raw`authorization.match(/^Bearer\s+(.+)$/i)`),
+  "Push registration must parse the standard Bearer authorization header.");
+assert(pushFunction.includes(String.raw`/\\s/.test(token)`) === false,
+  "FCM token whitespace validation must use the whitespace character class, not a literal backslash.");
+assert(pushFunction.includes(String.raw`/\s/.test(token)`),
+  "FCM registration must reject whitespace in device tokens.");
+assert(pushFunction.includes(String.raw`/^v?\d+\.\d+\.\d+$/`),
+  "FCM registration must accept semantic app versions.");
 assert(pushFunction.includes('audience: PROJECT_ID') && pushFunction.includes('issuer: `https://securetoken.google.com/${PROJECT_ID}`'),
   "Push registration must validate the Firebase token issuer and audience.");
 assert(pushFunction.includes("MAX_DEVICES_PER_USER = 5"),
