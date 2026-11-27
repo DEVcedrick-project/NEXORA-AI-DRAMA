@@ -88,6 +88,9 @@ jobs:
       - name: Verify bundled HLS playback runtime
         run: node scripts/validate-playback-assets.mjs
 
+      - name: Verify locally bundled Lucide runtime
+        run: node scripts/validate-lucide-runtime.mjs
+
       - name: Generate Android project and sync web assets
         run: |
           npx cap add android
