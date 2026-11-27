@@ -6,8 +6,8 @@ const builder = await readFile("scripts/build-native-plugins.mjs", "utf8");
 const entry = await readFile("scripts/firebase-runtime-entry.js", "utf8");
 const workflow = await readFile(".github/workflows/android-apk.yml", "utf8");
 
-if (packageJson.dependencies?.firebase !== "11.6.1") {
-  throw new Error("Firebase SDK must remain pinned to 11.6.1.");
+if (packageJson.dependencies?.firebase !== "12.6.0") {
+  throw new Error("Firebase SDK must remain pinned to 12.6.0 for Capacitor Firebase App Check 8.x compatibility.");
 }
 for (const specifier of [
   'from "/vendor/firebase.js";'
