@@ -63,7 +63,7 @@ async function hashClientNetwork(req: Request, secret: string): Promise<string |
  // Supabase's hosted gateway exposes the Cloudflare-observed client address here.
  // Do not fall back to caller-controlled X-Forwarded-For values.
  const clientIp = (req.headers.get("cf-connecting-ip") || "").trim();
- if (!clientIp || clientIp.length > 64 || /[\\s,]/.test(clientIp)) return null;
+ if (!clientIp || clientIp.length > 64 || /[\s,]/.test(clientIp)) return null;
  const key = await crypto.subtle.importKey(
   "raw",
   new TextEncoder().encode(secret),
