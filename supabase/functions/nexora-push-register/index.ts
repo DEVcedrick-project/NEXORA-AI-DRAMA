@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
       console.error("[NEXORA Push] Device-limit lookup failed.");
       return json({ error: "Device registration is temporarily unavailable" }, 503);
     }
-    if (!existing && (count ?? 0) >= MAX_DEVICES_PER_USER) {
+    if (existing?.user_id !== userId && (count ?? 0) >= MAX_DEVICES_PER_USER) {
       return json({ error: `A maximum of ${MAX_DEVICES_PER_USER} devices can be registered per account` }, 429);
     }
     // A stolen/guessed FCM token must not be silently reassigned to another
