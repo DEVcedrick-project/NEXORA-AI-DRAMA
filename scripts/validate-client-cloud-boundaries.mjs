@@ -36,4 +36,14 @@ assert(!/\.from\(['"](?:user_wallets|unlocked_episodes)['"]\)/.test(walletSync),
 const signOut = block("async function handleSignOutAccount()", "function cycleUserAvatar()");
 assert(!/update\(ref\(/.test(signOut), "Account switching must not flush protected data from the client.");
 
-console.log("PASS: Client profile sync is isolated; wallet balances, VIP entitlements and episode unlocks are not written directly by the app client.");
+const pushFunction = fs.readFileSync("supabase/functions/nexora-push-register/index.ts", "utf8");
+assert(source.includes('Authorization: "Bearer " + idToken'),
+  "FCM registration must send a Firebase ID token.");
+assert(pushFunction.includes("jwtVerify") && pushFunction.includes("securetoken.google.com/"),
+  "Push registration must cryptographically verify Firebase ID tokens.");
+assert(pushFunction.includes('audience: PROJECT_ID') && pushFunction.includes('issuer: `https://securetoken.google.com/${PROJECT_ID}`'),
+  "Push registration must validate the Firebase token issuer and audience.");
+assert(pushFunction.includes("MAX_DEVICES_PER_USER = 5") && pushFunction.includes('.eq("user_id", userId)'),
+  "Push registration must enforce the per-account device limit.");
+
+console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries and authenticated FCM device registration are enforced.");
