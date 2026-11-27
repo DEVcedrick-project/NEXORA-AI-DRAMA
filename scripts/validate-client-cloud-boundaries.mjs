@@ -124,20 +124,50 @@ assert(socialClient.includes("FirebaseAppCheck.getToken") &&
   socialClient.includes("if (appCheckToken)"),
   "Social client must attach a native App Check token when available without blocking legacy clients.");
 
-const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
-assert(packageJson.dependencies["@capacitor-firebase/app-check"] &&
-  packageJson.dependencies.firebase,
-  "Capacitor Firebase App Check and its Firebase JS SDK dependency must be installed.");
-const nativePlugins = fs.readFileSync("scripts/native-plugins-entry.js", "utf8");
-assert(nativePlugins.includes('export { FirebaseAppCheck } from "@capacitor-firebase/app-check"'),
-  "The App Check Capacitor plugin must be bundled into the Android app.");
-const appCheckInit = block("async function initFirebaseRealtimeSync(", "// Keep registered users signed in across app closes and Android restarts.");
-assert(appCheckInit.includes("FirebaseAppCheck.initialize") &&
-  appCheckInit.includes("isTokenAutoRefreshEnabled: true"),
-  "Native Play Integrity App Check must initialize once before Firebase auth persistence.");
-const appCheckClient = block("async function getNexoraAppCheckToken()", "async function callNexoraSocial(");
-assert(appCheckClient.includes("FirebaseAppCheck.getToken") &&
-  appCheckClient.includes("runtime.appCheckInitialized"),
-  "Social requests must retrieve an initialized native App Check token.");
+const nativeEntry = fs.readFileSync("scripts/native-plugins-entry.js", "utf8");
+const nativeAppCheck = fs.readFileSync("scripts/android/NexoraAppCheckPlugin.java", "utf8");
+const appCheckInstaller = fs.readFileSync("scripts/install-native-app-check.py", "utf8");
+assert(nativeEntry.includes('export const NexoraAppCheck = registerPlugin("NexoraAppCheck");'),
+  "The local Capacitor runtime must register the native App Check bridge.");
+assert(nativeAppCheck.includes("PlayIntegrityAppCheckProviderFactory.getInstance()") &&
+  nativeAppCheck.includes("setTokenAutoRefreshEnabled(true)") &&
+  nativeAppCheck.includes("getAppCheckToken(false)"),
+  "The native Android bridge must use Play Integrity, auto-refresh and return App Check tokens.");
+assert(appCheckInstaller.includes("firebase-appcheck-playintegrity:19.0.1") &&
+  appCheckInstaller.includes("registerPlugin(NexoraAppCheckPlugin.class)"),
+  "The Android build must install the native Play Integrity SDK and register its Capacitor bridge.");
+const appCheckClient = block("let nexoraAppCheckInitPromise = null;", "async function callNexoraSocial(");
+assert(appCheckClient.includes("NexoraAppCheck.initialize()") &&
+  appCheckClient.includes("NexoraAppCheck.getToken()"),
+  "The client must initialize the native bridge and retrieve App Check tokens.");
+assert(appCheckClient.includes("setTimeout(() => resolve(null), 2500)") &&
+  appCheckClient.includes("clearTimeout(timeoutId)"),
+  "App Check token lookup must be time-bounded so unavailable attestation cannot stall push or social requests.");
+assert(appCheckClient.includes("nexoraAppCheckInitPromise = null") &&
+  appCheckClient.includes("if (!window.Capacitor?.isNativePlatform?.()) return ''"),
+  "Failed App Check initialization must be retryable and non-native clients must continue without attestation.");
+assert(pushClient.includes("getNexoraAppCheckToken") &&
+  pushClient.includes('headers["X-Firebase-AppCheck"] = appCheckToken'),
+  "Push registration must attach a native App Check token when available.");
+assert(socialClient.includes("NexoraAppCheck.getToken") &&
+  socialClient.includes("X-Firebase-AppCheck") &&
+  socialClient.includes("if (appCheckToken)"),
+  "Social requests must attach a native App Check token when available without blocking legacy clients.");
+for (const [name, fn] of [["social", socialFunction], ["push registration", pushFunction]]) {
+  assert(fn.includes("MAX_APP_CHECK_TOKEN_LENGTH = 8192") &&
+    fn.includes("token.length > MAX_APP_CHECK_TOKEN_LENGTH"),
+    `The ${name} endpoint must reject oversized Firebase App Check tokens before JWT parsing.`);
+  assert(fn.includes("https://firebaseappcheck.googleapis.com/v1/jwks") &&
+    fn.includes('algorithms: ["RS256"]') &&
+    fn.includes("https://firebaseappcheck.googleapis.com/") &&
+    fn.includes("projects/"),
+    `The ${name} endpoint must verify App Check signatures and Firebase project claims.`);
+}
+assert(pushFunction.includes("NEXORA_APP_CHECK_ENFORCE") &&
+  pushFunction.includes("attestation status"),
+  "Push registration must remain monitor-only until the enforcement flag is deliberately enabled.");
+assert(socialFunction.includes("NEXORA_APP_CHECK_ENFORCE") &&
+  socialFunction.includes("compatibility mode"),
+  "Social API must remain compatible with existing clients until enforcement is deliberately enabled.");
 
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");
