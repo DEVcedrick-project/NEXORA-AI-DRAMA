@@ -94,4 +94,17 @@ assert(socialFunction.includes('.eq("id",seriesId).eq("status","published").mayb
 assert(socialFunction.includes('if(!publishedDrama) return reply(404,{error:"Published drama not found"})'),
   "Social actions must reject draft, hidden and nonexistent dramas.");
 
+assert(socialFunction.includes("nexora_check_social_request_rate_limit") &&
+  socialFunction.includes("trustedNetworkHash") && socialFunction.includes("x-forwarded-for"),
+  "Every social action must be protected by a trusted network-scoped and per-account limiter.");
+assert(socialFunction.includes("nexora_toggle_social_reaction") &&
+  socialFunction.includes("nexora_create_social_comment"),
+  "Social reactions and comments must use their atomic database operations.");
+assert(socialFunction.includes('"Retry-After":"60"') &&
+  socialFunction.includes("Secure request network metadata unavailable"),
+  "Rate-limited requests must return a retry hint and fail closed without trusted network metadata.");
+assert(!socialFunction.includes("recentCount") &&
+  !socialFunction.includes('db.from("nexora_social_comments").insert'),
+  "The Edge Function must not bypass atomic comment-rate-limit enforcement.");
+
 console.log("PASS: Profile-only cloud sync, server-owned wallet boundaries authenticated FCM device registration, and published-only social access are enforced.");
