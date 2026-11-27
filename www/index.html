@@ -2278,16 +2278,20 @@
           console.info("[NEXORA Push] No signed-in Firebase identity; device registration will wait.");
           return false;
         }
+        const registrationUid = firebaseUser.uid;
+        const isStillCurrentAccount = () => runtime.fbAuth?.currentUser?.uid === registrationUid;
         let installId = localStorage.getItem("nexora_push_install_id");
         if (!installId) {
           installId = crypto.randomUUID();
           localStorage.setItem("nexora_push_install_id", installId);
         }
         let idToken = await firebaseUser.getIdToken();
+        if (!isStillCurrentAccount()) return false;
         const endpoint = NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register";
         let refreshedAfter401 = false;
         let lastError = null;
         for (let attempt = 0; attempt < 3; attempt++) {
+          if (!isStillCurrentAccount()) return false;
           try {
             const response = await fetch(endpoint, {
               method: "POST",
@@ -2303,12 +2307,14 @@
                 install_id: installId
               })
             });
+            if (!isStillCurrentAccount()) return false;
             if (response.ok) {
               console.info("[NEXORA Push] Device registered for the current Firebase account.");
               return true;
             }
             if (response.status === 401 && !refreshedAfter401) {
               idToken = await firebaseUser.getIdToken(true);
+              if (!isStillCurrentAccount()) return false;
               refreshedAfter401 = true;
               attempt--;
               continue;
@@ -5224,6 +5230,12 @@
           await signOut(runtime.fbAuth);
         } catch (signOutError) {
           console.warn('[NEXORA] Sign-out did not complete:', signOutError);
+          // Sign-out failed, so the old account is still active. Restore its
+          // listeners rather than leaving a live session disconnected.
+          const stillSignedInUid = runtime.fbAuth?.currentUser?.uid;
+          if (stillSignedInUid && stillSignedInUid === previousUid && runtime.fbDb) {
+            attachRealtimeListeners(runtime.fbDb, stillSignedInUid);
+          }
           showToast('Could not sign out. Please try again.');
           return;
         }
@@ -5233,6 +5245,7 @@
         state.user.isGuest = true;
         state.user.name = 'NEXORA Viewer';
         state.firebase.authUid = '';
+        state.user.uid = '';
         state.firebase.connected = false;
 
         // Anonymous sign-in is optional. If Firebase has that provider disabled,
@@ -5255,6 +5268,7 @@
         state.user.email = '';
         state.user.isGuest = true;
         state.user.name = 'NEXORA Viewer';
+        state.user.uid = '';
       }
       saveAppState();
       syncWalletUI();
