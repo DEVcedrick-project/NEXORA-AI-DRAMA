@@ -101,7 +101,7 @@ EXTERNAL_FILES="/sdcard/Android/data/$PACKAGE_ID/files"
 SENTINEL_FILE="$EXTERNAL_FILES/nexora-inplace-upgrade-sentinel.txt"
 SENTINEL="nexora-upgrade-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}-$CURRENT_VERSION"
 adb shell mkdir -p "$EXTERNAL_FILES"
-adb shell sh -c "printf '%s\\n' '$SENTINEL' > '$SENTINEL_FILE'"
+adb shell "echo '$SENTINEL' > '$SENTINEL_FILE'"
 SAVED_SENTINEL="$(adb shell cat "$SENTINEL_FILE" | tr -d '\r')"
 if [[ "$SAVED_SENTINEL" != "$SENTINEL" ]]; then
   echo "::error::Could not seed the app-specific data sentinel before upgrade."
