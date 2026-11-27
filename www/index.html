@@ -5049,19 +5049,31 @@
       }
 
       // Do not change the visible account identity until Firebase confirms success.
-      // Link anonymous users to preserve their UID and existing guest-owned data.
+      // Linking an anonymous guest preserves its Firebase UID and all UID-owned
+      // guest data. A permanent account switch still creates a separate UID.
       const displayName = name || 'NEXORA Member';
       try {
         let credUser = null;
-        // Creating another account must never link or inherit the current
-        // guest/member wallet. Save the old account locally, sign it out, and
-        // start the new Firebase UID with its own starter balance.
-        saveAppState();
-        if (runtime.fbAuth.currentUser) await signOut(runtime.fbAuth);
-        resetAccountWalletState();
-        const created = await createUserWithEmailAndPassword(runtime.fbAuth, email, password);
-        credUser = created.user;
-        if (!credUser) throw new Error('Firebase did not return a registered user.');
+        const currentUser = runtime.fbAuth.currentUser;
+        if (currentUser?.isAnonymous) {
+          // Keep the guest session intact if the email is already registered or
+          // the credential cannot be linked; never silently replace/merge accounts.
+          const credential = EmailAuthProvider.credential(email, password);
+          const linked = await linkWithCredential(currentUser, credential);
+          credUser = linked.user;
+          if (!credUser || credUser.uid !== currentUser.uid) {
+            throw new Error('Firebase account linking did not preserve the guest UID.');
+          }
+        } else {
+          // Explicitly creating/switching to a separate account must not inherit
+          // the previous permanent account's local wallet or identity.
+          saveAppState();
+          if (currentUser) await signOut(runtime.fbAuth);
+          resetAccountWalletState();
+          const created = await createUserWithEmailAndPassword(runtime.fbAuth, email, password);
+          credUser = created.user;
+        }
+        if (!credUser) throw new Error('Firebase did not return a registered user.')
         // Rebind the already-issued FCM token from the guest UID to this account.
         void registerNativePushDevice().catch(error => console.error('[NEXORA Push] Account-change registration failed:', error));
         // Account creation/linking is authoritative. A profile-name update is optional:
