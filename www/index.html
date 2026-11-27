@@ -2254,15 +2254,17 @@
     }
 
 
-    // Keep the latest FCM token so account changes can rebind this installation
-    // without asking Android to register for push a second time.
+    // Keep the latest FCM token so account changes and app resumes can rebind this installation.
     let nexoraNativeFcmToken = "";
     let nexoraPushRegistrationInFlight = null;
+    let nexoraPushRecoveryListenersInstalled = false;
 
     async function registerNativePushDevice(tokenValue = nexoraNativeFcmToken) {
       if (!tokenValue || !window.Capacitor?.isNativePlatform?.()) return false;
       if (nexoraPushRegistrationInFlight) {
-        await nexoraPushRegistrationInFlight;
+        try { await nexoraPushRegistrationInFlight; } catch (_) {
+          // A failed earlier attempt must not prevent this new recovery attempt.
+        }
       }
       const registration = (async () => {
         if (!await ensureFirebaseAuthReady()) {
@@ -2279,25 +2281,48 @@
           installId = crypto.randomUUID();
           localStorage.setItem("nexora_push_install_id", installId);
         }
-        const idToken = await firebaseUser.getIdToken();
+        let idToken = await firebaseUser.getIdToken();
         const endpoint = NEXORA_DEFAULT_CONFIG.studioCatalog.url + "/functions/v1/nexora-push-register";
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
-            "Authorization": "Bearer " + idToken,
-            "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
-          },
-          body: JSON.stringify({
-            token: tokenValue,
-            app_version: APP_CURRENT_VERSION,
-            install_id: installId
-          })
-        });
-        if (!response.ok) throw new Error("Token registration returned HTTP " + response.status);
-        console.info("[NEXORA Push] Device registered for the current Firebase account.");
-        return true;
+        let refreshedAfter401 = false;
+        let lastError = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "apikey": NEXORA_DEFAULT_CONFIG.studioCatalog.publishableKey,
+                "Authorization": "Bearer " + idToken,
+                "x-nexora-app-id": "com.devcedrick.nexoraaidrama"
+              },
+              body: JSON.stringify({
+                token: tokenValue,
+                app_version: APP_CURRENT_VERSION,
+                install_id: installId
+              })
+            });
+            if (response.ok) {
+              console.info("[NEXORA Push] Device registered for the current Firebase account.");
+              return true;
+            }
+            if (response.status === 401 && !refreshedAfter401) {
+              idToken = await firebaseUser.getIdToken(true);
+              refreshedAfter401 = true;
+              attempt--;
+              continue;
+            }
+            const error = new Error("Token registration returned HTTP " + response.status);
+            if (response.status === 400 || response.status === 403 || response.status === 409 || response.status === 429) {
+              throw error;
+            }
+            lastError = error;
+          } catch (error) {
+            if (error instanceof Error && /HTTP (400|403|409|429)$/.test(error.message)) throw error;
+            lastError = error;
+          }
+          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 700 * (attempt + 1)));
+        }
+        throw lastError || new Error("Push device registration failed after retries.");
       })();
       nexoraPushRegistrationInFlight = registration;
       try {
@@ -2305,6 +2330,20 @@
       } finally {
         if (nexoraPushRegistrationInFlight === registration) nexoraPushRegistrationInFlight = null;
       }
+    }
+
+    function installNexoraPushRecoveryListeners() {
+      if (nexoraPushRecoveryListenersInstalled) return;
+      nexoraPushRecoveryListenersInstalled = true;
+      const recover = () => {
+        if (!nexoraNativeFcmToken || document.hidden) return;
+        void registerNativePushDevice().catch(error => {
+          console.warn("[NEXORA Push] Automatic registration recovery failed:", error);
+        });
+      };
+      window.addEventListener("online", recover);
+      document.addEventListener("visibilitychange", recover);
+      window.addEventListener("focus", recover);
     }
 
     // Native Android push notifications (FCM). The native plugin is bundled by
@@ -2354,6 +2393,7 @@
 
         await PushNotifications.addListener("registration", async (token) => {
           nexoraNativeFcmToken = String(token?.value || "");
+          installNexoraPushRecoveryListeners();
           try {
             await registerNativePushDevice(nexoraNativeFcmToken);
           } catch (error) {
