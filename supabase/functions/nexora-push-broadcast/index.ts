@@ -95,12 +95,12 @@ Deno.serve(async (req: Request) => {
             type: "app_update", version,
             updateUrl: "https://raw.githubusercontent.com/DEVcedrick-project/NEXORA-AI-DRAMA/main/update.json"
           },
-          // Keep retries for one release update coalesced while queued and
-          // replace an earlier copy in the Android notification tray.
+          // FCM notification messages are already collapsible. Reuse the
+          // same Android notification tag so a newer release replaces the
+          // previous tray entry without consuming per-device collapse keys.
           android: {
             priority: "HIGH",
-            collapse_key: eventKey,
-            notification: { channel_id: "nexora_updates", sound: "default", tag: eventKey }
+            notification: { channel_id: "nexora_updates", sound: "default", tag: "nexora-app-update" }
           }
         }})
       });
