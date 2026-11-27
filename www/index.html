@@ -2217,6 +2217,28 @@
         .replace(/'/g, '&#39;');
     }
 
+    // Treat published catalog rows as untrusted input: IDs enter DOM IDs and
+    // inline handlers, while media URLs are assigned to native media elements.
+    function safeCatalogId(value) {
+      const id = String(value || '');
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) ? id : '';
+    }
+
+    function safeHttpsMediaUrl(value) {
+      if (typeof value !== 'string' || !value.trim() || value.length > 2048) return '';
+      try {
+        const url = new URL(value.trim());
+        if (url.protocol !== 'https:' || !url.hostname || url.username || url.password) return '';
+        return url.href;
+      } catch (_error) {
+        return '';
+      }
+    }
+
+    function escapeInlineJsString(value) {
+      return escapeHtml(JSON.stringify(String(value)));
+    }
+
     function showToast(msg) {
       const container = document.getElementById('toast-banner');
       if (!container) return;
@@ -2581,6 +2603,9 @@
     // It never writes to NEXORA STUDIO or its database.
     // =========================================================================
     function mapPublishedStudioDrama(drama, episodeRows, index) {
+      const safeId = safeCatalogId(drama?.id);
+      if (!safeId) return null;
+      const safeCoverUrl = safeHttpsMediaUrl(drama.cover_url);
       const palette = [
         ['#ff2e63', '#6d28d9'],
         ['#f59e0b', '#b91c1c'],
@@ -2590,33 +2615,42 @@
       ];
       const colors = palette[index % palette.length];
       const episodes = episodeRows
-        .filter(ep => ep && ep.status === 'published' && typeof ep.video_url === 'string' && ep.video_url.trim())
-        .map(ep => ({
-          num: Number(ep.episode_number) || 1,
-          title: ep.title || `Episode ${ep.episode_number}`,
-          duration: Math.max(1, Math.round(Number(ep.duration_seconds) || 60)),
-          // Apply the same pricing policy to every newly published drama or movie.
-          isFree: Number(ep.episode_number) <= 3,
-          coinCost: Number(ep.episode_number) <= 3 ? 0 : 30,
-          videoUrl: ep.video_url.trim(),
-          posterUrl: ep.thumbnail_url || drama.cover_url || '',
-          subtitleUrl: '',
-          subtitleLines: ep.synopsis ? [ep.synopsis] : []
-        }))
+        .filter(ep => {
+          const episodeNumber = Number(ep?.episode_number);
+          return ep && ep.status === 'published'
+            && Number.isSafeInteger(episodeNumber) && episodeNumber >= 1 && episodeNumber <= 999
+            && Boolean(safeHttpsMediaUrl(ep.video_url));
+        })
+        .map(ep => {
+          const episodeNumber = Number(ep.episode_number);
+          const episodeSynopsis = typeof ep.synopsis === 'string' ? ep.synopsis.slice(0, 1000) : '';
+          return {
+            num: episodeNumber,
+            title: typeof ep.title === 'string' && ep.title.trim() ? ep.title.trim().slice(0, 120) : `Episode ${episodeNumber}`,
+            duration: Math.max(1, Math.min(14400, Math.round(Number(ep.duration_seconds) || 60))),
+            // Apply the same pricing policy to every newly published drama or movie.
+            isFree: episodeNumber <= 3,
+            coinCost: episodeNumber <= 3 ? 0 : 30,
+            videoUrl: safeHttpsMediaUrl(ep.video_url),
+            posterUrl: safeHttpsMediaUrl(ep.thumbnail_url) || safeCoverUrl,
+            subtitleUrl: '',
+            subtitleLines: episodeSynopsis ? [episodeSynopsis] : []
+          };
+        })
         .sort((a, b) => a.num - b.num);
       if (!episodes.length) return null;
       const firstOwner = episodeRows.find(ep => ep.video_owner && String(ep.video_owner).trim())?.video_owner;
       return {
-        id: drama.id,
-        title: drama.title || 'Untitled Drama',
-        creator: firstOwner || 'NEXORA STUDIO',
-        genre: drama.genre || 'Drama',
+        id: safeId,
+        title: typeof drama.title === 'string' && drama.title.trim() ? drama.title.trim().slice(0, 120) : 'Untitled Drama',
+        creator: typeof firstOwner === 'string' && firstOwner.trim() ? firstOwner.trim().slice(0, 60) : 'NEXORA STUDIO',
+        genre: typeof drama.genre === 'string' && drama.genre.trim() ? drama.genre.trim().slice(0, 40) : 'Drama',
         views: 'NEW',
         likes: 0,
         accentA: colors[0],
         accentB: colors[1],
-        tagline: drama.synopsis || '',
-        coverUrl: drama.cover_url || '',
+        tagline: typeof drama.synopsis === 'string' ? drama.synopsis.slice(0, 1000) : '',
+        coverUrl: safeCoverUrl,
         episodes
       };
     }
@@ -4482,11 +4516,11 @@
         pillsEl.innerHTML = genres.map(g => {
           const active = state.activeDiscoverGenre === g;
           return `
-            <button onclick="setDiscoverGenre('${g}')" class="px-3 py-1 rounded-full text-[11px] font-extrabold shrink-0 transition ${
+            <button onclick="setDiscoverGenre(${escapeInlineJsString(g)})" class="px-3 py-1 rounded-full text-[11px] font-extrabold shrink-0 transition ${
               active
                 ? 'bg-[#ff2e63] text-white'
                 : 'bg-[#13131c] text-zinc-400 border border-zinc-800 hover:text-white'
-            }">${g}</button>
+            }">${escapeHtml(g)}</button>
           `;
         }).join('');
       }
