@@ -33,7 +33,7 @@ Scope: Android packaging/updater, Firebase, Supabase catalog/social/push, playba
 
 - The project has active `nexora-push-register`, `nexora-push-broadcast`, `nexora-social`, and `studio-content-sync` Edge Functions.
 - The broadcast function requires a server-side release secret and Firebase service-account JSON. Secret presence and real FCM delivery were not verified in this audit.
-- The registration endpoint currently checks an app-ID header but does not authenticate Firebase App Check or a Firebase user token. Since a public app-ID header can be spoofed, add attestation/rate limiting before treating device registration as abuse-resistant.
+- New registrations now require a Firebase ID token whose signature, issuer, audience and expiry are verified; the Firebase UID is stored with the device and registration is capped at five devices per account. A CI smoke test rejects missing and invalid tokens. Firebase App Check attestation is still not configured, and the two legacy device rows remain unlinked until clients re-register. Real foreground/background notification delivery and tap routing still need device testing.
 - Physical foreground/background notification delivery and tap routing still need device testing.
 
 ### Android updater and release workflow
