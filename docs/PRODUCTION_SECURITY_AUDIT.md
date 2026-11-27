@@ -26,7 +26,7 @@ Scope: Android packaging/updater, Firebase, Supabase catalog/social/push, playba
 - Published catalog tables have RLS and explicit policies limiting public reads to published dramas and episodes whose parent drama is also published.
 - Wallet and unlocked-episode tables have RLS enabled and direct client access denied. This is the correct safe default while a trusted wallet service is not integrated.
 - The viewer client has now been changed to fail closed: legacy direct wallet/unlock reads and upserts are disabled, profile-only Firebase sync is retained, and client-side account-switch flushes no longer write wallet/VIP/unlock records. Local coin and unlock state remains device-local and is not authoritative. A trusted Firebase-token-verifying wallet API and client migration are still required before cross-device wallet persistence can be considered complete.
-- Security advisor returned four informational `rls_enabled_no_policy` notices for social comments, likes, saves, and payment orders. The social tables are intentionally accessed through the Firebase-token-verifying `nexora-social` Edge Function using server credentials; do not add permissive client policies to silence these notices. Payment tables are outside this audit scope.
+- Explicit deny-all policies were added to social likes, saves, and comments; the Firebase-token-verifying `nexora-social` Edge Function continues to access them with server credentials. The live security advisor now reports only one informational no-policy notice on `nexora_payment_orders`, which is outside this audit scope. Do not add client access to that table as part of this work.
 - Performance advisor reported one unused social-saves index. No index was removed without workload evidence.
 
 ### Push notifications
