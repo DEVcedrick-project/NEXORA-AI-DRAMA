@@ -13,7 +13,7 @@ declare
 begin
   if p_user_id is null or length(p_user_id) = 0 or length(p_user_id) > 128
      or p_series_id is null or length(p_series_id) = 0 or length(p_series_id) > 128
-     or p_reaction not in ('like', 'save') then
+     or p_reaction is null or p_reaction not in ('like', 'save') then
     raise exception 'invalid_social_reaction' using errcode = '22023';
   end if;
 
