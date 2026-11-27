@@ -58,6 +58,25 @@ assert(pushFunction.includes('registration === "device_limit"') &&
 assert(!pushFunction.includes(".upsert("),
   "Push registration must not bypass the atomic database registration RPC.");
 
+const pushClient = block("// Keep the latest FCM token", "// Native Android push notifications (FCM).");
+assert(pushClient.includes("for (let attempt = 0; attempt < 3; attempt++)"),
+  "FCM registration must retry transient failures with a bounded attempt count.");
+assert(pushClient.includes("firebaseUser.getIdToken(true)"),
+  "FCM registration must refresh an expired Firebase ID token after an authentication failure.");
+assert(pushClient.includes('window.addEventListener("online", recover)') &&
+  pushClient.includes('document.addEventListener("visibilitychange", recover)'),
+  "FCM registration must recover after network reconnection and app resume.");
+
+const broadcastFunction = fs.readFileSync("supabase/functions/nexora-push-broadcast/index.ts", "utf8");
+assert(broadcastFunction.includes('.eq("app_id", APP_ID)') &&
+  broadcastFunction.includes('.eq("platform", "android")'),
+  "Release broadcasts must target only NEXORA AI DRAMA Android devices.");
+assert(broadcastFunction.includes("nexora_push_deliveries") &&
+  broadcastFunction.includes('.eq("status", "pending")'),
+  "Release broadcasts must track per-device delivery and skip completed devices.");
+assert(broadcastFunction.includes('code === "UNREGISTERED"') &&
+  !broadcastFunction.includes('code === "INVALID_ARGUMENT"'),
+  "Only confirmed unregistered FCM tokens may be removed.");
 
 const socialFunction = fs.readFileSync("supabase/functions/nexora-social/index.ts", "utf8");
 assert(socialFunction.includes("A valid published drama ID is required"),
