@@ -77,8 +77,8 @@ grep -F "versionName='$CURRENT_VERSION'" <<< "$NEW_BADGING"
 "$BUILD_TOOLS/apksigner" verify --verbose "$NEW_APK"
 
 # Both builds must be signed by the same permanent Android keystore certificate.
-OLD_CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$PREVIOUS_APK" | awk '/Signer #1 certificate SHA-256 digest/ {print $NF; exit}')"
-NEW_CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$NEW_APK" | awk '/Signer #1 certificate SHA-256 digest/ {print $NF; exit}')"
+OLD_CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$PREVIOUS_APK" | awk '/certificate SHA-256 digest:/ {print $NF; exit}')"
+NEW_CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$NEW_APK" | awk '/certificate SHA-256 digest:/ {print $NF; exit}')"
 if [[ -z "$OLD_CERT" || -z "$NEW_CERT" ]]; then
   echo "::error::Could not read the signing certificate SHA-256 digest from both APKs."
   exit 1
