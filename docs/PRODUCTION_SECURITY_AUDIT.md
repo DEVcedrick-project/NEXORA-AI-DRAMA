@@ -17,7 +17,7 @@ Scope: Android packaging/updater, Firebase, Supabase catalog/social/push, playba
 - The previous rules template denied that connection-check write. That caused initialization to mark Realtime Database disconnected and skip the account listeners when the template was deployed.
 - The template now allows only the authenticated matching UID to write a connection-check object containing exactly one numeric `lastVerifiedAt` field.
 - Root reads/writes remain denied. User reads remain UID-scoped. Wallet, VIP and episode-unlock writes remain denied to clients.
-- A Node regression test validates these rules and is run by CI.
+- Node regression tests validate the Firebase rules and ensure the viewer client does not write protected wallet/VIP/unlock records; both are run by CI.
 - **Deployment still required:** the JSON template is not automatically deployed to Firebase. Compare it with the live rules and publish it through the authorized Firebase Console/CLI process.
 
 ### Dedicated Supabase project
@@ -25,7 +25,7 @@ Scope: Android packaging/updater, Firebase, Supabase catalog/social/push, playba
 - Dedicated project `vureiymqoosubwubhvdu` (`NEXORA-NEXORA-AI-DRAMA`) was found and reported `ACTIVE_HEALTHY`. NEXORA STUDIO remains a separate project and is not modified by this audit.
 - Published catalog tables have RLS and explicit policies limiting public reads to published dramas and episodes whose parent drama is also published.
 - Wallet and unlocked-episode tables have RLS enabled and direct client access denied. This is the correct safe default while a trusted wallet service is not integrated.
-- The app still contains legacy direct client read/upsert code for wallet and unlock tables. Those calls conflict with the current default-deny schema and must not be represented as a working secure sync path. A trusted Firebase-token-verifying wallet API and client migration are still required before wallet persistence can be considered complete.
+- The viewer client has now been changed to fail closed: legacy direct wallet/unlock reads and upserts are disabled, profile-only Firebase sync is retained, and client-side account-switch flushes no longer write wallet/VIP/unlock records. Local coin and unlock state remains device-local and is not authoritative. A trusted Firebase-token-verifying wallet API and client migration are still required before cross-device wallet persistence can be considered complete.
 - Security advisor returned four informational `rls_enabled_no_policy` notices for social comments, likes, saves, and payment orders. The social tables are intentionally accessed through the Firebase-token-verifying `nexora-social` Edge Function using server credentials; do not add permissive client policies to silence these notices. Payment tables are outside this audit scope.
 - Performance advisor reported one unused social-saves index. No index was removed without workload evidence.
 
