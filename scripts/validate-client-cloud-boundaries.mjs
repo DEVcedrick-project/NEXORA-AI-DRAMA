@@ -158,7 +158,7 @@ for (const [name, fn] of [["social", socialFunction], ["push registration", push
     fn.includes("token.length > MAX_APP_CHECK_TOKEN_LENGTH"),
     `The ${name} endpoint must reject oversized Firebase App Check tokens before JWT parsing.`);
   assert(fn.includes("https://firebaseappcheck.googleapis.com/v1/jwks") &&
-    fn.includes('algorithms: ["RS256"]') &&
+    /algorithms:\\s*\\["RS256"\\]/.test(fn) &&
     fn.includes("https://firebaseappcheck.googleapis.com/") &&
     fn.includes("projects/"),
     `The ${name} endpoint must verify App Check signatures and Firebase project claims.`);
