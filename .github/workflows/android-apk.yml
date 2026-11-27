@@ -486,6 +486,19 @@ jobs:
           test -s "$SIGNED"
           rm -f release-key.jks
 
+      # Keep signed PR builds available for real-device Play Integrity testing.
+      # This is a test candidate, never an official GitHub Release or OTA manifest.
+      - name: Upload signed Android test candidate
+        if: steps.signing.outputs.enabled == 'true' && github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: NEXORA-AI-DRAMA-signed-test-candidate
+          path: |
+            android/app/build/outputs/apk/release/NEXORA-AI-DRAMA-release.apk
+            android/app/build/outputs/bundle/release/NEXORA-AI-DRAMA-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Publish signed APK and AAB as GitHub Release
         if: steps.signing.outputs.enabled == 'true' && steps.release.outputs.available == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: softprops/action-gh-release@v3
