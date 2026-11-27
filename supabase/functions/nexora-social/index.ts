@@ -3,7 +3,23 @@ import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 const PROJECT_ID = "nexora-ai-drama";
 const JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"));
 const cors = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
-function reply(status:number, body:Record<string,unknown>) { return new Response(JSON.stringify(body),{status,headers:cors}); }
+function reply(status:number, body:Record<string,unknown>, extraHeaders:Record<string,string>={}) { return new Response(JSON.stringify(body),{status,headers:{...cors,...extraHeaders}}); }
+function validClientIp(ip:string) {
+ const value=ip.trim();
+ if(value.length>45) return false;
+ if(/^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(value)) return value.split(".").every(part=>Number(part)>=0&&Number(part)<=255);
+ if(value.toLowerCase().startsWith("::ffff:") && value.includes(".")) return validClientIp(value.slice(7));
+ return value.includes(":") && /^[0-9a-fA-F:]+$/.test(value);
+}
+async function trustedNetworkHash(req:Request):Promise<string|null> {
+ // Supabase gateway appends the peer address to X-Forwarded-For; use the last hop only.
+ const forwarded=req.headers.get("x-forwarded-for")||"";
+ const hops=forwarded.split(",").map(value=>value.trim()).filter(Boolean);
+ const clientIp=hops[hops.length-1]||"";
+ if(!validClientIp(clientIp)) return null;
+ const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(clientIp.toLowerCase()));
+ return Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,"0")).join("");
+}
 function cleanName(value:unknown) { const name=String(value||"NEXORA Viewer").replace(/[<>\u0000-\u001f]/g,"").trim().slice(0,40); return name||"NEXORA Viewer"; }
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS") return new Response("ok",{headers:cors});
@@ -25,33 +41,28 @@ Deno.serve(async(req:Request)=>{
   const url=Deno.env.get("SUPABASE_URL"), key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if(!url||!key) return reply(500,{error:"Social service is not configured"});
   const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+  const networkHash=await trustedNetworkHash(req);
+  if(!networkHash) return reply(503,{error:"Secure request network metadata unavailable"});
+  const {data:rateAllowed,error:rateError}=await db.rpc("nexora_check_social_request_rate_limit",{p_user_id:userId,p_network_hash:networkHash,p_action:action});
+  if(rateError) throw rateError;
+  if(rateAllowed!==true) return reply(429,{error:"Too many social requests. Please try again shortly."},{"Retry-After":"60"});
   // The service-role client bypasses RLS, so explicitly authorize the target
   // against the public catalog before reading or mutating social records.
   const {data:publishedDrama,error:publishedDramaError}=await db.from("ai_dramas")
    .select("id").eq("id",seriesId).eq("status","published").maybeSingle();
   if(publishedDramaError) throw publishedDramaError;
   if(!publishedDrama) return reply(404,{error:"Published drama not found"});
-  if(action==="like") {
-   const {data:existing,error:readError}=await db.from("nexora_social_likes").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle();
-   if(readError) throw readError;
-   if(existing) { const {error}=await db.from("nexora_social_likes").delete().eq("user_id",userId).eq("series_id",seriesId); if(error) throw error; }
-   else { const {error}=await db.from("nexora_social_likes").insert({user_id:userId,series_id:seriesId}); if(error&&error.code!=="23505") throw error; }
-  } else if(action==="save") {
-   const {data:existing,error:readError}=await db.from("nexora_social_saves").select("user_id").eq("user_id",userId).eq("series_id",seriesId).maybeSingle();
-   if(readError) throw readError;
-   if(existing) { const {error}=await db.from("nexora_social_saves").delete().eq("user_id",userId).eq("series_id",seriesId); if(error) throw error; }
-   else { const {error}=await db.from("nexora_social_saves").insert({user_id:userId,series_id:seriesId}); if(error&&error.code!=="23505") throw error; }
+  if(action==="like" || action==="save") {
+   const {error}=await db.rpc("nexora_toggle_social_reaction",{p_user_id:userId,p_series_id:seriesId,p_reaction:action});
+   if(error) throw error;
   } else if(action==="comment") {
    const comment=String(body.comment||"").trim().slice(0,500);
    if(!comment) return reply(400,{error:"Comment cannot be empty"});
-   const since=new Date(Date.now()-60_000).toISOString();
-   const {count:recentCount,error:rateError}=await db.from("nexora_social_comments").select("id",{count:"exact",head:true}).eq("user_id",userId).gte("created_at",since);
-   if(rateError) throw rateError;
-   if((recentCount||0)>=5) return reply(429,{error:"Please wait before posting another comment"});
    const email=typeof payload.email==="string"?payload.email:"";
    const safeName=payload.name || (email?email.split("@")[0]:"NEXORA Viewer");
-   const {error}=await db.from("nexora_social_comments").insert({user_id:userId,display_name:cleanName(safeName),series_id:seriesId,body:comment});
+   const {data:created,error}=await db.rpc("nexora_create_social_comment",{p_user_id:userId,p_display_name:cleanName(safeName),p_series_id:seriesId,p_body:comment});
    if(error) throw error;
+   if(created!==true) return reply(429,{error:"Please wait before posting another comment."},{"Retry-After":"60"});
   }
   const [likes,ownLike,ownSave,comments]=await Promise.all([
    db.from("nexora_social_likes").select("user_id",{count:"exact",head:true}).eq("series_id",seriesId),
