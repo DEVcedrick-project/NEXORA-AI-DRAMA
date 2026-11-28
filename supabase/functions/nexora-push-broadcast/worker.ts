@@ -18,7 +18,8 @@ export interface PushWorkerStore {
   listDue(eventKey: string, after: string | null, limit: number): Promise<Delivery[]>;
   markSending(eventKey: string, token: string, attempt: number, at: string): Promise<boolean>;
   markSent(eventKey: string, token: string, at: string): Promise<void>;
-  markInvalid(eventKey: string, token: string, at: string, code: string): Promise<void>;\n  markAmbiguous(eventKey: string, token: string, at: string, code: string): Promise<void>;
+  markInvalid(eventKey: string, token: string, at: string, code: string): Promise<void>;
+  markAmbiguous(eventKey: string, token: string, at: string, code: string): Promise<void>;
   removeDevice(token: string): Promise<void>;
   markRetry(eventKey: string, token: string, nextAttemptAt: string, at: string, code: string): Promise<void>;
   markFailed(eventKey: string, token: string, at: string, code: string): Promise<void>;
@@ -27,7 +28,7 @@ export interface PushWorkerStore {
 }
 
 export type PushWorkerResult = {
-  duplicate: boolean; sent: number; invalid: number; retried: number; failed: number; skipped: number;
+  duplicate: boolean; sent: number; invalid: number; retried: number; failed: number; ambiguous: number; skipped: number;
 };
 
 export function retryDelayMs(attempt: number, random = Math.random): number {
