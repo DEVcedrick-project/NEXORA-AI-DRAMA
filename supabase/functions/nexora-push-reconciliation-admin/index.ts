@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { allowedOrigin, hasPushAdminRole, parseReconciliationRequest } from "./security.ts";
+import { allowedOrigin, hasPushAdminRole, parseReconciliationRequest, readJsonBody } from "./security.ts";
 
 const configuredOrigins = Deno.env.get("NEXORA_ADMIN_ALLOWED_ORIGINS") || "";
 const corsHeaders = (origin: string | null) => ({
