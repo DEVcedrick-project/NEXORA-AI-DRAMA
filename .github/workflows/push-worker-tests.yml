@@ -11,6 +11,7 @@ on:
       - "audit/push-delivery-lease-retries"
     paths:
       - "supabase/functions/nexora-push-broadcast/**"
+      - "supabase/functions/nexora-push-reconciliation-admin/**"
       - ".github/workflows/push-worker-tests.yml"
 
 permissions:
