@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090512">
+  <meta name="description" content="Watch vertical micro-dramas on NEXORA AI DRAMA. Download the Android app and continue watching your shared episode.">
+  <meta property="og:title" content="NEXORA AI DRAMA — Watch this episode">
+  <meta property="og:description" content="A story worth sharing. Watch this episode on NEXORA AI DRAMA.">
+  <meta property="og:type" content="website">
+  <title>NEXORA AI DRAMA — Watch Episode</title>
+  <style>
+    :root{color-scheme:dark;--bg:#090512;--gold:#fbbf24;--muted:#aaa2b8}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -15%,#39205f 0,transparent 48%),var(--bg);color:#fff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;justify-content:center;padding:28px 16px 40px}
+    main{width:min(100%,460px);margin:auto}.brand{display:flex;justify-content:center;align-items:center;gap:11px;margin:0 auto 26px;font-weight:900;letter-spacing:.18em}.mark{width:38px;height:38px;border:1.5px solid var(--gold);border-radius:12px;display:grid;place-items:center;color:var(--gold);font-size:21px;box-shadow:0 0 28px #9b5cff55}.brand small{display:block;color:var(--gold);font-size:9px;letter-spacing:.32em;margin-top:4px}
+    .card{overflow:hidden;background:linear-gradient(160deg,#1b1428,#100c18);border:1px solid #ffffff18;border-radius:26px;box-shadow:0 24px 90px #0008}.poster-wrap{height:250px;background:#07050b;position:relative;overflow:hidden}.poster-wrap img{width:100%;height:100%;object-fit:cover;opacity:.92}.poster-wrap:after{content:"";position:absolute;inset:35% 0 0;background:linear-gradient(transparent,#100c18)}.poster-fallback{height:100%;display:grid;place-items:center;font-size:70px;color:#6b557f}
+    .content{padding:22px 22px 24px}.eyebrow{color:var(--gold);font-size:10px;font-weight:900;letter-spacing:.24em;text-transform:uppercase}.content h1{font-size:26px;line-height:1.12;margin:10px 0 7px}.episode{color:#e9d5ff;font-size:15px;font-weight:750}.creator{margin:9px 0 22px;color:var(--muted);font-size:12px}
+    .button{width:100%;min-height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-weight:900;font-size:14px;border:1px solid transparent;cursor:pointer}.primary{color:#170d20;background:linear-gradient(100deg,#fcd34d,#fb7185);box-shadow:0 10px 30px #ff2e6333}.secondary{margin-top:10px;color:#fff;background:#ffffff0a;border-color:#ffffff24}.hint{min-height:38px;color:#b9afc8;text-align:center;font-size:11px;line-height:1.5;margin:14px 4px 0}.steps{display:grid;gap:12px;margin:20px 4px 0;color:#bdb4c9;font-size:12px;line-height:1.5}.step{display:flex;gap:10px;align-items:flex-start}.num{flex:none;width:22px;height:22px;border-radius:50%;background:#fbbf241a;color:var(--gold);display:grid;place-items:center;font-weight:900;font-size:11px}.footer{text-align:center;color:#756c83;font-size:10px;margin-top:25px}
+    @media(min-width:600px){body{padding-top:45px}.poster-wrap{height:300px}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand"><div class="mark">N</div><div>NEXORA<small>AI DRAMA</small></div></div>
+  <section class="card" aria-label="Shared NEXORA episode">
+    <div class="poster-wrap" id="poster-wrap"><div class="poster-fallback" id="poster-fallback">▶</div><img id="poster" alt="" hidden></div>
+    <div class="content">
+      <div class="eyebrow">A story worth sharing</div>
+      <h1 id="drama-title">Discover NEXORA AI DRAMA</h1>
+      <div class="episode" id="episode-title">Watch vertical micro-dramas</div>
+      <div class="creator" id="creator">Stories beyond imagination</div>
+      <a class="button primary" id="download" href="https://github.com/DEVcedrick-project/NEXORA-AI-DRAMA/releases/latest/download/NEXORA-AI-DRAMA-release.apk">Download NEXORA APK</a>
+      <a class="button secondary" id="open-app" href="#">▶&nbsp; Open this episode in NEXORA</a>
+      <p class="hint" id="hint" role="status">Already installed? Tap “Open this episode”. After installing, return to this page and tap it to continue at the shared episode.</p>
+    </div>
+  </section>
+  <div class="steps">
+    <div class="step"><span class="num">1</span><span>Download the official Android APK.</span></div>
+    <div class="step"><span class="num">2</span><span>Install NEXORA AI DRAMA. If Android asks, allow installation from your browser.</span></div>
+    <div class="step"><span class="num">3</span><span>Return to this page and tap <b>Open this episode in NEXORA</b>.</span></div>
+  </div>
+  <div class="footer">NEXORA AI DRAMA · Stories beyond imagination</div>
+</main>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const drama = (params.get('drama') || '').trim().slice(0,128);
+  const episode = Number(params.get('episode'));
+  const title = (params.get('title') || 'Discover NEXORA AI DRAMA').slice(0,120);
+  const episodeTitle = (params.get('episodeTitle') || (Number.isSafeInteger(episode) && episode > 0 ? 'Episode ' + episode : 'Watch vertical micro-dramas')).slice(0,120);
+  const creator = (params.get('creator') || 'Stories beyond imagination').slice(0,80);
+  const poster = params.get('poster') || '';
+  document.getElementById('drama-title').textContent = title;
+  document.getElementById('episode-title').textContent = episodeTitle;
+  document.getElementById('creator').textContent = creator;
+  if (/^https:\/\//i.test(poster)) {
+    const img = document.getElementById('poster');
+    img.src = poster;
+    img.hidden = false;
+    document.getElementById('poster-fallback').hidden = true;
+    img.addEventListener('error', () => { img.hidden = true; document.getElementById('poster-fallback').hidden = false; }, {once:true});
+  }
+  const open = document.getElementById('open-app');
+  if (drama && Number.isSafeInteger(episode) && episode >= 1 && episode <= 999) {
+    const deepLink = new URL('nexora://episode');
+    deepLink.searchParams.set('drama', drama);
+    deepLink.searchParams.set('episode', String(episode));
+    open.href = deepLink.toString();
+    open.addEventListener('click', () => {
+      document.getElementById('hint').textContent = 'If NEXORA does not open, install the APK first, return here, and tap this button again.';
+    });
+  } else {
+    open.hidden = true;
+    document.getElementById('hint').textContent = 'Open NEXORA AI DRAMA to explore the latest stories.';
+  }
+})();
+</script>
+</body>
+</html>

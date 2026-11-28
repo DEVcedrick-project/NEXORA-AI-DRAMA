@@ -105,6 +105,8 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+      - name: Install NEXORA episode deep-link intent filter
+        run: python scripts/install-episode-deep-links.py
       - name: Add resilient Maven Central mirror for Android builds
         run: |
           python - <<'PY'
