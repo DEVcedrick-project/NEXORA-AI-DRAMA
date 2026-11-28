@@ -39,9 +39,12 @@ begin
     raise exception '6th reconciliation request was not rate limited';
   end if;
 
-  if public.nexora_check_push_reconciliation_rate_limit(null, 'list') then
+  begin
+    perform public.nexora_check_push_reconciliation_rate_limit(null, 'list');
     raise exception 'null admin id must not be accepted';
-  end if;
+  exception when sqlstate '22023' then
+    null;
+  end;
   delete from public.nexora_push_reconciliation_rate_limits
     where bucket_key in ('admin:' || v_admin::text, 'global');
 end;
