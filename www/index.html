@@ -2755,6 +2755,7 @@
         renderVerticalFeed();
         renderDiscoverView();
         renderMyListView();
+        tryOpenPendingSharedEpisode();
 
         const addedDrama = mapped.find(item => !previousIds.has(item.id));
         const addedEpisode = mapped
@@ -4326,6 +4327,72 @@
       } catch (error) { showToast(error.message || 'Could not save post.'); if (!runtime.fbAuth?.currentUser || runtime.fbAuth.currentUser.isAnonymous) openAuthModal('login'); }
     }
 
+    const NEXORA_EPISODE_SHARE_BASE_URL = 'https://nexora-ai-drama-share.vercel.app/';
+
+    function parseNexoraEpisodeDeepLink(rawUrl) {
+      try {
+        const url = new URL(String(rawUrl || ''));
+        if (url.protocol !== 'nexora:' || url.hostname !== 'episode') return null;
+        const dramaId = String(url.searchParams.get('drama') || '').trim();
+        const epNum = Number(url.searchParams.get('episode'));
+        if (!dramaId || dramaId.length > 128 || !Number.isSafeInteger(epNum) || epNum < 1 || epNum > 999) return null;
+        return { dramaId, epNum };
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    function tryOpenPendingSharedEpisode() {
+      const pending = runtime.pendingSharedEpisode;
+      if (!pending) return false;
+      const series = getSeriesById(pending.dramaId);
+      if (!series) {
+        if (!runtime.catalogLoading && !runtime.catalogError) {
+          runtime.pendingSharedEpisode = null;
+          showToast('This shared drama is no longer available.');
+        }
+        return false;
+      }
+      const episode = series.episodes.find(item => Number(item.num) === pending.epNum);
+      if (!episode) {
+        runtime.pendingSharedEpisode = null;
+        showToast('This shared episode is no longer available.');
+        return false;
+      }
+
+      runtime.pendingSharedEpisode = null;
+      state.activeSeriesId = series.id;
+      state.activeEpisodeBySeries[series.id] = Number(episode.num);
+      saveAppState();
+      renderVerticalFeed();
+      switchMainTab('foryou');
+      requestAnimationFrame(() => {
+        document.getElementById(`feed-slide-${series.id}`)?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+        mountActiveEpisodeMedia(series.id);
+      });
+      showToast(`Opening ${series.title} • Episode ${episode.num}`);
+      return true;
+    }
+
+    async function handleNexoraEpisodeDeepLink(rawUrl) {
+      const pending = parseNexoraEpisodeDeepLink(rawUrl);
+      if (!pending) return false;
+      runtime.pendingSharedEpisode = pending;
+      if (!runtime.catalogLoading) tryOpenPendingSharedEpisode();
+      else showToast('Loading your shared episode…');
+      return true;
+    }
+
+    async function initNexoraEpisodeDeepLinks() {
+      if (!window.Capacitor?.isNativePlatform?.()) return;
+      const { App } = await import('./vendor/nexora-native-plugins.js');
+      await App.addListener('appUrlOpen', event => {
+        void handleNexoraEpisodeDeepLink(event?.url);
+      });
+      const launch = await App.getLaunchUrl();
+      if (launch?.url) await handleNexoraEpisodeDeepLink(launch.url);
+    }
+
     async function shareSeriesLink(seriesId) {
       const series = getSeriesById(seriesId);
       if (!series || !Array.isArray(series.episodes)) {
@@ -4334,20 +4401,25 @@
       }
       const epNum = Number(state.activeEpisodeBySeries[seriesId] || 1);
       const episode = series.episodes.find(item => Number(item.num) === epNum);
-      const videoUrl = safeHttpsMediaUrl(episode?.videoUrl);
-      if (!episode || !videoUrl) {
-        showToast('This episode does not have a valid public video link yet.');
+      if (!episode) {
+        showToast('This episode is not available to share.');
         return;
       }
 
-      const episodeTitle = String(episode.title || `Episode ${epNum}`).slice(0, 120);
-      const shareTitle = `${series.title} — ${episodeTitle} | NEXORA AI DRAMA`;
-      const shareText = `Watch ${series.title} — ${episodeTitle} on NEXORA AI DRAMA:\n${videoUrl}`;
+      const shareUrl = new URL(NEXORA_EPISODE_SHARE_BASE_URL);
+      shareUrl.searchParams.set('drama', series.id);
+      shareUrl.searchParams.set('episode', String(epNum));
+      shareUrl.searchParams.set('title', series.title || 'NEXORA AI DRAMA');
+      shareUrl.searchParams.set('episodeTitle', episode.title || `Episode ${epNum}`);
+      shareUrl.searchParams.set('creator', series.creator || 'NEXORA STUDIO');
+      if (series.coverUrl) shareUrl.searchParams.set('poster', series.coverUrl);
+      const shareTitle = `${series.title} — ${episode.title || `Episode ${epNum}`} | NEXORA AI DRAMA`;
+      const shareText = `Watch ${shareTitle} on NEXORA AI DRAMA:`;
 
       if (typeof navigator.share === 'function') {
         try {
-          await navigator.share({ title: shareTitle, text: shareText, url: videoUrl });
-          showToast('Episode link ready to share.');
+          await navigator.share({ title: shareTitle, text: shareText, url: shareUrl.toString() });
+          showToast('Episode page ready to share!');
           return;
         } catch (error) {
           if (error?.name === 'AbortError') return;
@@ -4356,15 +4428,15 @@
 
       try {
         if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(videoUrl);
-          showToast('Episode video link copied!');
+          await navigator.clipboard.writeText(shareUrl.toString());
+          showToast('Promotional episode link copied!');
           return;
         }
       } catch (_error) {}
 
       try {
         const field = document.createElement('textarea');
-        field.value = videoUrl;
+        field.value = shareUrl.toString();
         field.setAttribute('readonly', '');
         field.style.position = 'fixed';
         field.style.opacity = '0';
@@ -4373,7 +4445,7 @@
         const copied = document.execCommand('copy');
         field.remove();
         if (copied) {
-          showToast('Episode video link copied!');
+          showToast('Promotional episode link copied!');
           return;
         }
       } catch (_error) {}
@@ -5637,6 +5709,7 @@
       startMainAnimationLoop();
 
       void initCapacitorAdMobBridge().catch(error => recordRuntimeError('admob-initialization', error));
+      void initNexoraEpisodeDeepLinks().catch(error => recordRuntimeError('episode-deep-link-initialization', error));
       setStartupStatus('Preparing your experience…');
 
       // Start cloud services in parallel and let them finish in the background.
