@@ -110,6 +110,14 @@ Deno.serve(async (req: Request) => {
         if (error) throw error;
         if (!data) throw new Error("push_delivery_invalid_transition_conflict");
       },
+      async markAmbiguous(event, token, at, code) {
+        const { data, error } = await admin.from("nexora_push_deliveries")
+          .update({ status: "unknown", last_error_code: safeCode(code), updated_at: at })
+          .eq("event_key", event).eq("token", token).eq("status", "sending")
+          .select("token").maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error("push_delivery_unknown_transition_conflict");
+      },
       async removeDevice(token) {
         const { error } = await admin.from("nexora_push_devices")
           .delete().eq("token", token).eq("app_id", APP_ID);
@@ -152,7 +160,7 @@ Deno.serve(async (req: Request) => {
       .select("token", { count: "exact", head: true }).eq("event_key", eventKey).eq("status", "sent");
     if (countError) throw countError;
     return json({ ok: true, version, sent: count || 0, sentThisAttempt: result.sent,
-      invalidTokensRemoved: result.invalid, retried: result.retried, failed: result.failed,
+      invalidTokensRemoved: result.invalid, retried: result.retried, failed: result.failed, ambiguous: result.ambiguous,
       skipped: result.skipped, duplicate: result.duplicate });
   } catch (error) {
     const safeMessage = error instanceof Error ? error.message : "push_worker_failed";
