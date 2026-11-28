@@ -19,12 +19,12 @@ grant all on table public.nexora_push_events to service_role;
 grant all on table public.nexora_push_deliveries to service_role;
 
 -- The original progress table allowed only pending/sent/invalid. The v2 worker
--- uses sending/failed as durable states, so expand the check before it can run.
+-- uses sending/failed/unknown as durable states, so expand the check before it can run.
 alter table public.nexora_push_deliveries
   drop constraint if exists nexora_push_deliveries_status_check;
 alter table public.nexora_push_deliveries
   add constraint nexora_push_deliveries_status_check
-  check (status in ('pending', 'sending', 'sent', 'invalid', 'failed'));
+  check (status in ('pending', 'sending', 'sent', 'invalid', 'failed', 'unknown'));
 
 -- Preserve the existing 15-minute claim semantics for in-flight v1 claims.
 update public.nexora_push_events
