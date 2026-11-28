@@ -31,6 +31,17 @@ Deno.serve(async (req: Request) => {
   }
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const action = req.method === "GET" ? "list" : "reconcile";
+  const { data: allowed, error: rateError } = await admin.rpc("nexora_check_push_reconciliation_rate_limit", {
+    p_admin_id: authData.user.id,
+    p_action: action,
+  });
+  // Fail closed: if the limiter is unavailable, do not expose or mutate delivery records.
+  if (rateError || allowed !== true) {
+    return json({ error: rateError ? "Rate limit service unavailable" : "Too many requests" },
+      rateError ? 503 : 429, origin, rateError ? undefined : { "Retry-After": "60" });
+  }
+
   if (req.method === "GET") {
     const rawLimit = new URL(req.url).searchParams.get("limit");
     const limit = rawLimit === null ? 50 : Number(rawLimit);
@@ -42,9 +53,10 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, deliveries: data || [] }, 200, origin);
   }
 
-  let body: unknown;
-  try { body = await req.json(); } catch { return json({ error: "Invalid JSON body" }, 400, origin); }
-  const parsed = parseReconciliationRequest(body);
+  const body = await readJsonBody(req);
+  if (!body.ok) return json({ error: body.reason === "too_large" ? "Request body too large" : "Invalid JSON body" },
+    body.reason === "too_large" ? 413 : 400, origin);
+  const parsed = parseReconciliationRequest(body.value);
   if (!parsed) return json({ error: "A valid deliveryId, evidenceReference, and reason are required" }, 400, origin);
 
   const { data, error } = await admin.rpc("nexora_reconcile_push_delivery_by_id_v1", {
@@ -63,6 +75,10 @@ Deno.serve(async (req: Request) => {
   return json({ ok: true, result: data }, 200, origin);
 });
 
-function json(value: unknown, status: number, origin: string | null): Response {
-  return new Response(JSON.stringify(value), { status, headers: corsHeaders(origin) });
+function json(
+  value: unknown, status: number, origin: string | null, extraHeaders: Record<string, string> = {},
+): Response {
+  return new Response(JSON.stringify(value), {
+    status, headers: { ...corsHeaders(origin), ...extraHeaders },
+  });
 }
