@@ -79,4 +79,49 @@ begin
       and indexname = 'nexora_push_deliveries_sending_age_v2_idx'
   ) then raise exception 'missing sending age index'; end if;
 end;
+
+  if not has_function_privilege('service_role','public.nexora_renew_push_event_v2(text,text,integer)','EXECUTE')
+     or not has_function_privilege('service_role','public.nexora_complete_push_event_v2(text,text)','EXECUTE')
+     or not has_function_privilege('service_role','public.nexora_release_push_event_v2(text,text)','EXECUTE') then
+    raise exception 'service_role missing v2 RPC grants';
+  end if;
+  if has_function_privilege('anon','public.nexora_renew_push_event_v2(text,text,integer)','EXECUTE')
+     or has_function_privilege('authenticated','public.nexora_renew_push_event_v2(text,text,integer)','EXECUTE')
+     or has_function_privilege('anon','public.nexora_complete_push_event_v2(text,text)','EXECUTE')
+     or has_function_privilege('authenticated','public.nexora_complete_push_event_v2(text,text)','EXECUTE')
+     or has_function_privilege('anon','public.nexora_release_push_event_v2(text,text)','EXECUTE')
+     or has_function_privilege('authenticated','public.nexora_release_push_event_v2(text,text)','EXECUTE') then
+    raise exception 'untrusted role can execute v2 RPC';
+  end if;
+
+  <<behavior>>
+  declare
+    event_a text := 'test:push-lease:' || md5(random()::text || clock_timestamp()::text);
+    event_b text := 'test:push-complete:' || md5(random()::text || clock_timestamp()::text);
+    token_a text := 'test-claim-token-a-00000001';
+    token_b text := 'test-claim-token-b-00000002';
+  begin
+    if not public.nexora_claim_push_event_v2(event_a, token_a, 60) then raise exception 'first claim failed'; end if;
+    if public.nexora_claim_push_event_v2(event_a, token_b, 60) then raise exception 'duplicate live claim succeeded'; end if;
+    if public.nexora_renew_push_event_v2(event_a, 'wrong-claim-token-000000', 60) then raise exception 'wrong token renewed lease'; end if;
+    if not public.nexora_renew_push_event_v2(event_a, token_a, 60) then raise exception 'owner renewal failed'; end if;
+    update public.nexora_push_events set lease_expires_at = now() - interval '1 second'
+      where event_key = event_a and claim_token = token_a;
+    if not public.nexora_claim_push_event_v2(event_a, token_b, 60) then raise exception 'expired lease takeover failed'; end if;
+    if public.nexora_renew_push_event_v2(event_a, token_a, 60) then raise exception 'stale owner renewed after takeover'; end if;
+    if public.nexora_release_push_event_v2(event_a, token_a) then raise exception 'stale owner released successor lease'; end if;
+    if public.nexora_complete_push_event_v2(event_a, token_a) then raise exception 'stale owner completed successor lease'; end if;
+    if not public.nexora_release_push_event_v2(event_a, token_b) then raise exception 'current owner release failed'; end if;
+
+    if not public.nexora_claim_push_event_v2(event_b, token_a, 60) then raise exception 'completion claim failed'; end if;
+    insert into public.nexora_push_deliveries(event_key, token, status)
+      values (event_b, 'test-token-for-pending-delivery', 'pending');
+    if public.nexora_complete_push_event_v2(event_b, token_a) then raise exception 'completion allowed pending delivery'; end if;
+    update public.nexora_push_deliveries set status = 'sending' where event_key = event_b;
+    if public.nexora_complete_push_event_v2(event_b, token_a) then raise exception 'completion allowed sending delivery'; end if;
+    update public.nexora_push_deliveries set status = 'failed' where event_key = event_b;
+    if not public.nexora_complete_push_event_v2(event_b, token_a) then raise exception 'completion blocked terminal delivery'; end if;
+    delete from public.nexora_push_deliveries where event_key in (event_a, event_b);
+    delete from public.nexora_push_events where event_key in (event_a, event_b);
+  end behavior;
 $tests$;
