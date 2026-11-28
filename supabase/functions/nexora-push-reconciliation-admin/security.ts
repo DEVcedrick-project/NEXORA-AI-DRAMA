@@ -24,3 +24,45 @@ export function allowedOrigin(origin: string | null, configured: string): string
   const allowed = configured.split(",").map((item) => item.trim()).filter(Boolean);
   return allowed.includes(origin) ? origin : null;
 }
+
+
+export async function readJsonBody(
+  request: Request,
+  maxBytes = 8 * 1024,
+): Promise<{ ok: true; value: unknown } | { ok: false; reason: "too_large" | "invalid_json" }> {
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength && /^\\d+$/.test(declaredLength) && Number(declaredLength) > maxBytes) {
+    return { ok: false, reason: "too_large" };
+  }
+  if (!request.body) return { ok: false, reason: "invalid_json" };
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return { ok: false, reason: "too_large" };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, reason: "invalid_json" };
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return { ok: true, value: JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) };
+  } catch {
+    return { ok: false, reason: "invalid_json" };
+  }
+}
