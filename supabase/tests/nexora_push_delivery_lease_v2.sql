@@ -34,6 +34,14 @@ begin
   ) then raise exception 'stale legacy sending row was not quarantined as unknown'; end if;
 
   if not exists (
+    select 1 from public.nexora_push_deliveries
+    where event_key = 'legacy-active-event'
+      and token = 'legacy-active-token'
+      and status = 'sending'
+      and last_error_code is null
+  ) then raise exception 'active legacy sending row did not retain its 15-minute grace period'; end if;
+
+  if not exists (
     select 1 from pg_catalog.pg_constraint
     where conrelid = 'public.nexora_push_deliveries'::regclass
       and conname = 'nexora_push_deliveries_status_check'
