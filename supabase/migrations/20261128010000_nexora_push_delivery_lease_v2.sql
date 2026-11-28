@@ -18,8 +18,8 @@ revoke all on table public.nexora_push_deliveries from public, anon, authenticat
 grant all on table public.nexora_push_events to service_role;
 grant all on table public.nexora_push_deliveries to service_role;
 
--- The original progress table allowed only pending/sent/invalid. The v2 worker
--- uses sending/failed/unknown as durable states, so expand the check before it can run.
+-- The deployed progress schema already uses sending/failed. Add unknown as an
+-- explicit terminal state so uncertain FCM outcomes can be reconciled safely.
 alter table public.nexora_push_deliveries
   drop constraint if exists nexora_push_deliveries_status_check;
 alter table public.nexora_push_deliveries
