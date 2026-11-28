@@ -1670,7 +1670,7 @@
           const version = String(manifest.version || '').trim();
           const downloadUrl = String(manifest.downloadUrl || '').trim();
           const sha256 = String(manifest.sha256 || '').trim().toLowerCase();
-          if (!/^v?\\d+\\.\\d+\\.\\d+$/.test(version) || !/^https:\\/\\//i.test(downloadUrl) || !/^[a-f0-9]{64}$/.test(sha256)) {
+          if (!/^v?\d+\.\d+\.\d+$/.test(version) || !/^https:\/\//i.test(downloadUrl) || !/^[a-f0-9]{64}$/.test(sha256)) {
             throw new Error('The update manifest is incomplete or invalid.');
           }
           if (compareAppVersions(version, APP_CURRENT_VERSION) <= 0) {
