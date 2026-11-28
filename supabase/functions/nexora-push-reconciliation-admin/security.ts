@@ -31,7 +31,7 @@ export async function readJsonBody(
   maxBytes = 8 * 1024,
 ): Promise<{ ok: true; value: unknown } | { ok: false; reason: "too_large" | "invalid_json" }> {
   const declaredLength = request.headers.get("content-length");
-  if (declaredLength && /^\\d+$/.test(declaredLength) && Number(declaredLength) > maxBytes) {
+  if (declaredLength && /^\d+$/.test(declaredLength) && Number(declaredLength) > maxBytes) {
     return { ok: false, reason: "too_large" };
   }
   if (!request.body) return { ok: false, reason: "invalid_json" };
