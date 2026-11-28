@@ -9,6 +9,14 @@ alter table public.nexora_push_deliveries
   add column if not exists next_attempt_at timestamptz not null default pg_catalog.now(),
   add column if not exists last_error_code text;
 
+-- The original progress table allowed only pending/sent/invalid. The v2 worker
+-- uses sending/failed as durable states, so expand the check before it can run.
+alter table public.nexora_push_deliveries
+  drop constraint if exists nexora_push_deliveries_status_check;
+alter table public.nexora_push_deliveries
+  add constraint nexora_push_deliveries_status_check
+  check (status in ('pending', 'sending', 'sent', 'invalid', 'failed'));
+
 -- Preserve the existing 15-minute claim semantics for in-flight v1 claims.
 update public.nexora_push_events
 set lease_expires_at = created_at + interval '15 minutes'
