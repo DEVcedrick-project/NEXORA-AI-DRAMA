@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { processPushEvent, PAGE_SIZE, type PushWorkerStore, type SendResult } from "./worker.ts";
+import { processPushEvent, type PushWorkerStore, type SendResult } from "./worker.ts";
 
 const APP_ID = "com.devcedrick.nexoraaidrama";
 const cors = {
