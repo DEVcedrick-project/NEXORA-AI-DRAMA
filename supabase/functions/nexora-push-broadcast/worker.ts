@@ -18,7 +18,7 @@ export interface PushWorkerStore {
   listDue(eventKey: string, after: string | null, limit: number): Promise<Delivery[]>;
   markSending(eventKey: string, token: string, attempt: number, at: string): Promise<boolean>;
   markSent(eventKey: string, token: string, at: string): Promise<void>;
-  markInvalid(eventKey: string, token: string, at: string, code: string): Promise<void>;
+  markInvalid(eventKey: string, token: string, at: string, code: string): Promise<void>;\n  markAmbiguous(eventKey: string, token: string, at: string, code: string): Promise<void>;
   removeDevice(token: string): Promise<void>;
   markRetry(eventKey: string, token: string, nextAttemptAt: string, at: string, code: string): Promise<void>;
   markFailed(eventKey: string, token: string, at: string, code: string): Promise<void>;
@@ -44,7 +44,7 @@ export async function processPushEvent(
   const claimToken = options.claimToken ?? crypto.randomUUID();
   const now = options.now ?? (() => new Date());
   const random = options.random ?? Math.random;
-  const result: PushWorkerResult = { duplicate: false, sent: 0, invalid: 0, retried: 0, failed: 0, skipped: 0 };
+  const result: PushWorkerResult = { duplicate: false, sent: 0, invalid: 0, retried: 0, failed: 0, ambiguous: 0, skipped: 0 };
 
   const claimed = await store.claim(eventKey, claimToken, LEASE_SECONDS);
   if (!claimed) return { ...result, duplicate: true };
