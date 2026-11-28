@@ -50,11 +50,16 @@ jobs:
         run: |
           db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
           docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/migrations/20261128020000_nexora_push_delivery_reconciliation_v1.sql
+      - name: Apply opaque delivery identifier migration
+        run: |
+          db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
+          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/migrations/20261128030000_nexora_push_reconciliation_admin_v1.sql
       - name: Run RPC behavior and privilege assertions
         run: |
           db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
           docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_delivery_lease_v2.sql
           docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_delivery_reconciliation_v1.sql
+          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_reconciliation_admin_v1.sql
       - name: Prove concurrent claims admit exactly one worker
         shell: bash
         run: |
