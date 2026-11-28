@@ -1,8 +1,8 @@
 -- Safe one-way reconciliation tests; run after the candidate v3 migration.
 do $tests$
 declare
-  event_key text := 'test:push-reconcile:' || md5(random()::text || clock_timestamp()::text);
-  pending_key text := 'test:push-reconcile-pending:' || md5(random()::text || clock_timestamp()::text);
+  v_event_key text := 'test:push-reconcile:' || md5(random()::text || clock_timestamp()::text);
+  v_pending_key text := 'test:push-reconcile-pending:' || md5(random()::text || clock_timestamp()::text);
   outcome text;
 begin
   if to_regclass('public.nexora_push_delivery_reconciliations') is null then
@@ -27,23 +27,23 @@ begin
   end if;
 
   insert into public.nexora_push_deliveries(event_key, token, status, last_error_code)
-  values (event_key, 'test-device-token-reconcile', 'unknown', 'NETWORK_RESPONSE_UNKNOWN'),
-         (pending_key, 'test-device-token-pending', 'pending', null);
+  values (v_event_key, 'test-device-token-reconcile', 'unknown', 'NETWORK_RESPONSE_UNKNOWN'),
+         (v_pending_key, 'test-device-token-pending', 'pending', null);
 
   outcome := public.nexora_reconcile_push_delivery_v1(
-    event_key, 'test-device-token-reconcile', 'fcm-acceptance-proof-123',
+    v_event_key, 'test-device-token-reconcile', 'fcm-acceptance-proof-123',
     'FCM acceptance confirmed from retained provider response',
     'incident-NEXORA-123'
   );
   if outcome <> 'reconciled' then raise exception 'expected reconciled result, got %', outcome; end if;
 
   if not exists (select 1 from public.nexora_push_deliveries
-    where event_key = event_key and token = 'test-device-token-reconcile'
+    where event_key = v_event_key and token = 'test-device-token-reconcile'
       and status = 'sent' and sent_at is not null) then
     raise exception 'unknown delivery was not marked sent';
   end if;
   if not exists (select 1 from public.nexora_push_delivery_reconciliations
-    where event_key = event_key and token = 'test-device-token-reconcile'
+    where event_key = v_event_key and token = 'test-device-token-reconcile'
       and action = 'confirm_sent' and evidence_reference = 'fcm-acceptance-proof-123'
       and reason = 'FCM acceptance confirmed from retained provider response'
       and operator_reference = 'incident-NEXORA-123') then
@@ -51,19 +51,19 @@ begin
   end if;
 
   outcome := public.nexora_reconcile_push_delivery_v1(
-    event_key, 'test-device-token-reconcile', 'fcm-acceptance-proof-123',
+    v_event_key, 'test-device-token-reconcile', 'fcm-acceptance-proof-123',
     'Repeated request', 'incident-NEXORA-123'
   );
   if outcome <> 'already_reconciled' then raise exception 'repeated reconciliation was not idempotent'; end if;
 
   if (select count(*) from public.nexora_push_delivery_reconciliations
-      where event_key = event_key and token = 'test-device-token-reconcile') <> 1 then
+      where event_key = v_event_key and token = 'test-device-token-reconcile') <> 1 then
     raise exception 'duplicate audit record created';
   end if;
 
   begin
     perform public.nexora_reconcile_push_delivery_v1(
-      pending_key, 'test-device-token-pending', 'no-proof',
+      v_pending_key, 'test-device-token-pending', 'no-proof',
       'Must reject pending delivery', 'incident-NEXORA-124'
     );
     raise exception 'pending delivery was incorrectly reconciled';
@@ -72,11 +72,11 @@ begin
   end;
 
   if (select status from public.nexora_push_deliveries
-      where event_key = pending_key and token = 'test-device-token-pending') <> 'pending' then
+      where event_key = v_pending_key and token = 'test-device-token-pending') <> 'pending' then
     raise exception 'rejected reconciliation changed pending delivery';
   end if;
 
-  delete from public.nexora_push_delivery_reconciliations where event_key in (event_key, pending_key);
-  delete from public.nexora_push_deliveries where event_key in (event_key, pending_key);
+  delete from public.nexora_push_delivery_reconciliations where event_key in (v_event_key, v_pending_key);
+  delete from public.nexora_push_deliveries where event_key in (v_event_key, v_pending_key);
 end;
 $tests$;
