@@ -43,7 +43,8 @@ class FakeStore implements PushWorkerStore {
     return true;
   }
   async markSent(_event: string, token: string): Promise<void> { this.statuses.set(token, "sent"); }
-  async markInvalid(_event: string, token: string): Promise<void> { this.statuses.set(token, "invalid"); }\n  async markAmbiguous(_event: string, token: string): Promise<void> { this.statuses.set(token, "unknown"); }
+  async markInvalid(_event: string, token: string): Promise<void> { this.statuses.set(token, "invalid");
+  async markAmbiguous(_event: string, token: string): Promise<void> { this.statuses.set(token, "unknown"); }
   async removeDevice(token: string): Promise<void> { this.sendsRemoved.push(token); }
   async markRetry(_event: string, token: string, next: string): Promise<void> {
     this.statuses.set(token, "pending");
