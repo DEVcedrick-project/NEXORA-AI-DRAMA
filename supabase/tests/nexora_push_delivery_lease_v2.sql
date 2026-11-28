@@ -103,8 +103,6 @@ begin
     where schemaname = 'public'
       and indexname = 'nexora_push_deliveries_sending_age_v2_idx'
   ) then raise exception 'missing sending age index'; end if;
-end;
-
   if not has_function_privilege('service_role','public.nexora_renew_push_event_v2(text,text,integer)','EXECUTE')
      or not has_function_privilege('service_role','public.nexora_complete_push_event_v2(text,text)','EXECUTE')
      or not has_function_privilege('service_role','public.nexora_release_push_event_v2(text,text)','EXECUTE') then
@@ -149,4 +147,5 @@ end;
     delete from public.nexora_push_deliveries where event_key in (event_a, event_b);
     delete from public.nexora_push_events where event_key in (event_a, event_b);
   end behavior;
+end;
 $tests$;
