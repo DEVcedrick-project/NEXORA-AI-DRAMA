@@ -35,7 +35,7 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Bootstrap disposable baseline
         run: |
           db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
