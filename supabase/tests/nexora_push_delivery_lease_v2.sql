@@ -26,11 +26,20 @@ begin
   ) then raise exception 'missing nexora_push_deliveries.last_error_code'; end if;
 
   if not exists (
+    select 1 from public.nexora_push_deliveries
+    where event_key = 'legacy-stale-event'
+      and token = 'legacy-stale-token'
+      and status = 'unknown'
+      and last_error_code = 'LEGACY_SENDING_OUTCOME_UNKNOWN'
+  ) then raise exception 'stale legacy sending row was not quarantined as unknown'; end if;
+
+  if not exists (
     select 1 from pg_catalog.pg_constraint
     where conrelid = 'public.nexora_push_deliveries'::regclass
       and conname = 'nexora_push_deliveries_status_check'
       and pg_catalog.pg_get_constraintdef(oid) like '%sending%'
       and pg_catalog.pg_get_constraintdef(oid) like '%failed%'
+      and pg_catalog.pg_get_constraintdef(oid) like '%unknown%'
   ) then raise exception 'delivery status check must permit sending and failed'; end if;
 
   if not coalesce((select relrowsecurity from pg_catalog.pg_class
