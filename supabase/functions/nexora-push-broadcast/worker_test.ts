@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { processPushEvent, type PushWorkerStore, type Delivery } from "./worker.ts";
 
 class FakeStore implements PushWorkerStore {
