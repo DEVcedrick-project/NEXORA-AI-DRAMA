@@ -4412,6 +4412,14 @@
       shareUrl.searchParams.set('title', series.title || 'NEXORA AI DRAMA');
       shareUrl.searchParams.set('episodeTitle', episode.title || `Episode ${epNum}`);
       shareUrl.searchParams.set('creator', series.creator || 'NEXORA STUDIO');
+      // Pass both Android launch formats to the promotional page. The page remains
+      // the public URL; these parameters let its "Open in app" CTA launch this exact episode.
+      const appDeepLink = new URL('nexora://episode');
+      appDeepLink.searchParams.set('drama', series.id);
+      appDeepLink.searchParams.set('episode', String(epNum));
+      const androidIntentLink = `intent://episode?${appDeepLink.searchParams.toString()}#Intent;scheme=nexora;package=com.devcedrick.nexoraaidrama;end`;
+      shareUrl.searchParams.set('appLink', appDeepLink.toString());
+      shareUrl.searchParams.set('androidIntentLink', androidIntentLink);
       if (series.coverUrl) shareUrl.searchParams.set('poster', series.coverUrl);
       const shareTitle = `${series.title} — ${episode.title || `Episode ${epNum}`} | NEXORA AI DRAMA`;
       const shareText = `Watch ${shareTitle} on NEXORA AI DRAMA:`;
