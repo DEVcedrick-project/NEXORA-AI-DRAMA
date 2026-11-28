@@ -142,8 +142,8 @@ begin
     if public.nexora_complete_push_event_v2(event_b, token_a) then raise exception 'completion allowed pending delivery'; end if;
     update public.nexora_push_deliveries set status = 'sending' where event_key = event_b;
     if public.nexora_complete_push_event_v2(event_b, token_a) then raise exception 'completion allowed sending delivery'; end if;
-    update public.nexora_push_deliveries set status = 'failed' where event_key = event_b;
-    if not public.nexora_complete_push_event_v2(event_b, token_a) then raise exception 'completion blocked terminal delivery'; end if;
+    update public.nexora_push_deliveries set status = 'unknown' where event_key = event_b;
+    if not public.nexora_complete_push_event_v2(event_b, token_a) then raise exception 'completion blocked terminal unknown delivery'; end if;
     delete from public.nexora_push_deliveries where event_key in (event_a, event_b);
     delete from public.nexora_push_events where event_key in (event_a, event_b);
   end behavior;
