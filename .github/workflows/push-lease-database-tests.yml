@@ -1,0 +1,69 @@
+name: Push lease RPC database tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/*push_delivery_lease*"
+      - "supabase/migrations/20261128010000_nexora_push_delivery_lease_v2.sql"
+      - "supabase/tests/**"
+      - ".github/workflows/push-lease-database-tests.yml"
+  push:
+    branches:
+      - "audit/push-delivery-lease-retries"
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/tests/**"
+      - ".github/workflows/push-lease-database-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-rpc-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nexora_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nexora_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: nexora_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Bootstrap disposable baseline
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/push_lease_baseline.sql
+      - name: Apply prior push migrations and candidate v2 migration
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261127034051_atomic_push_broadcast_claims.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261127082828_add_push_delivery_progress.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261128010000_nexora_push_delivery_lease_v2.sql
+      - name: Run RPC behavior and privilege assertions
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/nexora_push_delivery_lease_v2.sql
+      - name: Prove concurrent claims admit exactly one worker
+        shell: bash
+        run: |
+          for i in $(seq 1 20); do
+            (psql -X -Atqc "select public.nexora_claim_push_event_v2('parallel-claim-test', 'parallel-claim-token-$(printf '%08d' "$i")', 60)" > "/tmp/push-claim-$i.out") &
+          done
+          wait
+          successes=$(grep -hxc t /tmp/push-claim-*.out | awk '{ total += $1 } END { print total + 0 }')
+          if [ "$successes" -ne 1 ]; then
+            echo "Expected exactly one successful claim, got $successes"
+            cat /tmp/push-claim-*.out
+            exit 1
+          fi
+          echo "Concurrent claim test passed: exactly one of 20 workers acquired the event."
