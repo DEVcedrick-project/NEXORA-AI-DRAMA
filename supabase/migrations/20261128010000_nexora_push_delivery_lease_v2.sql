@@ -26,6 +26,16 @@ alter table public.nexora_push_deliveries
   add constraint nexora_push_deliveries_status_check
   check (status in ('pending', 'sending', 'sent', 'invalid', 'failed', 'unknown'));
 
+-- Legacy workers used 'sending' for an outcome that may already have reached FCM.
+-- Do not retry those rows automatically. Quarantine only stale rows; a currently
+-- active send gets a full 15-minute grace period before operational reconciliation.
+update public.nexora_push_deliveries
+set status = 'unknown',
+    last_error_code = coalesce(last_error_code, 'LEGACY_SENDING_OUTCOME_UNKNOWN'),
+    updated_at = pg_catalog.now()
+where status = 'sending'
+  and updated_at < pg_catalog.now() - interval '15 minutes';
+
 -- Preserve the existing 15-minute claim semantics for in-flight v1 claims.
 update public.nexora_push_events
 set lease_expires_at = created_at + interval '15 minutes'
