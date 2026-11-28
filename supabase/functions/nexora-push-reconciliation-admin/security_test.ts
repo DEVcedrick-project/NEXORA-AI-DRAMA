@@ -43,6 +43,6 @@ Deno.test("JSON body reader enforces the byte limit and rejects malformed UTF-8/
     method: "POST", body: JSON.stringify({ value: "x".repeat(100) }),
   }), 10);
   assertEquals(streamedTooLarge, { ok: false, reason: "too_large" });
-  const invalid = await readJsonBody(new Request("https://local.test", { method: "POST", body: "{" } }));
+  const invalid = await readJsonBody(new Request("https://local.test", { method: "POST", body: "{" }));
   assertEquals(invalid, { ok: false, reason: "invalid_json" });
 });
