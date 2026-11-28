@@ -69,9 +69,13 @@ jobs:
         shell: bash
         run: |
           db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
-          docker exec "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 -c "insert into public.nexora_push_deliveries(event_key, token, status, last_error_code) values ('parallel-reconcile-test', 'parallel-reconcile-token', 'unknown', 'NETWORK_RESPONSE_UNKNOWN')"
+          delivery_id=$(docker exec "$db" psql -U postgres -d nexora_test -X -Atqc "insert into public.nexora_push_deliveries(event_key, token, status, last_error_code) values ('parallel-reconcile-test', 'parallel-reconcile-token', 'unknown', 'NETWORK_RESPONSE_UNKNOWN') returning delivery_id")
+          if [ -z "$delivery_id" ]; then
+            echo "Failed to seed concurrent reconciliation delivery"
+            exit 1
+          fi
           for i in $(seq 1 20); do
-            (docker exec "$db" psql -U postgres -d nexora_test -X -Atqc "select public.nexora_reconcile_push_delivery_v1('parallel-reconcile-test', 'parallel-reconcile-token', 'parallel-provider-proof', 'verified provider acceptance under concurrent test', 'ci-operator')" > "/tmp/push-reconcile-$i.out") &
+            (docker exec "$db" psql -U postgres -d nexora_test -X -Atqc "select public.nexora_reconcile_push_delivery_by_id_v1('$delivery_id', 'parallel-provider-proof', 'verified provider acceptance under concurrent test', 'ci-operator')" > "/tmp/push-reconcile-$i.out") &
           done
           wait
           reconciled=$(grep -hxc reconciled /tmp/push-reconcile-*.out | awk '{ total += $1 } END { print total + 0 }')
