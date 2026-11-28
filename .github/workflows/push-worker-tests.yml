@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "supabase/functions/nexora-push-broadcast/**"
+      - "supabase/functions/nexora-push-reconciliation-admin/**"
       - ".github/workflows/push-worker-tests.yml"
   push:
     branches:
@@ -25,5 +26,9 @@ jobs:
           deno-version: v2.x
       - name: Type-check worker and tests
         run: deno check supabase/functions/nexora-push-broadcast/index.ts supabase/functions/nexora-push-broadcast/worker.ts supabase/functions/nexora-push-broadcast/worker_test.ts
+      - name: Type-check admin review endpoint and tests
+        run: deno check supabase/functions/nexora-push-reconciliation-admin/index.ts supabase/functions/nexora-push-reconciliation-admin/security.ts supabase/functions/nexora-push-reconciliation-admin/security_test.ts
+      - name: Run admin authorization tests
+        run: deno test --allow-net supabase/functions/nexora-push-reconciliation-admin/security_test.ts
       - name: Run worker integration tests
         run: deno test --allow-net supabase/functions/nexora-push-broadcast/worker_test.ts
