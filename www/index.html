@@ -2656,6 +2656,7 @@
           const episodeNumber = Number(ep.episode_number);
           const episodeSynopsis = typeof ep.synopsis === 'string' ? ep.synopsis.slice(0, 1000) : '';
           return {
+            id: String(ep.id || ''),
             num: episodeNumber,
             title: typeof ep.title === 'string' && ep.title.trim() ? ep.title.trim().slice(0, 120) : `Episode ${episodeNumber}`,
             duration: Math.max(1, Math.min(14400, Math.round(Number(ep.duration_seconds) || 60))),
@@ -4325,17 +4326,58 @@
       } catch (error) { showToast(error.message || 'Could not save post.'); if (!runtime.fbAuth?.currentUser || runtime.fbAuth.currentUser.isAnonymous) openAuthModal('login'); }
     }
 
-    function shareSeriesLink(seriesId) {
+    async function shareSeriesLink(seriesId) {
       const series = getSeriesById(seriesId);
-      if (!series) return;
-      const epNum = state.activeEpisodeBySeries[seriesId] || 1;
-      const shareText = `Watch "${series.title}" (Ep ${epNum}) on NEXORA AI DRAMA!`;
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(shareText).catch(() => {});
+      if (!series || !Array.isArray(series.episodes)) {
+        showToast('Episode is not available to share.');
+        return;
+      }
+      const epNum = Number(state.activeEpisodeBySeries[seriesId] || 1);
+      const episode = series.episodes.find(item => Number(item.num) === epNum);
+      const videoUrl = safeHttpsMediaUrl(episode?.videoUrl);
+      if (!episode || !videoUrl) {
+        showToast('This episode does not have a valid public video link yet.');
+        return;
+      }
+
+      const episodeTitle = String(episode.title || `Episode ${epNum}`).slice(0, 120);
+      const shareTitle = `${series.title} — ${episodeTitle} | NEXORA AI DRAMA`;
+      const shareText = `Watch ${series.title} — ${episodeTitle} on NEXORA AI DRAMA:\n${videoUrl}`;
+
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share({ title: shareTitle, text: shareText, url: videoUrl });
+          showToast('Episode link ready to share.');
+          return;
+        } catch (error) {
+          if (error?.name === 'AbortError') return;
         }
-      } catch (_e) {}
-      showToast('🔗 Episode share info copied!');
+      }
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(videoUrl);
+          showToast('Episode video link copied!');
+          return;
+        }
+      } catch (_error) {}
+
+      try {
+        const field = document.createElement('textarea');
+        field.value = videoUrl;
+        field.setAttribute('readonly', '');
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        const copied = document.execCommand('copy');
+        field.remove();
+        if (copied) {
+          showToast('Episode video link copied!');
+          return;
+        }
+      } catch (_error) {}
+      showToast('Could not copy the episode link. Please try again.');
     }
 
     // =========================================================================
