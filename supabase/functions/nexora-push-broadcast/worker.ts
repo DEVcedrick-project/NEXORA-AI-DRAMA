@@ -84,7 +84,7 @@ export async function processPushEvent(
           continue;
         }
 
-        if (outcome.kind === "sent") {
+        if (outcome.kind === "ambiguous") {\n          result.skipped++;\n          continue;\n        }\n        if (!await store.renew(eventKey, claimToken, LEASE_SECONDS)) throw new Error("push_event_lease_lost_after_response");\n\n        if (outcome.kind === "sent") {
           if (!await store.renew(eventKey, claimToken, LEASE_SECONDS)) throw new Error("push_event_lease_lost_after_send");
           await store.markSent(eventKey, row.token, now().toISOString());
           result.sent++;
