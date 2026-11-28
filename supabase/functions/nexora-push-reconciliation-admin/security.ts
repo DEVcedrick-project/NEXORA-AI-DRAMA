@@ -25,7 +25,6 @@ export function allowedOrigin(origin: string | null, configured: string): string
   return allowed.includes(origin) ? origin : null;
 }
 
-
 export async function readJsonBody(
   request: Request,
   maxBytes = 8 * 1024,
