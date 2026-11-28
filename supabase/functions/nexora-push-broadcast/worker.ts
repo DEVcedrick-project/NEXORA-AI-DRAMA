@@ -84,8 +84,13 @@ export async function processPushEvent(
           continue;
         }
 
-        if (outcome.kind === "ambiguous") {\n          result.skipped++;\n          continue;\n        }\n        if (!await store.renew(eventKey, claimToken, LEASE_SECONDS)) throw new Error("push_event_lease_lost_after_response");\n\n        if (outcome.kind === "sent") {
-          if (!await store.renew(eventKey, claimToken, LEASE_SECONDS)) throw new Error("push_event_lease_lost_after_send");
+        if (outcome.kind === "ambiguous") {
+          result.skipped++;
+          continue;
+        }
+        if (!await store.renew(eventKey, claimToken, LEASE_SECONDS)) throw new Error("push_event_lease_lost_after_response");
+
+        if (outcome.kind === "sent") {
           await store.markSent(eventKey, row.token, now().toISOString());
           result.sent++;
         } else if (outcome.kind === "invalid") {
