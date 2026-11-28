@@ -34,30 +34,28 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
-    env:
-      PGHOST: localhost
-      PGPORT: 5432
-      PGUSER: postgres
-      PGPASSWORD: postgres
-      PGDATABASE: nexora_test
     steps:
       - uses: actions/checkout@v4
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Bootstrap disposable baseline
-        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/push_lease_baseline.sql
+        run: |
+          db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
+          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/fixtures/push_lease_baseline.sql
       - name: Apply prior push migrations and candidate v2 migration
         run: |
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261127034051_atomic_push_broadcast_claims.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261127082828_add_push_delivery_progress.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261128010000_nexora_push_delivery_lease_v2.sql
+          db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
+          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/migrations/20261127034051_atomic_push_broadcast_claims.sql
+          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/migrations/20261127082828_add_push_delivery_progress.sql
+          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/migrations/20261128010000_nexora_push_delivery_lease_v2.sql
       - name: Run RPC behavior and privilege assertions
-        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/nexora_push_delivery_lease_v2.sql
+        run: |
+          db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
+          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_delivery_lease_v2.sql
       - name: Prove concurrent claims admit exactly one worker
         shell: bash
         run: |
+          db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
           for i in $(seq 1 20); do
-            (psql -X -Atqc "select public.nexora_claim_push_event_v2('parallel-claim-test', 'parallel-claim-token-$(printf '%08d' "$i")', 60)" > "/tmp/push-claim-$i.out") &
+            (docker exec "$db" psql -U postgres -d nexora_test -X -Atqc "select public.nexora_claim_push_event_v2('parallel-claim-test', 'parallel-claim-token-$(printf '%08d' "$i")', 60)" > "/tmp/push-claim-$i.out") &
           done
           wait
           successes=$(grep -hxc t /tmp/push-claim-*.out | awk '{ total += $1 } END { print total + 0 }')
