@@ -117,24 +117,26 @@ Deno.test("fifth retryable rejection becomes terminal failed", async () => {
   store.statuses.set("a", "pending");
   store.attempts.set("a", 4);
   const fixed = new Date();
-  await assertRejects(() => processPushEvent(store, async () => ({
+  const result = await processPushEvent(store, async () => ({
     kind: "retryable", code: "UNAVAILABLE",
-  }), "app_update:1.2.3", { claimToken: "claim-token-00000006", now: () => fixed, random: () => 0 }));
+  }), "app_update:1.2.3", { claimToken: "claim-token-00000006", now: () => fixed, random: () => 0 });
+  assertEquals(result.failed, 1);
   assertEquals(store.statuses.get("a"), "failed");
 });
 
 Deno.test("permanent rejection is terminal and invalid token cleanup is scoped", async () => {
   const permanent = new FakeStore(["a"]);
-  const result = await processPushEvent(permanent, async () => ({
+  const permanentResult = await processPushEvent(permanent, async () => ({
     kind: "permanent", code: "SENDER_ID_MISMATCH",
-  }), "app_update:1.2.3", { claimToken: "claim-token-00000007" }).catch(() => null);
+  }), "app_update:1.2.3", { claimToken: "claim-token-00000007" });
   assertEquals(permanent.statuses.get("a"), "failed");
-  assertEquals(result, null);
+  assertEquals(permanentResult.failed, 1);
 
   const invalid = new FakeStore(["b"]);
-  await processPushEvent(invalid, async () => ({ kind: "invalid", code: "UNREGISTERED" }),
-    "app_update:1.2.3", { claimToken: "claim-token-00000008" }).then(() => {
-      assertEquals(invalid.statuses.get("b"), "invalid");
-      assertEquals(invalid.sendsRemoved, ["b"]);
-    }).catch(() => {});
+  const invalidResult = await processPushEvent(invalid, async () => ({
+    kind: "invalid", code: "UNREGISTERED",
+  }), "app_update:1.2.3", { claimToken: "claim-token-00000008" });
+  assertEquals(invalid.statuses.get("b"), "invalid");
+  assertEquals(invalid.sendsRemoved, ["b"]);
+  assertEquals(invalidResult.invalid, 1);
 });
