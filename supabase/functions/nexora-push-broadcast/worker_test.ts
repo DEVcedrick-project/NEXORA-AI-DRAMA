@@ -100,7 +100,7 @@ Deno.test("ambiguous FCM outcome is recorded unknown and never retried", async (
   let sends = 0;
   const result = await processPushEvent(store, async () => {
     sends++;
-    return { kind: "ambiguous", code: "NETWORK_TIMEOUT" };
+    throw new Error("NETWORK_TIMEOUT");
   }, "app_update:1.2.3", { claimToken: "claim-token-00000004" });
   assertEquals(store.statuses.get("a"), "unknown");
   assertEquals(result.ambiguous, 1);
