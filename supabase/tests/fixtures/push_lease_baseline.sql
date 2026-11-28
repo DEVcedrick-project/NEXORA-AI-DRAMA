@@ -30,3 +30,7 @@ grant all on table public.nexora_push_events to service_role;
 -- Model a legacy in-flight row that has exceeded the old worker's 15-minute claim window.
 insert into public.nexora_push_deliveries(event_key, token, status, updated_at)
 values ('legacy-stale-event', 'legacy-stale-token', 'sending', now() - interval '1 hour');
+
+-- Model a genuinely active send that must receive the full 15-minute grace period.
+insert into public.nexora_push_deliveries(event_key, token, status, updated_at)
+values ('legacy-active-event', 'legacy-active-token', 'sending', now() - interval '5 minutes');
