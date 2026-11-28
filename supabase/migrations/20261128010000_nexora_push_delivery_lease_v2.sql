@@ -9,6 +9,15 @@ alter table public.nexora_push_deliveries
   add column if not exists next_attempt_at timestamptz not null default pg_catalog.now(),
   add column if not exists last_error_code text;
 
+-- The lease RPCs are SECURITY INVOKER, so explicitly keep their backing
+-- tables service-role-only. This also closes direct client access to events.
+alter table public.nexora_push_events enable row level security;
+alter table public.nexora_push_deliveries enable row level security;
+revoke all on table public.nexora_push_events from public, anon, authenticated;
+revoke all on table public.nexora_push_deliveries from public, anon, authenticated;
+grant all on table public.nexora_push_events to service_role;
+grant all on table public.nexora_push_deliveries to service_role;
+
 -- The original progress table allowed only pending/sent/invalid. The v2 worker
 -- uses sending/failed as durable states, so expand the check before it can run.
 alter table public.nexora_push_deliveries
