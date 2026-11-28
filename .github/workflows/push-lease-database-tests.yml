@@ -54,12 +54,17 @@ jobs:
         run: |
           db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
           docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/migrations/20261128030000_nexora_push_reconciliation_admin_v1.sql
-      - name: Apply push reconciliation rate limit migration\n        run: |\n          db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)\n          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/migrations/20261128040000_nexora_push_reconciliation_rate_limits_v1.sql\n      - name: Run RPC behavior and privilege assertions
+      - name: Apply push reconciliation rate limit migration
+        run: |
+          db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
+          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/migrations/20261128040000_nexora_push_reconciliation_rate_limits_v1.sql
+      - name: Run RPC behavior and privilege assertions
         run: |
           db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
           docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_delivery_lease_v2.sql
           docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_delivery_reconciliation_v1.sql
-          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_reconciliation_admin_v1.sql\n          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_reconciliation_rate_limits_v1.sql
+          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_reconciliation_admin_v1.sql
+          docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_reconciliation_rate_limits_v1.sql
       - name: Prove concurrent claims admit exactly one worker
         shell: bash
         run: |
