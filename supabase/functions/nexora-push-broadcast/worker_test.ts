@@ -43,7 +43,7 @@ class FakeStore implements PushWorkerStore {
     return true;
   }
   async markSent(_event: string, token: string): Promise<void> { this.statuses.set(token, "sent"); }
-  async markInvalid(_event: string, token: string): Promise<void> { this.statuses.set(token, "invalid"); }
+  async markInvalid(_event: string, token: string): Promise<void> { this.statuses.set(token, "invalid"); }\n  async markAmbiguous(_event: string, token: string): Promise<void> { this.statuses.set(token, "unknown"); }
   async removeDevice(token: string): Promise<void> { this.sendsRemoved.push(token); }
   async markRetry(_event: string, token: string, next: string): Promise<void> {
     this.statuses.set(token, "pending");
@@ -95,20 +95,21 @@ Deno.test("duplicate worker claim does not send a second copy", async () => {
   assertEquals(sends, 0);
 });
 
-Deno.test("ambiguous FCM outcome remains sending and is not retried", async () => {
+Deno.test("ambiguous FCM outcome is recorded unknown and never retried", async () => {
   const store = new FakeStore(["a"]);
   let sends = 0;
-  await assertRejects(() => processPushEvent(store, async () => {
+  const result = await processPushEvent(store, async () => {
     sends++;
     return { kind: "ambiguous", code: "NETWORK_TIMEOUT" };
-  }, "app_update:1.2.3", { claimToken: "claim-token-00000004" }));
-  assertEquals(store.statuses.get("a"), "sending");
-  assertEquals(store.releaseCount, 1);
+  }, "app_update:1.2.3", { claimToken: "claim-token-00000004" });
+  assertEquals(store.statuses.get("a"), "unknown");
+  assertEquals(result.ambiguous, 1);
   assertEquals(sends, 1);
-  await processPushEvent(store, async () => {
+  const duplicate = await processPushEvent(store, async () => {
     sends++;
     return { kind: "sent" };
-  }, "app_update:1.2.3", { claimToken: "claim-token-00000005" }).catch(() => {});
+  }, "app_update:1.2.3", { claimToken: "claim-token-00000005" });
+  assertEquals(duplicate.duplicate, true);
   assertEquals(sends, 1);
 });
 
