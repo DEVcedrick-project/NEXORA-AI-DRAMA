@@ -80,13 +80,13 @@ export async function processPushEvent(
         try {
           outcome = await send(row.token);
         } catch {
-          // A lost response may mean FCM accepted the send. Leave sending for reconciliation.
-          result.skipped++;
-          continue;
+          // A lost response may mean FCM accepted the send. Record unknown, never retry.
+          outcome = { kind: "ambiguous", code: "NETWORK_RESPONSE_UNKNOWN" };
         }
 
         if (outcome.kind === "ambiguous") {
-          result.skipped++;
+          await store.markAmbiguous(eventKey, row.token, now().toISOString(), outcome.code);
+          result.ambiguous++;
           continue;
         }
         if (!await store.renew(eventKey, claimToken, LEASE_SECONDS)) throw new Error("push_event_lease_lost_after_response");
