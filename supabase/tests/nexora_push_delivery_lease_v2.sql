@@ -25,6 +25,31 @@ begin
       and column_name = 'last_error_code'
   ) then raise exception 'missing nexora_push_deliveries.last_error_code'; end if;
 
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+    where conrelid = 'public.nexora_push_deliveries'::regclass
+      and conname = 'nexora_push_deliveries_status_check'
+      and pg_catalog.pg_get_constraintdef(oid) like '%sending%'
+      and pg_catalog.pg_get_constraintdef(oid) like '%failed%'
+  ) then raise exception 'delivery status check must permit sending and failed'; end if;
+
+  if not coalesce((select relrowsecurity from pg_catalog.pg_class
+    where oid = 'public.nexora_push_events'::regclass), false)
+     or not coalesce((select relrowsecurity from pg_catalog.pg_class
+    where oid = 'public.nexora_push_deliveries'::regclass), false) then
+    raise exception 'push event and delivery tables must have RLS enabled';
+  end if;
+  if not has_table_privilege('service_role','public.nexora_push_events','SELECT,INSERT,UPDATE,DELETE')
+     or not has_table_privilege('service_role','public.nexora_push_deliveries','SELECT,INSERT,UPDATE,DELETE') then
+    raise exception 'service_role is missing backing-table privileges';
+  end if;
+  if has_table_privilege('anon','public.nexora_push_events','SELECT')
+     or has_table_privilege('authenticated','public.nexora_push_events','SELECT')
+     or has_table_privilege('anon','public.nexora_push_deliveries','SELECT')
+     or has_table_privilege('authenticated','public.nexora_push_deliveries','SELECT') then
+    raise exception 'client roles have direct read access to push state';
+  end if;
+
   if to_regprocedure('public.nexora_claim_push_event_v2(text,text,integer)') is null
      or to_regprocedure('public.nexora_renew_push_event_v2(text,text,integer)') is null
      or to_regprocedure('public.nexora_complete_push_event_v2(text,text)') is null
