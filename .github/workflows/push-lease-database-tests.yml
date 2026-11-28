@@ -65,6 +65,24 @@ jobs:
           docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_delivery_reconciliation_v1.sql
           docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_reconciliation_admin_v1.sql
           docker exec -i "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 < supabase/tests/nexora_push_reconciliation_rate_limits_v1.sql
+      - name: Prove concurrent reconciliation is idempotent for one delivery
+        shell: bash
+        run: |
+          db=$(docker ps -q --filter ancestor=postgres:16 | head -n1)
+          docker exec "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 -c "insert into public.nexora_push_deliveries(event_key, token, status, last_error_code) values ('parallel-reconcile-test', 'parallel-reconcile-token', 'unknown', 'NETWORK_RESPONSE_UNKNOWN')"
+          for i in $(seq 1 20); do
+            (docker exec "$db" psql -U postgres -d nexora_test -X -Atqc "select public.nexora_reconcile_push_delivery_v1('parallel-reconcile-test', 'parallel-reconcile-token', 'parallel-provider-proof', 'verified provider acceptance under concurrent test', 'ci-operator')" > "/tmp/push-reconcile-$i.out") &
+          done
+          wait
+          reconciled=$(grep -hxc reconciled /tmp/push-reconcile-*.out | awk '{ total += $1 } END { print total + 0 }')
+          repeated=$(grep -hxc already_reconciled /tmp/push-reconcile-*.out | awk '{ total += $1 } END { print total + 0 }')
+          if [ "$reconciled" -ne 1 ] || [ "$repeated" -ne 19 ]; then
+            echo "Expected one reconciliation and 19 idempotent repeats; got reconciled=$reconciled repeated=$repeated"
+            cat /tmp/push-reconcile-*.out
+            exit 1
+          fi
+          docker exec "$db" psql -U postgres -d nexora_test -v ON_ERROR_STOP=1 -c "delete from public.nexora_push_delivery_reconciliations where event_key = 'parallel-reconcile-test'; delete from public.nexora_push_deliveries where event_key = 'parallel-reconcile-test'"
+          echo "Concurrent reconciliation test passed: one transition, 19 idempotent repeats."
       - name: Prove concurrent claims admit exactly one worker
         shell: bash
         run: |
