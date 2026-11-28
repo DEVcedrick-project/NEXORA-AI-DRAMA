@@ -185,7 +185,7 @@ async function sendFcm(
         collapse_key: eventKey,
         notification: { channel_id: "nexora_updates", sound: "default", tag: eventKey },
       },
-    }) }),
+    } }),
   });
   const payload = await response.json().catch(() => ({}));
   if (response.ok) return { kind: "sent" };
