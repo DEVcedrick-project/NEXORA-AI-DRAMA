@@ -65,7 +65,13 @@
     const deepLink = new URL('nexora://episode');
     deepLink.searchParams.set('drama', drama);
     deepLink.searchParams.set('episode', String(episode));
-    open.href = deepLink.toString();
+
+    // Chrome on Android handles intent:// links more reliably than a bare
+    // custom scheme and keeps the promotional page as the browser fallback.
+    const intentQuery = deepLink.searchParams.toString();
+    const androidIntent = `intent://episode?${intentQuery}#Intent;scheme=nexora;package=com.devcedrick.nexoraaidrama;S.browser_fallback_url=${encodeURIComponent(location.href)};end`;
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    open.href = isAndroid ? androidIntent : deepLink.toString();
     open.addEventListener('click', () => {
       document.getElementById('hint').textContent = 'If NEXORA does not open, install the APK first, return here, and tap this button again.';
     });
